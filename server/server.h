@@ -84,7 +84,7 @@ extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting     
 extern const u_char     DEFAULT_NO_RETRANSMIT;  /* server-side setting, on default use retransmission */
 
 #define MAX_FILENAME_LENGTH  1024               /* maximum length of a requested filename  */
-
+#define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now) */
 
 /*------------------------------------------------------------------------
  * Data structures.
@@ -110,6 +110,8 @@ typedef struct {
     u_int16_t           faster_num;     /* the numerator of the decrease-IPD factor   */
     u_int16_t           faster_den;     /* the denominator of the decrease-IPD factor */
     u_char              no_retransmit;  /* for testing, actual retransmission can be disabled */
+    char                *ringbuf;       /* Pointer to ring buffer start               */
+    u_int16_t           fileout;        /* Do we store the data to file?              */
 } ttp_parameter_t;
 
 /* state of a transfer */
@@ -117,6 +119,7 @@ typedef struct {
     ttp_parameter_t    *parameter;    /* the TTP protocol parameters                */
     char               *filename;     /* the path to the file                       */
     FILE               *file;         /* the open file that we're transmitting      */
+    FILE               *vsib;         /* the vsib file number                       */
     FILE               *transcript;   /* the open transcript file for statistics    */
     int                 udp_fd;       /* the file descriptor of our UDP socket      */
     struct sockaddr    *udp_address;  /* the destination for our file data          */
@@ -169,8 +172,11 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: server.h,v $
- * Revision 1.1  2006/07/20 09:21:21  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
+ * header file merge
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:21  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:39:52  jwagnerhki
  * added to trunk

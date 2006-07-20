@@ -101,9 +101,10 @@ extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history
 
 extern const int        MAX_COMMAND_LENGTH;     /* maximum length of a single command           */
 
-#define RINGBUF_BLOCKS  1               /* Size of ring buffer (disabled now)  */ 
-#define START_VSIB_PACKET  14500               /* When to start output  */ 
-                        /* 2000 packets per second, now 8 second delay*/
+#define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now)           */
+#define START_VSIB_PACKET  14500                /* When to start output                         */
+                                                /* 2000 packets per second, now 8 second delay  */
+
 /*------------------------------------------------------------------------
  * Data structures.
  *------------------------------------------------------------------------*/
@@ -164,7 +165,8 @@ typedef struct {
     u_int16_t           faster_num;               /* the numerator of the decrease-IPD factor    */
     u_int16_t           faster_den;               /* the denominator of the decrease-IPD factor  */
     u_int16_t           history;                  /* percentage of history to keep in rates      */
-    char                *ringbuf;           /* Pointer to ring buffer start */ 
+    u_char              no_retransmit;            /* for testing, actual retransmission can be disabled */
+    char                *ringbuf;                 /* Pointer to ring buffer start                */
 } ttp_parameter_t;    
 
 /* state of a TTP transfer */
@@ -173,7 +175,7 @@ typedef struct {
     const char         *remote_filename;          /* the path to the file (on the server)        */
     const char         *local_filename;           /* the path to the file (locally)              */
     FILE               *file;                     /* the open file that we're receiving          */
-    FILE               *vsib;                     /* the vsib file number */
+    FILE               *vsib;                     /* the vsib file number                        */
     FILE               *transcript;               /* the transcript file that we're writing to   */
     int                 udp_fd;                   /* the file descriptor of our UDP socket       */
     u_int64_t           file_size;                /* the total file size (in bytes)              */
@@ -255,8 +257,11 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
- * Revision 1.1  2006/07/20 09:21:19  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
+ * header file merge
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
  * added to trunk
