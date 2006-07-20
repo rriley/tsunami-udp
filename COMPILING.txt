@@ -1,0 +1,19 @@
+
+For compiling tsunami, go through the normal process of:
+
+   ./configure
+
+ From the configure output errors find all those missing packages that you 
+ had never even heard of and install them, then try ./configure again.
+
+   make
+
+ That should build the entire tsunami, including everything in
+ the subdirectories (in /server, /client, etc).
+
+
+Contents of individual subdirectories can be recompiled with
+
+   make clean
+   make
+
