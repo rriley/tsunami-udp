@@ -73,21 +73,21 @@
 const u_int32_t  DEFAULT_BLOCK_SIZE    = 32768;        /* default size of a single file block          */
 const int        DEFAULT_TABLE_SIZE    = 2048;         /* initial size of the retransmission table     */
 const char      *DEFAULT_SERVER_NAME   = "localhost";  /* default name of the remote server            */
-const u_int16_t  DEFAULT_SERVER_PORT   = 46224;        /* default TCP port of the remote server        */
+const u_int16_t  DEFAULT_SERVER_PORT   = TS_TCP_PORT;  /* default TCP port of the remote server        */
+const u_int16_t  DEFAULT_CLIENT_PORT   = TS_UDP_PORT;  /* default UDP port of the client               */
 const u_int32_t  DEFAULT_UDP_BUFFER    = 20000000;     /* default size of the UDP receive buffer       */
 const u_char     DEFAULT_VERBOSE_YN    = 1;            /* the default verbosity setting                */
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;            /* the default transcript setting               */
 const u_char     DEFAULT_IPV6_YN       = 0;            /* the default IPv6 setting                     */
 const u_char     DEFAULT_OUTPUT_MODE   = LINE_MODE;    /* the default output mode (SCREEN or LINE)     */
-/* const u_int32_t  DEFAULT_TARGET_RATE   = 1000000000;   /* the default target rate (in bps)             */
-const u_int32_t  DEFAULT_TARGET_RATE   = 650000000;   /* the default target rate (in bps)             */
+const u_int32_t  DEFAULT_TARGET_RATE   = 650000000;    /* the default target rate (in bps)             */
 const u_int32_t  DEFAULT_ERROR_RATE    = 7500;         /* the default threshhold error rate (% x 1000) */
 const u_int16_t  DEFAULT_SLOWER_NUM    = 25;           /* default numerator in the slowdown factor     */
 const u_int16_t  DEFAULT_SLOWER_DEN    = 24;           /* default denominator in the slowdown factor   */
 const u_int16_t  DEFAULT_FASTER_NUM    = 5;            /* default numerator in the speedup factor      */
 const u_int16_t  DEFAULT_FASTER_DEN    = 6;            /* default denominator in the speedup factor    */
 const u_int16_t  DEFAULT_HISTORY       = 25;           /* default percentage of history in rates       */
-const u_char     DEFAULT_NO_RETRANSMIT = 0;            /* on default use retransmission */
+const u_char     DEFAULT_NO_RETRANSMIT = 0;            /* on default use retransmission                */
 
 const int        MAX_COMMAND_LENGTH    = 1024;         /* maximum length of a single command           */
 
@@ -110,6 +110,7 @@ void reset_client(ttp_parameter_t *parameter)
     parameter->block_size    = DEFAULT_BLOCK_SIZE;
     parameter->server_name   = strdup(DEFAULT_SERVER_NAME);
     parameter->server_port   = DEFAULT_SERVER_PORT;
+    parameter->client_port   = DEFAULT_CLIENT_PORT;
     parameter->udp_buffer    = DEFAULT_UDP_BUFFER;
     parameter->verbose_yn    = DEFAULT_VERBOSE_YN;
     parameter->transcript_yn = DEFAULT_TRANSCRIPT_YN;
@@ -132,8 +133,11 @@ void reset_client(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
- * Revision 1.1  2006/07/20 09:21:18  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 07:55:35  jwagnerhki
+ * new UDP port define
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
  * deleted unnecessary files

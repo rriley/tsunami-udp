@@ -78,6 +78,8 @@ extern const u_int32_t  DEFAULT_BLOCK_SIZE;     /* default size of a single file
 extern const int        DEFAULT_TABLE_SIZE;     /* initial size of the retransmission table     */
 extern const char      *DEFAULT_SERVER_NAME;    /* default name of the remote server            */
 extern const u_int16_t  DEFAULT_SERVER_PORT;    /* default TCP port of the remote server        */
+extern const u_int16_t  DEFAULT_CLIENT_PORT;    /* default UDP port of the client               */
+extern const u_int16_t  DEFAULT_UDP_PORT;       /* default UDP port of the client               */
 extern const u_int32_t  DEFAULT_UDP_BUFFER;     /* default size of the UDP receive buffer       */
 extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting                */
 extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting               */
@@ -152,6 +154,7 @@ typedef struct {
 typedef struct {
     char               *server_name;              /* the name of the host running tsunamid       */
     u_int16_t           server_port;              /* the TCP port on which the server listens    */
+    u_int16_t           client_port;              /* the UDP port on which the client receives   */
     u_int32_t           udp_buffer;               /* the size of the UDP receive buffer in bytes */
     u_char              verbose_yn;               /* 1 for verbose mode, 0 for quiet             */
     u_char              transcript_yn;            /* 1 for transcripts on, 0 for no transcript   */
@@ -257,6 +260,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.3  2006/07/21 07:55:35  jwagnerhki
+ * new UDP port define
+ *
  * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
  * header file merge
  *
