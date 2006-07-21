@@ -432,9 +432,9 @@ int ttp_request_stop(ttp_session_t *session)
 int ttp_update_stats(ttp_session_t *session)
 {
     time_t            now_epoch = time(NULL);                 /* the current Unix epoch                         */
-    u_int64_t         delta;                                  /* the number of microseconds since last stats    */
-    u_int64_t         delta_total;                            /* the number of microseconds since we've started */
-    u_int64_t         delta_useful;                            /* the number of microseconds since we've started */
+    u_int64_t         delta;                                  /* the data transferred since last stats          */
+    u_int64_t         delta_total;                            /* the total data transferred since last stats    */
+    u_int64_t         delta_useful;                           /* the real trhoughput since last stats           */
     u_int64_t         temp;                                   /* temporary value for building the elapsed time  */
     int               hours, minutes, seconds, milliseconds;  /* parts of the elapsed time                      */
     u_int64_t         data_total;                             /* the total amount of data transferred           */
@@ -542,8 +542,11 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.1  2006/07/20 09:21:19  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 08:50:41  jwagnerhki
+ * merged client and rtclient protocol.c
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * reimport
  *
  * Revision 1.2  2006/07/11 07:38:32  jwagnerhki
  * new debug defines

@@ -440,8 +440,9 @@ int ttp_request_stop(ttp_session_t *session)
 int ttp_update_stats(ttp_session_t *session)
 {
     time_t            now_epoch = time(NULL);                 /* the current Unix epoch                         */
-    u_int64_t         delta;                                  /* the number of microseconds since last stats    */
-    u_int64_t         delta_total;                            /* the number of microseconds since we've started */
+    u_int64_t         delta;                                  /* the data transferred since last stats          */
+    u_int64_t         delta_total;                            /* the total data transferred since last stats    */
+    u_int64_t         delta_useful;                           /* the real trhoughput since last stats           */
     u_int64_t         temp;                                   /* temporary value for building the elapsed time  */
     int               hours, minutes, seconds, milliseconds;  /* parts of the elapsed time                      */
     u_int64_t         data_total;                             /* the total amount of data transferred           */
@@ -463,6 +464,7 @@ int ttp_update_stats(ttp_session_t *session)
     /* find the amount of data transferred */
     data_total = ((u_int64_t) session->parameter->block_size) *  stats->total_blocks;
     data_last  = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
+    delta_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
 
     /* update the rate statistics */
     stats->transmit_rate   = 0.01 * ((session->parameter->history * stats->transmit_rate)   + ((100 - session->parameter->history) * data_last * 8.0 / delta));
@@ -478,7 +480,11 @@ int ttp_update_stats(ttp_session_t *session)
 	return warn("Could not send error rate information");
 
     /* build the stats string */
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d\n",
+#ifndef STATS_MATLABFORMAT
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%6.1f\n",
+#else
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %6.1fMbps\n",
+#endif
 	    hours, minutes, seconds, milliseconds,
 	    stats->total_blocks - stats->this_blocks,
 	    data_last / (1024.0 * 1024.0),
@@ -489,7 +495,8 @@ int ttp_update_stats(ttp_session_t *session)
 	    (data_total * 8.0 / delta_total),
 	    100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
 	    session->transfer.retransmit.index_max,
-	    session->transfer.ring_buffer->count_data);
+	    session->transfer.ring_buffer->count_data,
+       delta_useful * 8.0 / delta );
 
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
@@ -514,10 +521,12 @@ int ttp_update_stats(ttp_session_t *session)
 	} else {
 
 	    /* print a header if necessary */
+#ifndef STATS_NOHEADER
 	    if (!(iteration++ % 23)) {
 		printf("             last_interval                   transfer_total                   buffers\n");
 		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring\n");
 	    }
+#endif
 	    printf("%s", stats_line);
 	}
 
@@ -541,8 +550,11 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.1  2006/07/20 09:21:20  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 08:50:41  jwagnerhki
+ * merged client and rtclient protocol.c
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * reimport
  *
  * Revision 1.2  2006/07/17 12:18:40  jwagnerhki
  * now /dev/vsib
