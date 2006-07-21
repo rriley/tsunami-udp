@@ -164,7 +164,8 @@ int create_tcp_socket(ttp_session_t *session, const char *server_name, u_int16_t
  * descriptor of the socket on success and -1 on error.  The parameter
  * structure is used for setting the size of the UDP receive buffer.
  * This will be an IPv6 socket if ipv6_yn is true and an IPv4 socket
- * otherwise.
+ * otherwise. The next available port starting from parameter->client_port 
+ * will be taken, and the value of client_port is updated.
  *------------------------------------------------------------------------*/
 int create_udp_socket(ttp_parameter_t *parameter)
 {
@@ -175,6 +176,7 @@ int create_udp_socket(ttp_parameter_t *parameter)
     int              socket_fd;
     int              yes = 1;
     int              status;
+    int              higher_port_attempt = 0;
 
     /* set up the hints for getaddrinfo() */
     memset(&hints, 0, sizeof(hints));
@@ -182,44 +184,53 @@ int create_udp_socket(ttp_parameter_t *parameter)
     hints.ai_family   = parameter->ipv6_yn ? AF_INET6 : AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    /* try to get address info for ourselves */
-    sprintf(buffer, "%d", parameter->server_port);
-    status = getaddrinfo(NULL, buffer, &hints, &info);
-    if (status)
-	return warn("Error in getting address information");
+   do {
+  
+      /* try to get address info for ourselves */
+      sprintf(buffer, "%d", parameter->client_port + higher_port_attempt);
+      status = getaddrinfo(NULL, buffer, &hints, &info);
+      if (status) {
+        return warn("Error in getting address information");
+      }
 
-    /* for each address structure returned */
-    info_save = info;
-    do {
+      /* for each address structure returned */
+      info_save = info;
+      do {
+   
+      /* try to create a socket of this type */
+      socket_fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+      if (socket_fd < 0) {
+          continue;
+      }
 
-	/* try to create a socket of this type */
-	socket_fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-	if (socket_fd < 0)
-	    continue;
+      //~ /* make the socket reusable */
+      //~ status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+      //~ if (status < 0) {
+          //~ close(socket_fd);
+          //~ continue;
+      //~ }
+   
+      /* set the receive buffer size */
+      status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
+      if (status < 0) {
+          close(socket_fd);
+          continue;
+      }
+   
+      /* and try to bind it */
+      status = bind(socket_fd, info->ai_addr, info->ai_addrlen);
+      if (status == 0) {
+         parameter->client_port = ntohs(((struct sockaddr_in*)info->ai_addr)->sin_port);
+         printf("Receiving data on UDP port %d\n", parameter->client_port);
+         break;
+      }
+   
+       } while ((info = info->ai_next) != NULL);
+   
+       /* free the allocated memory */
+       freeaddrinfo(info_save);
 
-	/* make the socket reusable */
-	status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-	if (status < 0) {
-	    close(socket_fd);
-	    continue;
-	}
-
-	/* set the receive buffer size */
-	status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
-	if (status < 0) {
-	    close(socket_fd);
-	    continue;
-	}
-
-	/* and try to bind it */
-	status = bind(socket_fd, info->ai_addr, info->ai_addrlen);
-	if (status == 0)
-	    break;
-
-    } while ((info = info->ai_next) != NULL);
-
-    /* free the allocated memory */
-    freeaddrinfo(info_save);
+   } while ((info == NULL) && (++higher_port_attempt < 16));
 
     /* make sure that we succeeded with at least one address */
     if (info == NULL)
@@ -232,8 +243,11 @@ int create_udp_socket(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network.c,v $
- * Revision 1.1  2006/07/20 09:21:18  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 07:58:01  jwagnerhki
+ * concurrent clients by scannig for next available UDP port
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
  * deleted unnecessary files
