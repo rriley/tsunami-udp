@@ -64,8 +64,12 @@
 #include <string.h>      /* for memset(), strdup(), etc.   */
 #include <sys/types.h>   /* for standard system data types */
 #include <sys/socket.h>  /* for the BSD sockets library    */
+#include <sys/time.h>    /* gettimeofday()                 */
 #include <time.h>        /* for time()                     */
 #include <unistd.h>      /* for standard Unix system calls */
+#include <assert.h>
+#include <math.h>        /* floor() */
+
 
 #include "server.h"
 
@@ -334,11 +338,6 @@ int ttp_open_transfer(ttp_session_t *session)
     ttp_transfer_t  *xfer  = &session->transfer;
     ttp_parameter_t *param =  session->parameter;
 
-    fprintf(stderr, "Info1 of file to transfer:\n"
-                    "Block count (at block_size %d) is %ld\n", 
-                    param->block_size, param->block_count
-    );
-
     /* clear out the transfer data */
     memset(xfer, 0, sizeof(*xfer));
 
@@ -390,10 +389,6 @@ int ttp_open_transfer(ttp_session_t *session)
 #endif
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
     param->epoch       = time(NULL);
-    fprintf(stderr, "Info of file to transfer:\n"
-                    "Block count (at block_size %d) is %ld\n", 
-                     param->block_size, param->block_count
-    );
 
     /* reply with the length, block size, number of blocks, and run epoch */
     file_size   = htonll(param->file_size);    if (write(session->client_fd, &file_size,   8) < 0) return warn("Could not submit file size");
@@ -416,8 +411,11 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.1  2006/07/20 09:21:21  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 08:45:22  jwagnerhki
+ * merged server and rtserver protocol.c
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:21  jwagnerhki
+ * reimport
  *
  * Revision 1.2  2006/07/11 07:39:29  jwagnerhki
  * new debug defines

@@ -149,19 +149,23 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
     /* if it's a retransmit request */
     } else if (type == REQUEST_RETRANSMIT) {
 
-	/* build the retransmission */
-	status = build_datagram(session, retransmission->block, 'R', datagram);
-	if (status < 0) {
-	    sprintf(g_error, "Could not build retransmission for block %u", retransmission->block);
-	    return warn(g_error);
-	}
-
-	/* try to send out the block */
-	status = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
-	if (status < 0) {
-	    sprintf(g_error, "Could not retransmit block %u", retransmission->block);
-	    return warn(g_error);
-	}
+      if (1 == param->no_retransmit) {
+         printf("debug: noretransmit was specified, skipping actual retransmit\n");
+      } else {
+         /* build the retransmission */
+         status = build_datagram(session, retransmission->block, 'R', datagram);
+         if (status < 0) {
+             sprintf(g_error, "Could not build retransmission for block %u", retransmission->block);
+             return warn(g_error);
+         }
+      
+         /* try to send out the block */
+         status = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
+         if (status < 0) {
+             sprintf(g_error, "Could not retransmit block %u", retransmission->block);
+             return warn(g_error);
+         }
+      }
 
     /* if it's another kind of request */
     } else {
@@ -469,8 +473,11 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.1  2006/07/20 09:21:20  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 08:45:22  jwagnerhki
+ * merged server and rtserver protocol.c
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * reimport
  *
  * Revision 1.3  2006/07/19 06:31:13  jwagnerhki
  * bool 2 char
