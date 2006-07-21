@@ -532,9 +532,9 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
          char cpy[256];
          int l = strlen(cmd);
          strcpy(cpy, cmd);
-         if(l>1 && (cpy[l-1])=='m') { 
+         if(l>1 && (toupper(cpy[l-1]))=='M') { 
             multiplier = 1000000; cpy[l-1]='\0';  
-         } else if(l>1 && cpy[l-1]=='g') { 
+         } else if(l>1 && toupper(cpy[l-1])=='G') { 
             multiplier = 1000000000; cpy[l-1]='\0';   
          }
          parameter->target_rate   = multiplier * atol(cpy); 
@@ -638,8 +638,11 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
- * Revision 1.1  2006/07/20 09:21:18  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/07/21 07:48:56  jwagnerhki
+ * set rate now also with mM gG
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
  * deleted unnecessary files
