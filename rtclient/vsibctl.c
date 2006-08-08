@@ -46,11 +46,10 @@
 #define fourCharLong(a,b,c,d) ( ((long)a)<<24 | ((long)b)<<16 | ((long)c)<<8 | d )
 
 /* Default values for mode */
-/* int vsib_mode = 2 ;   */                 /* low 16 bit mode */
-int vsib_mode = 1 ;                    /* Mark5a 16 bit mode */
-int vsib_mode_gigabit = 0;             /* no gigabit mode */
-int vsib_mode_embed_1pps_markers = 1;  /* embed markers */
-int vsib_mode_skip_samples = 0;        /* do not skip samples */
+int vsib_mode = 1;                     /* 2: low 16 bit mode, 1: Mark5a 16bit mode */
+int vsib_mode_gigabit = 0;             /* 0: no gigabit mode */
+int vsib_mode_embed_1pps_markers = 1;  /* 1: embed markers */
+int vsib_mode_skip_samples = 0;        /* 0: do not skip samples */
 
 typedef struct sSh {
   int relSeekBlocks;
