@@ -69,6 +69,7 @@
 #include <unistd.h>       /* for standard Unix system calls        */
 
 #include "client.h"
+#define DEBUG_RETX xxx
 
 /*------------------------------------------------------------------------
  * int ttp_authenticate(ttp_session_t *session, u_char *secret);
@@ -294,7 +295,12 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
 
-         /* prepare a restart-at request */
+	    
+	 #ifdef DEBUG_RETX
+	 warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
+         #endif
+	    
+         /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
          retransmission[0].request_type = htons(REQUEST_RESTART);
          retransmission[0].block        = htonl(rexmit->table[0]);
       
@@ -308,12 +314,16 @@ int ttp_repeat_retransmit(ttp_session_t *session)
          session->transfer.stats.total_blocks = rexmit->table[0];
          session->transfer.stats.this_blocks  = rexmit->table[0];
          rexmit->index_max                    = 0;
-      
+	 #ifdef DEBUG_RETX
+	 warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
+         #endif
+	 
          /* and return */
          return 0;
     }
 
-   /* for each table entry */
+   /* for each table entry, discard from the table those blocks we don't want, and */ 
+   /* prepare a retransmit request */
    session->transfer.stats.this_retransmits = 0;
    for (entry = 0; entry < rexmit->index_max; ++entry) {
 
@@ -333,6 +343,9 @@ int ttp_repeat_retransmit(ttp_session_t *session)
          /* prepare a retransmit request */
          retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
          retransmission[count].block        = htonl(block);
+	 #ifdef DEBUG_RETX
+	 printf("retx %ld\n", block);
+	 #endif
          ++count;
       }
    }
@@ -542,6 +555,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.3  2006/08/08 08:38:20  jwagnerhki
+ * added some debug output trying to catch file corruption issues
+ *
  * Revision 1.2  2006/07/21 08:50:41  jwagnerhki
  * merged client and rtclient protocol.c
  *
