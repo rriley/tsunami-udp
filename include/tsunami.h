@@ -94,7 +94,7 @@ extern const u_int16_t REQUEST_STOP;
 extern const u_int16_t REQUEST_ERROR_RATE;
 
 #define  TS_TCP_PORT    46224   /* default TCP port of the remote server        */
-#define  TS_UDP_PORT    47221   /* default UDP port of the client               */
+#define  TS_UDP_PORT    46224   /* default UDP port of the client / 47221       */
 
 
 /*------------------------------------------------------------------------
