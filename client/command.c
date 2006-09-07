@@ -521,6 +521,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 	    if (parameter->server_name == NULL)
 		error("Could not update server name");
 	} else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
+	  else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "blocksize"))     parameter->block_size    = atol(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "verbose"))    parameter->verbose_yn    = (strcmp(command->text[2], "yes") == 0);
@@ -550,6 +551,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     /* report on current values */
     if (do_all || !strcasecmp(command->text[1], "server"))     printf("server = %s\n",      parameter->server_name);
     if (do_all || !strcasecmp(command->text[1], "port"))       printf("port = %u\n",        parameter->server_port);
+    if (do_all || !strcasecmp(command->text[1], "udpport"))    printf("udpport = %u\n",     parameter->client_port);
     if (do_all || !strcasecmp(command->text[1], "buffer"))     printf("buffer = %u\n",      parameter->udp_buffer);
     if (do_all || !strcasecmp(command->text[1], "blocksize"))  printf("blocksize = %u\n",   parameter->block_size);
     if (do_all || !strcasecmp(command->text[1], "verbose"))    printf("verbose = %s\n",     parameter->verbose_yn    ? "yes" : "no");
@@ -639,6 +641,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.4  2006/09/07 13:56:57  jwagnerhki
+ * udp socket reusable, udp port selectable in client
+ *
  * Revision 1.3  2006/08/08 06:04:28  jwagnerhki
  * included ctype.h
  *
