@@ -79,44 +79,97 @@ void parse_command(command_t *command, char *buffer);
 /*------------------------------------------------------------------------
  * MAIN PROGRAM
  *------------------------------------------------------------------------*/
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
     command_t        command;                           /* the current command being processed */
     u_char           command_text[MAX_COMMAND_LENGTH];  /* the raw text of the command         */
     ttp_session_t   *session = NULL;
     ttp_parameter_t  parameter;
-
+   
+    int argc_curr       = 1;                            /* command line argument currently to be processed */
+    char *ptr_command_text = &command_text[0];
+   
     /* reset the client */
     memset(&parameter, 0, sizeof(parameter));
     reset_client(&parameter);
 
-    /* while the command loop is still running */
+    /* while the command loop is still running */   
     while (1) {
 
-	/* present the prompt */
-	fprintf(stdout, "tsunami> ");
-	fflush(stdout);
+      /* retrieve the user's commands */
+      if (argc<=1 || argc_curr>=argc) {
+         
+         /* present the prompt */
+         fprintf(stdout, "tsunami> ");
+         fflush(stdout);
+         /* read next command */
+         
+         if (fgets(command_text, MAX_COMMAND_LENGTH, stdin) == NULL) {
+            error("Could not read command input");
+         }
+         
+      } else {
+         
+         // severe TODO: check that command_text appends do not over flow MAX_COMMAND_LENGTH...
+         
+         /* assemble next command from command line arguments */
+         for ( ; argc_curr<argc; argc_curr++) {
+            // zero argument commands
+            if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") || !strcasecmp(argv[argc_curr], "help")) { 
+               strcpy(command_text, argv[argc_curr]);
+               argc_curr += 1;
+               break; 
+            } 
+            // single argument commands
+            if (!strcasecmp(argv[argc_curr], "connect")) {
+               if (argc_curr+1 < argc) {
+                  strcpy(ptr_command_text, argv[argc_curr]);
+                  strcat(command_text, " ");
+                  strcat(command_text, argv[argc_curr+1]);
+               } else {
+                  fprintf(stderr, "Connect: no host specified\n"); 
+                  exit(1);
+               }
+               argc_curr += 2;
+               break;
+            }
+            // double argument commands
+            if (!strcasecmp(argv[argc_curr], "set")) {
+               if (argc_curr+2 < argc) {
+                  strcpy(ptr_command_text, argv[argc_curr]);
+                  strcat(command_text, " ");
+                  strcat(command_text, argv[argc_curr+1]);
+                  strcat(command_text, " ");
+                  strcat(command_text, argv[argc_curr+2]);
+               } else {
+                  fprintf(stderr, "Connect: no host specified\n"); 
+                  exit(1);
+               }
+               argc_curr += 3;
+               break;
+            }
+            // unknown commands, skip
+            fprintf(stderr, "Unsupported command console command: %s\n", argv[argc_curr]);
+         }
+         
+      }
 
-	/* retrieve the user's command */
-	if (fgets(command_text, MAX_COMMAND_LENGTH, stdin) == NULL)
-	    error("Could not read command input");
+      /* parse the command */
+      parse_command(&command, command_text);
 
-	/* parse the command */
-	parse_command(&command, command_text);
-
-	/* make sure we have at least one word */
-	if (command.count == 0)
-	    continue;
-
-	/* dispatch on the command type */
-	     if (!strcasecmp(command.text[0], "close"))             command_close  (&command, session);
-	else if (!strcasecmp(command.text[0], "connect")) session = command_connect(&command, &parameter);
-	else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
-	else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
-	else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
-	else if (!strcasecmp(command.text[0], "set"))               command_set    (&command, &parameter);
-	else
-	    fprintf(stderr, "Unrecognized command: '%s'.  Use 'HELP' for help.\n\n", command.text[0]);
+      /* make sure we have at least one word */
+      if (command.count == 0)
+         continue;
+         
+      /* dispatch on the command type */
+           if (!strcasecmp(command.text[0], "close"))             command_close  (&command, session);
+      else if (!strcasecmp(command.text[0], "connect")) session = command_connect(&command, &parameter);
+      else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
+      else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
+      else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
+      else if (!strcasecmp(command.text[0], "set"))               command_set    (&command, &parameter);
+      else
+          fprintf(stderr, "Unrecognized command: '%s'.  Use 'HELP' for help.\n\n", command.text[0]);
     }
 
     /* if we're here, we shouldn't be */
@@ -159,8 +212,11 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
- * Revision 1.1  2006/07/20 09:21:19  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/09/08 11:59:36  jwagnerhki
+ * quick hack to allow commands as arguments already from shell side
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
  * added to trunk
