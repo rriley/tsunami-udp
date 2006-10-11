@@ -1,0 +1,62 @@
+
+ Very Quick Guide
+ ================
+
+ On the client, start the command line client: 
+    ./client/tsunami
+
+ On the server, go to the directory where you
+ have the files that should be serverd, and
+ start the daemon
+    cd /where/my/files/are
+    /usr/src/cvs/tsunami-udp/server/tsunamid
+
+ The source code documents the rest ;-))
+
+
+ Not So Quick Guide
+ ==================
+
+ Typical usage example where PC1 is the server and PC2 the client.
+
+ Preparations on PC1:
+
+ pc1$ cd /home/guest/outfiles/
+ pc1$ cp /usr/src/cvs/tsunami-udp/server/tsunamid .
+ pc1$ ./tsunamid
+
+ Connecting from PC2:
+
+ pc2$ cd /home/guest/infiles/
+ pc2$ cp /usr/src/cvs/tsunami-udp/client/tsunami .
+ pc2$ ./tsunami
+   tsunami> set rate 512M
+   rate = 512000000
+
+   tsunami> connect myserver.domain.com
+   Connected.
+
+   tsunami> get nameoffile
+   00     00      00      368      499     15.59   354.7    0.0       499    0.0   354.7    0.0       0  1      354.7
+   ...
+   ...
+
+ Help
+ ====
+
+ Server application, to get a list of command line options use:
+   ./tsunamid --help
+ 
+ Client application, to get a list of options use:
+   ./tsunami
+   tsunami> help
+ And to see the current settings in the client (not persistent
+ i.e. not stored between program restarts), use:
+   tsunami> set
+
+ Settings in the client can be changed using the "set" command
+ which has the format:
+   set [option] [value]
+ 
+
+
