@@ -11,9 +11,21 @@ For compiling tsunami, go through the normal process of:
  That should build the entire tsunami, including everything in
  the subdirectories (in /server, /client, etc).
 
+ And optional 
 
-Contents of individual subdirectories can be recompiled with
+   sudo make install
 
+ will install the non-realtime binaries ./server/tsunamid 
+ and ./client/tsunami onto your system, into /usr/local/...
+
+
+ Contents of individual subdirectories can be recompiled with
+ for example
+
+   cd client
    make clean
    make
 
+ (note that you should first have to compile the entire 
+ source tree via ./configure and make, only after that
+ recompiling individual subdirectories works without problems)
