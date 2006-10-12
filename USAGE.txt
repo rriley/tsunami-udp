@@ -4,9 +4,9 @@
 
  --Server--
 
- On the server, go to the directory where you
+ On the server PC, go to the directory where you
  have the files that should be served, and
- start the daemon with e.g.:
+ start the Tsunami server with e.g.:
     cd /where/my/files/are
     /usr/src/cvs/tsunami-udp/server/tsunamid
  or
@@ -19,7 +19,7 @@
 
  --Client--
 
- On the client, start the command line client: 
+ On the client PC, start the command line client: 
     cd /where/to/receive/files
     /usr/src/cvs/tsunami-udp/client/tsunami
  or
