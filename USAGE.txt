@@ -2,14 +2,40 @@
  Very Quick Guide
  ================
 
- On the client, start the command line client: 
-    ./client/tsunami
+ --Server--
 
  On the server, go to the directory where you
  have the files that should be served, and
  start the daemon with e.g.:
     cd /where/my/files/are
     /usr/src/cvs/tsunami-udp/server/tsunamid
+ or
+    cd /where/my/files/are
+    tsunami
+
+ The server serves files from its current
+ working directory.
+
+
+ --Client--
+
+ On the client, start the command line client: 
+    cd /where/to/receive/files
+    /usr/src/cvs/tsunami-udp/client/tsunami
+ or
+    cd /where/to/receive/files
+    tsunami
+
+ The client will store downloaded files into
+ the current working directory.
+
+ Usual commands in the client are like crude FTP:
+   connect server.domain.com
+   get filename
+
+ Old tsunami server versions will as for a password.
+ The default password is 'kitten'.
+
 
  The source code documents the rest ;-))
 
@@ -51,6 +77,7 @@
    00     00      00      368      499     15.59   354.7    0.0       499    0.0   354.7    0.0       0  1      354.7
    ...
    ...
+
 
  Getting Help
  ============
