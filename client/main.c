@@ -133,6 +133,18 @@ int main(int argc, const char *argv[])
                argc_curr += 2;
                break;
             }
+            if (!strcasecmp(argv[argc_curr], "get")) {
+               if (argc_curr+1 < argc) {
+                  strcpy(ptr_command_text, argv[argc_curr]);
+                  strcat(command_text, " ");
+                  strcat(command_text, argv[argc_curr+1]);
+               } else {
+                  fprintf(stderr, "Get: no file specified\n"); 
+                  exit(1);
+               }
+               argc_curr += 2;
+               break;
+            }
             // double argument commands
             if (!strcasecmp(argv[argc_curr], "set")) {
                if (argc_curr+2 < argc) {
@@ -212,6 +224,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.3  2006/10/16 09:08:19  jwagnerhki
+ * added command get
+ *
  * Revision 1.2  2006/09/08 11:59:36  jwagnerhki
  * quick hack to allow commands as arguments already from shell side
  *
