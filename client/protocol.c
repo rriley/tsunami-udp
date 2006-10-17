@@ -69,7 +69,7 @@
 #include <unistd.h>       /* for standard Unix system calls        */
 
 #include "client.h"
-#define DEBUG_RETX xxx
+//#define DEBUG_RETX xxx // enable to show retransmit debug infos
 
 /*------------------------------------------------------------------------
  * int ttp_authenticate(ttp_session_t *session, u_char *secret);
@@ -555,6 +555,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.4  2006/10/17 12:39:50  jwagnerhki
+ * disabled retransmit debug infos on default
+ *
  * Revision 1.3  2006/08/08 08:38:20  jwagnerhki
  * added some debug output trying to catch file corruption issues
  *
