@@ -4,7 +4,7 @@
  * This contains global definitions for the Tsunami file transfer client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright  2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,10 +49,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NOWARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -147,7 +147,7 @@ void reset_server         (ttp_parameter_t *parameter);
 int  build_datagram       (ttp_session_t *session, u_int32_t block_index, u_int16_t block_type, u_char *datagram);
 
 /* log.c */
-void log                  (FILE *log_file, const char *format, ...);
+/* void log                  (FILE *log_file, const char *format, ...); */
 
 /* network.c */
 int  create_tcp_socket    (ttp_parameter_t *parameter);
@@ -172,6 +172,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: server.h,v $
+ * Revision 1.3  2006/10/17 11:52:19  jwagnerhki
+ * removed log() declaration not working on SuSE
+ *
  * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
  * header file merge
  *
