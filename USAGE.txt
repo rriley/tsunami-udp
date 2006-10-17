@@ -22,7 +22,7 @@
     /usr/src/cvs/tsunami-udp/server/tsunamid
  or
     cd /where/my/files/are
-    tsunami
+    tsunamid
 
  The server serves files from its current
  working directory.
