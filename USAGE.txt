@@ -27,6 +27,9 @@
  The server serves files from its current
  working directory.
 
+ For the realtime server extensions and its 
+ file naming conventions, see the Realtime 
+ Tsunami Notes section.
 
  --Client--
 
@@ -158,7 +161,7 @@
 
  Examples:
 
-  Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30
+  Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30UTC
     Mh-2006-10-17T12:25:30
 
   Same as above but also make a local backup on the server 
@@ -175,6 +178,12 @@
  accidentally change the source code: mode 2, embed pps 1, 
  skip 0 or 1, gigabit mode 0).
 
+ The recording time is hard-coded to 15 minutes.
+
+ TODO: In a later tsunami version the length will be specified in
+ the file name. For now, to change the recording time, search 
+ ./rtserver/protocol.c for the string "15 minutes", and
+ edit the 15 in the code below to any other desired value.
 
  
  --Realtime Client--
