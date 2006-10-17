@@ -1,3 +1,14 @@
+-----------------------------------------------------------
+
+ CONTENTS
+
+ 1. Very Quick Guide
+ 2. Not So Quick Guide
+ 3. Getting Help
+ 4. Realtime Tsunami Notes
+ 5. Troubleshooting
+
+-----------------------------------------------------------
 
  Very Quick Guide
  ================
@@ -38,6 +49,9 @@
 
 
  The source code documents the rest ;-))
+
+ For the generic details on how Tsunami works and
+ how the protocol is structured, please see README.txt
 
 
  Not So Quick Guide
@@ -96,11 +110,14 @@
  which has the format:
    set [option] [value]
 
- Finally, look at the source code.
+ You should also read the README.txt.
 
- In really bad cases you can also use the sourceforge project site
+ Finally, look at the source code. :-)
+
+ You can also use the sourceforge project site
    http://sourceforge.net/projects/tsunami-udp
  to add a support request or send an email to the developer(s).
+
 
 
  Realtime Tsunami Notes
@@ -108,6 +125,11 @@
  
  The realtime version of the tsunami applications uses the 
  Metsähovi VSIB card.
+
+ This section refers mainly to the realtime versions of 
+ the tsunami applications, namely, in the source code tree
+ these are the ./rtserver/tsunamid and ./rtclient/tsunami
+ applications.
 
  --VSIB driver--
 
@@ -119,18 +141,41 @@
  The realtime server will read data from the VSIB card and send
  the data over the network. 
 
- Recording mode is hard-coded in the source code, 
- see 
-   ./rtserver/vsibctl.c
-   int vsib_mode = ...
- and the docs/modes.txt file found in the VSIB source code that
- is available separately from Metsähovi.
-
- The file name specified by the client in the "get" command
+ The filename requested by the client in the "get" command
  tells the realtime server when to start recording. If the
  name is an UTC format time/date string, this will be used
  as the starting time. Otherwise, recording starts immediately
  on the next 1 second rollover.
+
+ If the file name contains a path i.e. the character "/", 
+ the server will locally create a file with that name. Data
+ streamed to the network will then also be saved into that
+ local file.
+
+ File naming convention, UTC time:
+
+    [2 letter station code]-[yyyy]-[mm]-[dd]T[hh]:[mm]:[ss]
+
+ Examples:
+
+  Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30
+    Mh-2006-10-17T12:25:30
+
+  Same as above but also make a local backup on the server 
+  into the /i1/ directory (should be a fast RAID0 disk):
+    /i1/Mh-2006-10-17T12:25:30
+
+ Recording VSIB mode is currently hard-coded in the source code, 
+ see 
+   ./rtserver/vsibctl.c
+   int vsib_mode = ...
+ and the docs/modes.txt file found in the VSIB source code that
+ is available separately from Metsähovi. The default settings 
+ work for nearly all cases (defaults are, for reference if you
+ accidentally change the source code: mode 2, embed pps 1, 
+ skip 0 or 1, gigabit mode 0).
+
+
  
  --Realtime Client--
 
@@ -151,6 +196,7 @@
     pc1$ ./rtserver/tsunamid
     pc2$ ./rtclient/tsunami
     (this is not fully tested yet)
+
 
 
  Troubleshooting
@@ -174,3 +220,6 @@
  and then reattempt the transfer (commands: connect, get). If
  this works, then you or your ISP need to fix the network MTU.
 
+ If you get "could not create socket on port xxx" errors, this
+ very likely means a zombie tsunamid or tsunami process is 
+ running. Try killing that process or rebooting.
