@@ -19,7 +19,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.in,v 1.3 2006/10/18 07:24:49 jwagnerhki Exp $
+# $Id: Makefile.in,v 1.4 2006/10/18 08:33:31 jwagnerhki Exp $
 #
 
 
@@ -93,12 +93,12 @@ INCLUDES = -I$(top_srcdir)/include
 
 common_lib = $(top_builddir)/common/libtsunami_common.a -lm
 
-bin_PROGRAMS = tsunamid
+bin_PROGRAMS = rttsunamid
 
-tsunamid_SOURCES =  			config.c 			io.c 			log.c 			main.c 			network.c 			protocol.c 			transcript.c 			server.h	vsibctl.c
+rttsunamid_SOURCES =  			config.c 			io.c 			log.c 			main.c 			network.c 			protocol.c 			transcript.c 			server.h	vsibctl.c
 
-tsunamid_LDADD = $(common_lib)
-tsunamid_DEPENDENCIES = $(common_lib)
+rttsunamid_LDADD = $(common_lib)
+rttsunamid_DEPENDENCIES = $(common_lib)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS)
@@ -108,9 +108,9 @@ DEFS = @DEFS@ -I. -I$(srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-tsunamid_OBJECTS =  config.o io.o log.o main.o network.o protocol.o vsibctl.o \
+rttsunamid_OBJECTS =  config.o io.o log.o main.o network.o protocol.o vsibctl.o \
 transcript.o
-tsunamid_LDFLAGS = 
+rttsunamid_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
@@ -124,8 +124,8 @@ TAR = tar
 GZIP_ENV = --best
 DEP_FILES =  .deps/config.P .deps/io.P .deps/log.P .deps/main.P \
 .deps/network.P .deps/protocol.P .deps/transcript.P
-SOURCES = $(tsunamid_SOURCES)
-OBJECTS = $(tsunamid_OBJECTS)
+SOURCES = $(rttsunamid_SOURCES)
+OBJECTS = $(rttsunamid_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -179,9 +179,9 @@ distclean-compile:
 
 maintainer-clean-compile:
 
-tsunamid: $(tsunamid_OBJECTS) $(tsunamid_DEPENDENCIES)
-	@rm -f tsunamid
-	$(LINK) $(tsunamid_LDFLAGS) $(tsunamid_OBJECTS) $(tsunamid_LDADD) $(LIBS)
+rttsunamid: $(rttsunamid_OBJECTS) $(rttsunamid_DEPENDENCIES)
+	@rm -f rttsunamid
+	$(LINK) $(rttsunamid_LDFLAGS) $(rttsunamid_OBJECTS) $(rttsunamid_LDADD) $(LIBS)
 
 tags: TAGS
 
