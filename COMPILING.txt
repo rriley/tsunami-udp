@@ -15,9 +15,14 @@ For compiling tsunami, go through the normal process of:
 
    sudo make install
 
- will install the non-realtime binaries ./server/tsunamid 
- and ./client/tsunami onto your system, into /usr/local/...
-
+ will install the tsunami binaries onto the system. 
+ The binaries that will be installed are:
+   App              Name        From
+   Tsunami server   tsunamid    ./server/tsunamid 
+   Tsunami client   tsunami     ./client/tsunami
+   Realtime server  rttsunamid  ./rtserver/rttsunamid
+   Realtime client  rttsunami   ./rtclient/rttsunami
+ The binaries will be placed into /usr/local/bin or similar.
 
  Contents of individual subdirectories can be recompiled with
  for example
