@@ -7,16 +7,16 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.1 2006/07/20 09:21:19 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.2 2006/10/18 08:27:17 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
 
 common_lib		= $(top_builddir)/common/libtsunami_common.a
 
-bin_PROGRAMS		= tsunami
+bin_PROGRAMS		= rttsunami
 
-tsunami_SOURCES		= \
+rttsunami_SOURCES		= \
 			client.h \
 			command.c \
 			config.c \
@@ -27,5 +27,5 @@ tsunami_SOURCES		= \
 			ring.c \
 			vsibctl.c \
 			transcript.c
-tsunami_LDADD		= $(common_lib) -lpthread
-tsunami_DEPENDENCIES	= $(common_lib)
+rttsunami_LDADD		= $(common_lib) -lpthread
+rttsunami_DEPENDENCIES	= $(common_lib)
