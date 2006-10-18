@@ -2,6 +2,7 @@
 
  CONTENTS
 
+ 0. Program Files
  1. Very Quick Guide
  2. Not So Quick Guide
  3. Getting Help
@@ -9,6 +10,33 @@
  5. Troubleshooting
 
 -----------------------------------------------------------
+
+ CHANGES
+ 17 Oct 2006: 
+   - realtime and normal applications now named differently
+   that is, tsunami/tsunamid and rttsunami/rttsunamid             
+
+-----------------------------------------------------------
+
+ Program Files
+ =============
+
+ The program files are:
+
+   Application       Command      Alternatively call from
+   -----------------------------------------------------
+   Tsunami server    tsunamid     ./server/tsunamid
+   Tsunami client    tsunami      ./client/tsunami
+   Realtime server   rttsunamid   ./rtserver/rttsunamid
+   Realtime client   rttsunami    ./rtclient/rttsunami
+
+ If you have followed COMPILING.txt and the "sudo make install",
+ you can execute the program files from anywhere on the command
+ line.
+
+ If you omitted the "sudo make install", you'll have to call
+ the programs from within the source code directories.
+
 
  Very Quick Guide
  ================
@@ -18,11 +46,8 @@
  On the server PC, go to the directory where you
  have the files that should be served, and
  start the Tsunami server with e.g.:
-    cd /where/my/files/are
-    /usr/src/cvs/tsunami-udp/server/tsunamid
- or
-    cd /where/my/files/are
-    tsunamid
+ $ cd /where/my/files/are
+ $ tsunamid
 
  The server serves files from its current
  working directory.
@@ -34,18 +59,15 @@
  --Client--
 
  On the client PC, start the command line client: 
-    cd /where/to/receive/files
-    /usr/src/cvs/tsunami-udp/client/tsunami
- or
-    cd /where/to/receive/files
-    tsunami
+ $ cd /where/to/receive/files
+ $ tsunami
 
  The client will store downloaded files into
  the current working directory.
 
  Usual commands in the client are like crude FTP:
-   connect server.domain.com
-   get filename
+ tsunami> connect server.domain.com
+ tsunami> get filename
 
  Old tsunami server versions will as for a password.
  The default password is 'kitten'.
@@ -65,14 +87,12 @@
  Preparations on PC1:
 
  pc1$ cd /home/guest/outfiles/
- pc1$ cp /usr/src/cvs/tsunami-udp/server/tsunamid .
- pc1$ ./tsunamid
+ pc1$ tsunamid
 
  Connecting from PC2:
 
  pc2$ cd /home/guest/infiles/
- pc2$ cp /usr/src/cvs/tsunami-udp/client/tsunami .
- pc2$ ./tsunami
+ pc2$ tsunami
    tsunami> set rate 512M
    rate = 512000000
 
@@ -88,8 +108,7 @@
   may also concatenate onto the console command line, i.e.:
 
  pc2$ cd /home/guest/infiles/
- pc2$ cp /usr/src/cvs/tsunami-udp/client/tsunami .
- pc2$ ./tsunami set rate 512M connect myserver.domain.com get nameoffile
+ pc2$ tsunami set rate 512M connect myserver.domain.com get nameoffile
    tsunami>
    00     00      00      368      499     15.59   354.7    0.0       499    0.0   354.7    0.0       0  1      354.7
    ...
@@ -100,10 +119,10 @@
  ============
 
  Server application, to get a list of command line options use:
-   ./tsunamid --help
+ $ tsunamid --help
  
  Client application, to get a list of options use:
-   ./tsunami
+ $ tsunami
    tsunami> help
  And to see the current settings in the client (not persistent
  i.e. not stored between program restarts), use:
@@ -193,17 +212,20 @@
  playback mode is hard-coded but now in
    ./rtclient/vsibctl.c
 
- To transfer a file from memory/VSIB-in to disk, use
-    pc1$ ./rtserver/tsunamid
-    pc2$ ./client/tsunami
+ To transfer a file from memory/VSIB-in to disk, use the
+ realtime server and normal client i.e.:
+    pc1$ rttsunamid
+    pc2$ tsunami
 
- To transfer a file from disk to VSIB-out, use:
-    pc1$ ./server/tsunamid
-    pc2$ ./rtclient/tsunami
+ To transfer a file from disk to VSIB-out, use the
+ normal server and realtime client i.e.:
+    pc1$ tsunamid
+    pc2$ rttsunami
 
- To transfer a file from VSIB-in to VSIB-out, use
-    pc1$ ./rtserver/tsunamid
-    pc2$ ./rtclient/tsunami
+ To transfer a file from VSIB-in to VSIB-out, use the
+ realtime server and realtime client i.e.:
+    pc1$ rttsunamid
+    pc2$ rttsunami
     (this is not fully tested yet)
 
 
@@ -231,4 +253,7 @@
 
  If you get "could not create socket on port xxx" errors, this
  very likely means a zombie tsunamid or tsunami process is 
- running. Try killing that process or rebooting.
+ running. Try killing that process ('ps axuf', 'kill') or 
+ rebooting if it is really stuck.
+
+
