@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # tsunami source distribution.
 #
-# $Id: configure.in,v 1.1 2006/07/20 09:21:18 jwagnerhki Exp $
+# $Id: configure.in,v 1.2 2006/10/18 07:39:42 jwagnerhki Exp $
 #
 
 #
@@ -94,9 +94,11 @@ fi
 AC_CONFIG_FILES([
     Makefile
     client/Makefile
+    rtclient/Makefile
     common/Makefile
     include/Makefile
     server/Makefile
+    rtserver/Makefile
     util/Makefile
 ])
 AC_OUTPUT
