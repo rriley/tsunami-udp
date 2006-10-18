@@ -1,6 +1,7 @@
 
 NOTE: below is the original unmodified 2002 README, it does not fully
-reflect the current status... ;-)
+reflect the current status... ;-) After reading this file, also see
+the COMPILING.txt and USAGE.txt files for newer instructions.
 
 ========================================================================
 
