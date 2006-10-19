@@ -67,7 +67,7 @@
 
 #include "tsunami.h"
 #include "client.h"
-
+#include "vsibctl.h"
 
 /*------------------------------------------------------------------------
  * Function prototypes (module scope).
@@ -94,8 +94,10 @@ int main(int argc, const char *argv[])
     reset_client(&parameter);
 
     /* show version / build information */
-    fprintf(stderr, "Tsunami Client for protocol rev %X\nBuild version %s %s\n",
-            PROTOCOL_REVISION, __DATE__ , __TIME__);
+    fprintf(stderr, "Tsunami Client for protocol rev %X\nBuild version %s %s\n"
+                    "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n",
+            PROTOCOL_REVISION, __DATE__ , __TIME__,
+            vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
 
     /* while the command loop is still running */   
     while (1) {
@@ -228,6 +230,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.5  2006/10/19 07:44:26  jwagnerhki
+ * show VSIB config at program start
+ *
  * Revision 1.4  2006/10/19 07:26:51  jwagnerhki
  * clients now show proto version and build nr
  *

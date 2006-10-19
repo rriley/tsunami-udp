@@ -74,7 +74,7 @@
 #include <unistd.h>      /* for Unix system calls                 */
 
 #include "server.h"
-
+#include "vsibctl.h"
 
 /*------------------------------------------------------------------------
  * Function prototypes (module scope).
@@ -115,8 +115,10 @@ int main(int argc, char *argv[])
 
     /* now show version / build information */
     fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
+                    "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n"
                     "Waiting for clients to connect.\n",
-            PROTOCOL_REVISION, __DATE__ , __TIME__);
+            PROTOCOL_REVISION, __DATE__ , __TIME__,
+            vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
 
     /* while our little world keeps turning */
     while (1) {
@@ -416,6 +418,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.3  2006/10/19 07:44:26  jwagnerhki
+ * show VSIB config at program start
+ *
  * Revision 1.2  2006/10/19 07:19:40  jwagnerhki
  * show proto rev and build number, rttsunamid show startup settings like tsunamid
  *
