@@ -480,7 +480,7 @@ int ttp_update_stats(ttp_session_t *session)
 	return warn("Could not send error rate information");
 
     /* build the stats string */
-#ifndef STATS_MATLABFORMAT
+#ifdef STATS_MATLABFORMAT
     sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%6.1f\n",
 #else
     sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %6.1fMbps\n",
@@ -550,6 +550,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.3  2006/10/19 08:06:31  jwagnerhki
+ * fix STATS_MATLABFORMAT ifndef to ifdef
+ *
  * Revision 1.2  2006/07/21 08:50:41  jwagnerhki
  * merged client and rtclient protocol.c
  *
