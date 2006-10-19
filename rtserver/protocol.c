@@ -418,11 +418,20 @@ int ttp_open_transfer(ttp_session_t *session)
  
     /* Start half a second before full UTC seconds change. */
     if ( 0 == start_immediately) {
+       u_int64_t timedelta_usec;
        starttime -= 0.5;
-   
+
+       // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
        assert( gettimeofday(&d, NULL) == 0 );
-       fprintf(stderr, "sleeping until specified time...\n");
-       usleep_that_works((unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec);
+       timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
+       fprintf(stderr, "Sleeping until specified time (time delta starttime-current = %lld usec)...\n", timedelta_usec);
+       if (timedelta_usec > 0) {
+          usleep_that_works(timedelta_usec);
+       } else {
+          fprintf(stderr, "Warning: start time is in the past! Will nevertheless start recording now.\n");
+       }
+       // assert( gettimeofday(&d, NULL) == 0 );
+       //usleep_that_works((unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec);
     }
 
     start_vsib(session);                        /* start at next 1PPS pulse */
@@ -476,6 +485,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.4  2006/10/19 09:18:24  jwagnerhki
+ * catch if specified UTC time is in the past
+ *
  * Revision 1.3  2006/10/18 07:45:50  jwagnerhki
  * more verbose when waiting till UTC starttime
  *
