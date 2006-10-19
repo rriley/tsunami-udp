@@ -113,6 +113,11 @@ int main(int argc, char *argv[])
     /* install a signal handler for our children */
     signal(SIGCHLD, reap);
 
+    /* now show version / build information */
+    fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
+                    "Waiting for clients to connect.\n",
+            PROTOCOL_REVISION, __DATE__ , __TIME__);
+
     /* while our little world keeps turning */
     while (1) {
 
@@ -384,6 +389,11 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     exit(1);
 	}
     }
+    if (1==parameter->verbose_yn) {
+       fprintf(stderr,"Block size: %d\n", parameter->block_size);
+       fprintf(stderr,"Buffer size: %d\n", parameter->udp_buffer);
+       fprintf(stderr,"Port: %d\n", parameter->tcp_port);
+    }
 }
 
 
@@ -406,8 +416,11 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
- * Revision 1.1  2006/07/20 09:21:20  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/10/19 07:19:40  jwagnerhki
+ * show proto rev and build number, rttsunamid show startup settings like tsunamid
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:37:21  jwagnerhki
  * added to trunk
