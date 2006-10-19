@@ -93,6 +93,10 @@ int main(int argc, const char *argv[])
     memset(&parameter, 0, sizeof(parameter));
     reset_client(&parameter);
 
+    /* show version / build information */
+    fprintf(stderr, "Tsunami Client for protocol rev %X\nBuild version %s %s\n",
+            PROTOCOL_REVISION, __DATE__ , __TIME__);
+
     /* while the command loop is still running */   
     while (1) {
 
@@ -224,6 +228,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.4  2006/10/19 07:26:51  jwagnerhki
+ * clients now show proto version and build nr
+ *
  * Revision 1.3  2006/10/16 09:08:19  jwagnerhki
  * added command get
  *
