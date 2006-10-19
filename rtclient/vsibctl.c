@@ -205,8 +205,15 @@ void stop_vsib(ttp_session_t *session)
 
   /* Remove shared memory to mark that 'wr/rd' is no more running. */
   if ((shId != -1) && (sh != (ptSh)-1) && (sh != NULL)) {
-    assert( shmctl(shId, IPC_RMID, NULL) == 0 );
-    assert( shmdt(sh) == 0 );
+    //assert( shmctl(shId, IPC_RMID, NULL) == 0 );
+    //assert( shmdt(sh) == 0 );
+    if( shmctl(shId, IPC_RMID, NULL) != 0 ) {
+       fprintf(stderr, "Shared memory mark remove shmctl() returned non-0\n");
+    } else {
+       if( shmdt(sh) != 0 ) {
+          fprintf(stderr, "Shared memory mark remove shmdt() returned non-0\n");
+       }
+    }
   }  // if shared memory was allocated
 
 		    /*  return(); */
