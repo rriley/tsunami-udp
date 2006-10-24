@@ -39,7 +39,7 @@
 #include <sys/ioctl.h>
 #include "vsib_ioctl.h"
 
-#include "server.h"
+#include <tsunami-server.h>
 
 
 

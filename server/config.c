@@ -62,7 +62,7 @@
 
 #include <string.h>  /* for memset() */
 
-#include "server.h"
+#include <tsunami-server.h>
 
 
 /*------------------------------------------------------------------------
@@ -102,6 +102,9 @@ void reset_server(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
+ * moved server.h into common tsunami-server.h
+ *
  * Revision 1.2  2006/07/21 07:55:35  jwagnerhki
  * new UDP port define
  *

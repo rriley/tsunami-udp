@@ -71,7 +71,7 @@
 #include <math.h>        /* floor() */
 
 
-#include "server.h"
+#include <tsunami-server.h>
 
 
 /*------------------------------------------------------------------------
@@ -411,6 +411,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
+ * moved server.h into common tsunami-server.h
+ *
  * Revision 1.2  2006/07/21 08:45:22  jwagnerhki
  * merged server and rtserver protocol.c
  *

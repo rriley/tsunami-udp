@@ -60,7 +60,7 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
-#include "server.h"
+#include <tsunami-server.h>
 
 
 /*------------------------------------------------------------------------
@@ -120,8 +120,11 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
- * Revision 1.1  2006/07/20 09:21:20  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/10/24 19:14:28  jwagnerhki
+ * moved server.h into common tsunami-server.h
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * reimport
  *
  * Revision 1.2  2006/07/11 07:39:29  jwagnerhki
  * new debug defines

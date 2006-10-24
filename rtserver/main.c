@@ -60,7 +60,11 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
+#define VSIB_REALTIME    /* compile into realtime mode with VSIB  support */
 
 #include <errno.h>       /* for the errno variable and perror()   */
 #include <fcntl.h>       /* for the fcntl() function              */
@@ -73,7 +77,7 @@
 #include <sys/wait.h>    /* for waitpid()                         */
 #include <unistd.h>      /* for Unix system calls                 */
 
-#include "server.h"
+#include <tsunami-server.h>
 #include "vsibctl.h"
 
 /*------------------------------------------------------------------------
@@ -123,40 +127,41 @@ int main(int argc, char *argv[])
     /* while our little world keeps turning */
     while (1) {
 
-	/* accept a new client connection */
-	client_fd = accept(server_fd, (struct sockaddr *) &remote_address, &remote_length);
-	if (client_fd < 0) {
-	    warn("Could not accept client connection");
-	    continue;
-	}
-
-	/* and fork a new child process to handle it */
-	child_pid = fork();
-	if (child_pid < 0) {
-	    warn("Could not create child process");
-	    continue;
-	}
-
-	/* if we're the child */
-	if (child_pid == 0) {
-
-	    /* close the server socket */
-	    close(server_fd);
-
-	    /* set up the session structure */
-	    session.client_fd = client_fd;
-	    session.parameter = &parameter;
-	    memset(&session.transfer, 0, sizeof(session.transfer));
-
-	    /* and run the client handler */
-	    client_handler(&session);
-	    return 0;
-
-	/* if we're the parent */
-	} else
-
-	    /* close the client socket */
-	    close(client_fd);
+        /* accept a new client connection */
+        client_fd = accept(server_fd, (struct sockaddr *) &remote_address, &remote_length);
+        if (client_fd < 0) {
+            warn("Could not accept client connection");
+            continue;
+        }
+    
+        /* and fork a new child process to handle it */
+        child_pid = fork();
+        if (child_pid < 0) {
+            warn("Could not create child process");
+            continue;
+        }
+    
+        /* if we're the child */
+        if (child_pid == 0) {
+    
+            /* close the server socket */
+            close(server_fd);
+    
+            /* set up the session structure */
+            session.client_fd = client_fd;
+            session.parameter = &parameter;
+            memset(&session.transfer, 0, sizeof(session.transfer));
+    
+            /* and run the client handler */
+            client_handler(&session);
+            return 0;
+    
+        /* if we're the parent */
+        } else {
+    
+            /* close the client socket */
+            close(client_fd);
+        }
     }
 }
 
@@ -409,7 +414,9 @@ void reap(int signum)
     int status;
 
     /* accept as many deaths as we can */
-    while (waitpid(-1, &status, WNOHANG) > 0);
+    while (waitpid(-1, &status, WNOHANG) > 0) {
+        fprintf(stderr,"Child server process terminated with status code 0x%X\n", status);
+    }
 
     /* reenable the handler */
     signal(SIGCHLD, reap);
@@ -418,6 +425,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.4  2006/10/24 19:14:28  jwagnerhki
+ * moved server.h into common tsunami-server.h
+ *
  * Revision 1.3  2006/10/19 07:44:26  jwagnerhki
  * show VSIB config at program start
  *
