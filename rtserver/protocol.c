@@ -374,6 +374,11 @@ int ttp_open_transfer(ttp_session_t *session)
     xfer->file = fopen64(filename, "r");
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
+    	/* signal failure to the client */
+    	status = write(session->client_fd, "\008", 1);
+    	if (status < 0) {
+		warn("Could not signal request failure to client");
+	}
         return warn(g_error);
     }
 
@@ -381,8 +386,13 @@ int ttp_open_transfer(ttp_session_t *session)
 
     /* reserve the ring buffer */
     param->ringbuf = malloc(param->block_size * RINGBUF_BLOCKS);
-    if (param->ringbuf == NULL)
-      return warn("Could not reserve space for ring buffer");
+    if (param->ringbuf == NULL) {
+        status = write(session->client_fd, "\004", 1);
+        if (status < 0) {
+            warn("Could not signal request failure to client");
+        }
+        return warn("Could not reserve space for ring buffer");
+    }
 
     /* get starting time (UTC) and detect whether local disk copy is wanted */
     // TODO: more intelligent strncpy() to support other formats in tsamp.c as well
@@ -398,6 +408,10 @@ int ttp_open_transfer(ttp_session_t *session)
     xfer->vsib = fopen64("/dev/vsib", "r");
     if (xfer->vsib == NULL) {
         sprintf(g_error, "VSIB board does not exist in /dev/vsib or it cannot be read");
+        status = write(session->client_fd, "\002", 1);
+        if (status < 0) {
+            warn("Could not signal request failure to client");
+        }
         return warn(g_error);
     }
 
@@ -406,6 +420,10 @@ int ttp_open_transfer(ttp_session_t *session)
         xfer->file = fopen64(filename, "wb");
         if (xfer->file == NULL) {
             sprintf(g_error, "Could not open local file '%s' for writing", filename);
+            status = write(session->client_fd, "\016", 1);
+            if (status < 0) {
+                warn("Could not signal request failure to client");
+            }
             return warn(g_error);
         }
     }
@@ -491,6 +509,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.7  2006/10/24 21:06:00  jwagnerhki
+ * file does not exist etc codes now returned to client
+ *
  * Revision 1.6  2006/10/24 20:08:57  jwagnerhki
  * now realtime uses same protocol.c, VSIB_REALTIME compile flag
  *
