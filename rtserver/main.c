@@ -64,8 +64,6 @@
 #define _GNU_SOURCE
 #endif
 
-#define VSIB_REALTIME    /* compile into realtime mode with VSIB  support */
-
 #include <errno.h>       /* for the errno variable and perror()   */
 #include <fcntl.h>       /* for the fcntl() function              */
 #include <getopt.h>      /* for getopt_long()                     */
@@ -461,8 +459,8 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
- * Revision 1.5  2006/10/24 19:41:12  jwagnerhki
- * realtime and normal server.c now identical, define VSIB_REALTIME for mode
+ * Revision 1.6  2006/10/24 19:47:33  jwagnerhki
+ * use VSIB_REALTIME gcc define to select compile mode
  *
  * Revision 1.4  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
