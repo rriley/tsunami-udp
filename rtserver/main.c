@@ -78,7 +78,9 @@
 #include <unistd.h>      /* for Unix system calls                 */
 
 #include <tsunami-server.h>
+#ifdef VSIB_REALTIME
 #include "vsibctl.h"
+#endif
 
 /*------------------------------------------------------------------------
  * Function prototypes (module scope).
@@ -110,20 +112,26 @@ int main(int argc, char *argv[])
     /* obtain our server socket */
     server_fd = create_tcp_socket(&parameter);
     if (server_fd < 0) {
-	sprintf(g_error, "Could not create server socket on port %d", parameter.tcp_port);
-	return error(g_error);
+        sprintf(g_error, "Could not create server socket on port %d", parameter.tcp_port);
+        return error(g_error);
     }
 
     /* install a signal handler for our children */
     signal(SIGCHLD, reap);
 
     /* now show version / build information */
+    #ifdef VSIB_REALTIME
     fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
                     "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n"
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, __DATE__ , __TIME__,
             vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
-
+    #else
+    fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
+                    "Waiting for clients to connect.\n",
+            PROTOCOL_REVISION, __DATE__ , __TIME__);
+    #endif
+    
     /* while our little world keeps turning */
     while (1) {
 
@@ -188,12 +196,19 @@ void client_handler(ttp_session_t *session)
     /* negotiate the connection parameters */
     status = ttp_negotiate(session);
     if (status < 0)
-	error("Protocol revision number mismatch");
+        error("Protocol revision number mismatch");
 
     /* have the client try to authenticate to us */
     status = ttp_authenticate(session, session->parameter->secret);
     if (status < 0)
-	error("Client authentication failure");
+        error("Client authentication failure");
+    
+    if (1==param->verbose_yn) {
+        fprintf(stderr,"New client connection, authenticated. Server params are:\n");
+        fprintf(stderr,"Block size: %d\n", param->block_size);
+        fprintf(stderr,"Buffer size: %d\n", param->udp_buffer); 
+        fprintf(stderr,"Port: %d\n", param->tcp_port);    
+    }
 
     /* while we haven't been told to stop */
     while (1) {
@@ -310,18 +325,30 @@ void client_handler(ttp_session_t *session)
 	if (param->transcript_yn)
 	    xscript_close(session, delta);
 
-	/* close the file and the UDP socket */
-        if (param->fileout)         /* only if file output was requested */
-         	fclose(xfer->file);
-	close(xfer->udp_fd);
-	memset(xfer, 0, sizeof(*xfer));
+    #ifndef VSIB_REALTIME
+    
+    /* close the file */
+    fclose(xfer->file);
 
-        /* stop the VSIB */
-	stop_vsib(session);
+    #else
 
-	/* Free the ring buffer */
-	free(param->ringbuf);
+    /* VSIB local disk copy: close file only if file output was requested */
+    if (param->fileout) {
+        fclose(xfer->file);
     }
+    /* stop the VSIB */
+    stop_vsib(session);
+
+    /* Free the ring buffer */
+    free(param->ringbuf);
+
+    #endif
+    
+    /* close the UDP socket */
+    close(xfer->udp_fd);
+    memset(xfer, 0, sizeof(*xfer));
+
+    } //while(1)
 }
 
 
@@ -341,6 +368,8 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 				     { "secret",     1, NULL, 5 },
 				     { "datagram",   1, NULL, 6 },
 				     { "buffer",     1, NULL, 7 },
+				     { "v",          0, NULL, 8 },
+				     { "noretransmit", 0, NULL, 9 },
 				     { NULL,         0, NULL, 0 } };
     int           which;
 
@@ -351,6 +380,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 	switch (which) {
 
 	    /* --verbose    : enter verbose mode for debugging */
+	    case 8:
 	    case 1:  parameter->verbose_yn = 1;
 		     break;
 
@@ -378,6 +408,10 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 	    case 7:  parameter->udp_buffer = atoi(optarg);
 		     break;
 
+	    /* --noretransmit : don't retransmit lost packets */
+	    case 9:  parameter->no_retransmit = 1;
+		     break;
+
 	    /* otherwise    : display usage information */
 	    default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n\n");
 		     fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
@@ -386,13 +420,15 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
 		     fprintf(stderr, "          datagram   = %d\n",   DEFAULT_BLOCK_SIZE);
 		     fprintf(stderr, "          buffer     = %d\n\n", DEFAULT_UDP_BUFFER);
-		     fprintf(stderr, "verbose    : turns on verbose output mode\n");
-		     fprintf(stderr, "transcript : turns on transcript mode for statistics recording\n");
-		     fprintf(stderr, "v6         : operates using IPv6 instead of (not in addition to!) IPv4\n");
-		     fprintf(stderr, "port       : specifies which TCP port on which to listen to incoming connections\n");
-		     fprintf(stderr, "secret     : specifies the shared secret for the client and server\n");
-		     fprintf(stderr, "datagram   : specifies the desired datagram size (in bytes)\n");
-		     fprintf(stderr, "buffer     : specifies the desired size for UDP socket send buffer (in bytes)\n");
+		     fprintf(stderr, "          noretransmit  = %d (0 for False)\n\n", DEFAULT_NO_RETRANSMIT);
+		     fprintf(stderr, "verbose or v : turns on verbose output mode\n");
+		     fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
+		     fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
+		     fprintf(stderr, "port         : specifies which TCP port on which to listen to incoming connections\n");
+		     fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
+		     fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
+		     fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
+		     fprintf(stderr, "noretransmit : turns off retransmissions\n");
 		     exit(1);
 	}
     }
@@ -425,6 +461,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.5  2006/10/24 19:41:12  jwagnerhki
+ * realtime and normal server.c now identical, define VSIB_REALTIME for mode
+ *
  * Revision 1.4  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *

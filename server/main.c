@@ -60,7 +60,9 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <errno.h>       /* for the errno variable and perror()   */
 #include <fcntl.h>       /* for the fcntl() function              */
@@ -74,7 +76,9 @@
 #include <unistd.h>      /* for Unix system calls                 */
 
 #include <tsunami-server.h>
-
+#ifdef VSIB_REALTIME
+#include "vsibctl.h"
+#endif
 
 /*------------------------------------------------------------------------
  * Function prototypes (module scope).
@@ -114,9 +118,17 @@ int main(int argc, char *argv[])
     signal(SIGCHLD, reap);
 
     /* now show version / build information */
+    #ifdef VSIB_REALTIME
+    fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
+                    "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n"
+                    "Waiting for clients to connect.\n",
+            PROTOCOL_REVISION, __DATE__ , __TIME__,
+            vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
+    #else
     fprintf(stderr, "Tsunami Server for protocol rev %X\nBuild version %s %s\n"
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, __DATE__ , __TIME__);
+    #endif
 
     /* while our little world keeps turning */
     while (1) {
@@ -184,18 +196,18 @@ void client_handler(ttp_session_t *session)
     /* negotiate the connection parameters */
     status = ttp_negotiate(session);
     if (status < 0)
-	error("Protocol revision number mismatch");
+        error("Protocol revision number mismatch");
 
     /* have the client try to authenticate to us */
     status = ttp_authenticate(session, session->parameter->secret);
     if (status < 0)
-	error("Client authentication failure");
+        error("Client authentication failure");
 
     if (1==param->verbose_yn) {
-	    fprintf(stderr,"New client connection, authenticated. Server params are:\n");
-	    fprintf(stderr,"Block size: %d\n", param->block_size);
-	    fprintf(stderr,"Buffer size: %d\n", param->udp_buffer); 
-	    fprintf(stderr,"Port: %d\n", param->tcp_port);    
+        fprintf(stderr,"New client connection, authenticated. Server params are:\n");
+        fprintf(stderr,"Block size: %d\n", param->block_size);
+        fprintf(stderr,"Buffer size: %d\n", param->udp_buffer); 
+        fprintf(stderr,"Port: %d\n", param->tcp_port);    
     }
     
     /* while we haven't been told to stop */
@@ -313,11 +325,31 @@ void client_handler(ttp_session_t *session)
 	if (param->transcript_yn)
 	    xscript_close(session, delta);
 
-	/* close the file and the UDP socket */
-	fclose(xfer->file);
-	close(xfer->udp_fd);
-	memset(xfer, 0, sizeof(*xfer));
+    #ifndef VSIB_REALTIME
+    
+    /* close the file */
+    fclose(xfer->file);
+
+    #else
+
+    /* VSIB local disk copy: close file only if file output was requested */
+    if (param->fileout) {
+        fclose(xfer->file);
     }
+    /* stop the VSIB */
+    stop_vsib(session);
+
+    /* Free the ring buffer */
+    free(param->ringbuf);
+
+    #endif
+    
+    /* close the UDP socket */
+    close(xfer->udp_fd);
+    memset(xfer, 0, sizeof(*xfer));
+
+    } //while(1)
+
 }
 
 
@@ -430,6 +462,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.4  2006/10/24 19:41:12  jwagnerhki
+ * realtime and normal server.c now identical, define VSIB_REALTIME for mode
+ *
  * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *
