@@ -5,7 +5,7 @@
  * file transfer CLI client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -119,7 +119,8 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 {
     int            server_fd;
     ttp_session_t *session;
-    char          secret[] = "kitten";
+    #define PASS_KEY "kitten"
+    char           secret[] = PASS_KEY;
 
     /* if we were given a new host, store that information */
     if (command->count > 1) {
@@ -169,6 +170,7 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 
     /* get the shared secret from the user */
     /*    secret = getpass("Password: "); */
+    strcpy(secret, PASS_KEY); /* write back the passwd erased by possible earlier ttp_auth's() */
     if (secret == NULL)
 	error("Could not read shared secret");
 
@@ -642,6 +644,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.6  2006/10/24 21:21:36  jwagnerhki
+ * fixed client loosing password
+ *
  * Revision 1.5  2006/10/11 08:36:50  jwagnerhki
  * added URL to SF project page for the byebye msg
  *
