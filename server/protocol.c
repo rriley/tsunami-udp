@@ -5,7 +5,7 @@
  * transfer server.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright  2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NOWARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -73,6 +73,10 @@
 
 #include <tsunami-server.h>
 
+#ifdef VSIB_REALTIME
+/* ASCII to double seconds conversion */
+#include "tstamp.c"
+#endif
 
 /*------------------------------------------------------------------------
  * int ttp_accept_retransmit(ttp_session_t *session,
@@ -167,8 +171,8 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 
     /* if it's another kind of request */
     } else {
-      sprintf(g_error, "Received unknown retransmission request of type %u", ntohs(retransmission->request_type));
-      return warn(g_error);
+	sprintf(g_error, "Received unknown retransmission request of type %u", ntohs(retransmission->request_type));
+	return warn(g_error);
     }
 
     /* we're done */
@@ -338,13 +342,21 @@ int ttp_open_transfer(ttp_session_t *session)
     ttp_transfer_t  *xfer  = &session->transfer;
     ttp_parameter_t *param =  session->parameter;
 
+    #ifdef VSIB_REALTIME
+    /* VLBI/VSIB-related variables */
+    char             start_time_ascii[MAX_FILENAME_LENGTH];  /* start time in ASCII     */
+    char             start_immediately = 0;
+    double starttime;
+    struct timeval d;
+    #endif
+    
     /* clear out the transfer data */
     memset(xfer, 0, sizeof(*xfer));
 
     /* read in the requested filename */
     status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
     if (status < 0)
-	error("Could not read filename from client");
+        error("Could not read filename from client");
     filename[MAX_FILENAME_LENGTH - 1] = '\0';
 
     /* store the filename in the transfer object */
@@ -356,13 +368,78 @@ int ttp_open_transfer(ttp_session_t *session)
     if (param->verbose_yn)
 	printf("Request for file: '%s'\n", filename);
 
+    #ifndef VSIB_REALTIME
+
     /* try to open the file for reading */
     xfer->file = fopen64(filename, "r");
     if (xfer->file == NULL) {
-	sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
-	return warn(g_error);
+        sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
+        return warn(g_error);
     }
 
+    #else
+
+    /* reserve the ring buffer */
+    param->ringbuf = malloc(param->block_size * RINGBUF_BLOCKS);
+    if (param->ringbuf == NULL)
+      return warn("Could not reserve space for ring buffer");
+
+    /* get starting time (UTC) and detect whether local disk copy is wanted */
+    // TODO: more intelligent strncpy() to support other formats in tsamp.c as well
+    if (strrchr(filename,'/') == NULL) {
+        strncpy(start_time_ascii, filename+3, 19); /* UTC time in ASCII */
+        param->fileout = 0;
+    } else {
+        strncpy(start_time_ascii, strrchr(filename, '/')+4, 19); /* UTC time in ASCII */
+        param->fileout = 1;
+    }
+
+    /* try to open the vsib for reading */
+    xfer->vsib = fopen64("/dev/vsib", "r");
+    if (xfer->vsib == NULL) {
+        sprintf(g_error, "VSIB board does not exist in /dev/vsib or it cannot be read");
+        return warn(g_error);
+    }
+
+    /* try to open the local disk copy file for writing */
+    if (param->fileout) {
+        xfer->file = fopen64(filename, "wb");
+        if (xfer->file == NULL) {
+            sprintf(g_error, "Could not open local file '%s' for writing", filename);
+            return warn(g_error);
+        }
+    }
+    
+    /* get and convert target UTC time to Unix seconds. */
+    if (getDateTime(start_time_ascii, &starttime)) {
+        fprintf(stderr, "%s: failed to convert ISO 8601 UTC date/time \n", start_time_ascii);
+        fprintf(stderr, "warning: assuming starting time to be immediate.");
+        start_immediately = 1;
+    } else {
+        fprintf(stderr, "%s: time string parsed successfully\n", start_time_ascii);
+    }
+ 
+    /* Start half a second before full UTC seconds change. */
+    if ( 0 == start_immediately) {
+        u_int64_t timedelta_usec;
+        starttime -= 0.5;
+
+        // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
+        assert( gettimeofday(&d, NULL) == 0 );
+        timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
+        fprintf(stderr, "Sleeping until specified time (time delta starttime-current = %lld usec)...\n", timedelta_usec);
+        // TODO: this detect of passed timepoint does not work yet:
+        if (timedelta_usec > 0) {
+            usleep_that_works(timedelta_usec);
+        } else {
+            fprintf(stderr, "Warning: start time is in the past! Will nevertheless start recording now.\n");
+        }
+    }
+
+    start_vsib(session);                        /* start at next 1PPS pulse */
+
+    #endif // end of VSIB_REALTIME section
+    
     /* try to signal success to the client */
     status = write(session->client_fd, "\000", 1);
     if (status < 0)
@@ -379,14 +456,17 @@ int ttp_open_transfer(ttp_session_t *session)
     if (read(session->client_fd, &param->faster_num,  2) < 0) return warn("Could not read speedup numerator");     param->faster_num  = ntohs(param->faster_num);
     if (read(session->client_fd, &param->faster_den,  2) < 0) return warn("Could not read speedup denominator");   param->faster_den  = ntohs(param->faster_den);
 
+    #ifndef VSIB_REALTIME
     /* try to find the file statistics */
     fseeko64(xfer->file, 0, SEEK_END);
-#ifndef DEBUG_DISKLESS
     param->file_size   = ftello64(xfer->file);
     fseeko64(xfer->file, 0, SEEK_SET);
-#else
-    param->file_size   = 4*6400000000L; // nearly diskless operation, 6.4 GByte of data "invented" from RAM
-#endif
+    #else
+    /* TODO: realtime streaming, pass file length in bytes inside filename string */
+    /* Currently defaulting to an amount of bytes equivalent to 15 minutes at 512Mbps */
+    param->file_size = 60LL * 512000000LL * 15 / 8;
+    #endif
+    
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
     param->epoch       = time(NULL);
 
@@ -411,19 +491,31 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
+ * Revision 1.4  2006/10/24 20:08:57  jwagnerhki
+ * now realtime uses same protocol.c, VSIB_REALTIME compile flag
+ *
+ * Revision 1.5  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
+ *
+ * Revision 1.4  2006/10/19 09:18:24  jwagnerhki
+ * catch if specified UTC time is in the past
+ *
+ * Revision 1.3  2006/10/18 07:45:50  jwagnerhki
+ * more verbose when waiting till UTC starttime
  *
  * Revision 1.2  2006/07/21 08:45:22  jwagnerhki
  * merged server and rtserver protocol.c
  *
- * Revision 1.1.1.1  2006/07/20 09:21:21  jwagnerhki
+ * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
  * reimport
  *
- * Revision 1.2  2006/07/11 07:39:29  jwagnerhki
- * new debug defines
+ * Revision 1.3  2006/07/19 06:31:13  jwagnerhki
+ * bool 2 char
  *
- * Revision 1.1  2006/07/10 12:39:52  jwagnerhki
+ * Revision 1.2  2006/07/17 12:18:05  jwagnerhki
+ * now /dev/vsib, start immediate or at specified time
+ *
+ * Revision 1.1  2006/07/10 12:37:21  jwagnerhki
  * added to trunk
  *
  */
