@@ -382,7 +382,7 @@ int ttp_open_transfer(ttp_session_t *session)
        sprintf(file_no,"%d",param->total_File);
        printf("\nServer side file no: %s\n", file_no);       
        
-       write(session->client_fd,size,10);       
+       write(session->client_fd,file_no,10);       
        
        printf("\nFile sizes sent to client\n");
        read(session->client_fd,message,8);
@@ -526,7 +526,10 @@ int ttp_open_transfer(ttp_session_t *session)
     start_vsib(session);                        /* start at next 1PPS pulse */
 
     #endif // end of VSIB_REALTIME section
-    
+
+    /* begin round trip time estimation */
+    gettimeofday(&ping_s,NULL);
+        
     /* try to signal success to the client */
     status = write(session->client_fd, "\000", 1);
     if (status < 0)
@@ -536,6 +539,9 @@ int ttp_open_transfer(ttp_session_t *session)
     if (read(session->client_fd, &param->block_size,  4) < 0) return warn("Could not read block size");            param->block_size  = ntohl(param->block_size);
     if (read(session->client_fd, &param->target_rate, 4) < 0) return warn("Could not read target bitrate");        param->target_rate = ntohl(param->target_rate);
     if (read(session->client_fd, &param->error_rate,  4) < 0) return warn("Could not read error rate");            param->error_rate  = ntohl(param->error_rate);
+
+    /* end round trip time estimation */
+    gettimeofday(&ping_e,NULL);
 
     /* read in the slowdown and speedup factors */
     if (read(session->client_fd, &param->slower_num,  2) < 0) return warn("Could not read slowdown numerator");    param->slower_num  = ntohs(param->slower_num);
@@ -583,6 +589,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.10  2006/10/25 13:56:47  jwagnerhki
+ * 'get *' mini fix, Jamil roundtrip time guess added
+ *
  * Revision 1.9  2006/10/25 12:50:56  jwagnerhki
  * fallback to older datetime parser with immediate start support
  *
