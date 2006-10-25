@@ -76,6 +76,7 @@
 #ifdef VSIB_REALTIME
 /* ASCII to double seconds conversion */
 #include "tstamp.c"
+#include "parse_evn_filename.h"
 #endif
 
 /*------------------------------------------------------------------------
@@ -344,11 +345,19 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #ifdef VSIB_REALTIME
     /* VLBI/VSIB-related variables */
+    struct          evn_filename *ef;
     char             start_time_ascii[MAX_FILENAME_LENGTH];  /* start time in ASCII     */
     char             start_immediately = 0;
     double starttime;
     struct timeval d;
     #endif
+
+    /*FILE *    dup_client_fd;*/
+    char             size[10];
+    char             message[20];
+    int i,j;
+    char file_no[10];
+    struct timeval ping_s, ping_e;
     
     /* clear out the transfer data */
     memset(xfer, 0, sizeof(*xfer));
@@ -359,6 +368,42 @@ int ttp_open_transfer(ttp_session_t *session)
         error("Could not read filename from client");
     filename[MAX_FILENAME_LENGTH - 1] = '\0';
 
+   /*
+     *if the client requesting for multiple file at a time
+     *sent the file names and then proceed to transfer
+     */
+    if(!strcmp(filename,"*"))
+    {  
+       sprintf(size,"%d",param->file_name_size);
+       printf("\nServer side file size: %s\n", size);
+       
+       write(session->client_fd,size,10);       
+       
+       sprintf(file_no,"%d",param->total_File);
+       printf("\nServer side file no: %s\n", file_no);       
+       
+       write(session->client_fd,size,10);       
+       
+       printf("\nFile sizes sent to client\n");
+       read(session->client_fd,message,8);
+       
+       printf("Got message back:\"%s\"\n",message);
+       
+       for(i=0,j=0;i<param->file_name_size;i+=strlen(param->file_names[j])+1,j++)
+          write(session->client_fd,param->file_names[j],strlen(param->file_names[j])+1);
+       
+       
+       /*write(session->client_fd,testing, sizeof(testing));*/
+       read(session->client_fd,message,8);
+       printf("Got back :%s\n", message);       
+       
+       status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
+       printf("file name requested: %s", filename);
+       /*error("I am stuck\n");*/
+       if (status < 0)
+          error("Could not read filename from client");
+    }/*end of multimode session*/    
+    
     /* store the filename in the transfer object */
     xfer->filename = strdup(filename);
     if (xfer->filename == NULL)
@@ -395,14 +440,43 @@ int ttp_open_transfer(ttp_session_t *session)
     }
 
     /* get starting time (UTC) and detect whether local disk copy is wanted */
-    // TODO: more intelligent strncpy() to support other formats in tsamp.c as well
+    start_immediately = 0; // default: start at specified time/date
     if (strrchr(filename,'/') == NULL) {
-        strncpy(start_time_ascii, filename+3, 19); /* UTC time in ASCII */
+        ef = parse_evn_filename(filename);          /* attempt to parse */
+        strncpy(start_time_ascii, filename+3, 19);  /* for fallback, UTC time in ASCII */
         param->fileout = 0;
     } else {
-        strncpy(start_time_ascii, strrchr(filename, '/')+4, 19); /* UTC time in ASCII */
+        ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
+        strncpy(start_time_ascii, strrchr(filename, '/')+4, 19); /* for fallback, UTC time in ASCII */
         param->fileout = 1;
     }
+    /* fallback format with old UTC parse with tstamp.c: get and convert target UTC time to Unix seconds. */
+    if (NULL == ef->data_start_time_ascii) {
+        fprintf(stderr, "parse_evn_filename didn't understand the date/time '%s', retrying with older parser\n", start_time_ascii);
+        if (getDateTime(start_time_ascii, &starttime)) {
+            fprintf(stderr, "%s: failed to convert ISO 8601 UTC date/time \n", start_time_ascii);
+            fprintf(stderr, "warning: assuming starting time to be immediate.");
+            start_immediately = 1;
+        } else {
+            fprintf(stderr, "%s: time string parsed successfully\n", start_time_ascii);
+        }
+    }
+
+    /* get time multiplexing info from EVN filename (currently these are all unused) */
+    if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0)
+      param->totalslots= 1;          /* default to 1 */
+    else 
+      sscanf(get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo), "%d", &(param->totalslots));
+
+    if (get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo) == 0)
+      param->slotnumber= 1;          /* default to 1 */
+    else 
+      sscanf(get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo), "%d", &param->slotnumber);
+
+    if (get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo) == 0)
+      param->samplerate= 512;          /* default to 512 Msamples/s */
+    else 
+      sscanf(get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo), "%d", &param->samplerate);
 
     /* try to open the vsib for reading */
     xfer->vsib = fopen64("/dev/vsib", "r");
@@ -427,20 +501,15 @@ int ttp_open_transfer(ttp_session_t *session)
             return warn(g_error);
         }
     }
-    
-    /* get and convert target UTC time to Unix seconds. */
-    if (getDateTime(start_time_ascii, &starttime)) {
-        fprintf(stderr, "%s: failed to convert ISO 8601 UTC date/time \n", start_time_ascii);
-        fprintf(stderr, "warning: assuming starting time to be immediate.");
-        start_immediately = 1;
-    } else {
-        fprintf(stderr, "%s: time string parsed successfully\n", start_time_ascii);
-    }
- 
+        
     /* Start half a second before full UTC seconds change. */
     if ( 0 == start_immediately) {
         u_int64_t timedelta_usec;
-        starttime -= 0.5;
+        if (NULL == ef->data_start_time_ascii) {
+            starttime -= 0.5; // time from older filename parser
+        } else {
+            starttime = ef->data_start_time - 0.5; // time from newer filename parser
+        }
 
         // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
         assert( gettimeofday(&d, NULL) == 0 );
@@ -494,6 +563,11 @@ int ttp_open_transfer(ttp_session_t *session)
     block_count = htonl (param->block_count);  if (write(session->client_fd, &block_count, 4) < 0) return warn("Could not submit block count");
     epoch       = htonl (param->epoch);        if (write(session->client_fd, &epoch,       4) < 0) return warn("Could not submit run epoch");
 
+    /*calculate and convert RTT to u_sec*/
+    session->parameter->wait_u_sec=(ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
+    /*add a 10% safety margin*/
+    session->parameter->wait_u_sec = session->parameter->wait_u_sec + ((int)(session->parameter->wait_u_sec* 0.1));  
+    
     /* and store the inter-packet delay */
     param->ipd_time   = (u_int32_t) ((1000000LL * 8 * param->block_size) / param->target_rate);
     xfer->ipd_current = param->ipd_time * 3;
@@ -509,7 +583,13 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.5  2006/10/24 21:06:00  jwagnerhki
+ * Revision 1.6  2006/10/25 12:50:56  jwagnerhki
+ * fallback to older datetime parser with immediate start support
+ *
+ * Revision 1.8  2006/10/25 12:09:08  jwagnerhki
+ * multiget * support, parse_evn_filename called
+ *
+ * Revision 1.7  2006/10/24 21:06:00  jwagnerhki
  * file does not exist etc codes now returned to client
  *
  * Revision 1.6  2006/10/24 20:08:57  jwagnerhki
