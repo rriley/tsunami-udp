@@ -438,7 +438,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
     
     if (argc>optind) {
         int counter;
-        fprintf(stderr, "\nThe following %d files w:\n", argc-optind);
+        fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", argc-optind);
         parameter->file_names = argv+optind;
         parameter->file_name_size = 0;
         parameter->total_File = argc-optind;    
@@ -478,6 +478,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.6  2006/10/25 14:27:09  jwagnerhki
+ * typo fix
+ *
  * Revision 1.5  2006/10/25 13:32:08  jwagnerhki
  * build cmd line args filelist for 'get *'
  *
