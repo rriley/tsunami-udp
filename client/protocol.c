@@ -204,8 +204,6 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
        fprintf(stderr, "enter filename from above list> ");
        fgets(newfile, MAX_COMMAND_LENGTH, stdin);
        strcat(newfile, "\n");
-       
-       if (fwrite(newfile, strlen(newfile), 1, session->server) < 1) return warn("Could not submit back ACK on received server files list");
     } /* end of multimode session*/ 
         
     
@@ -586,6 +584,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.7  2006/10/25 14:53:16  jwagnerhki
+ * removed superfluous ACK on GET*
+ *
  * Revision 1.6  2006/10/25 14:20:31  jwagnerhki
  * attempt to support multimode get already implemented in Jamil server
  *
