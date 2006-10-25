@@ -411,7 +411,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     break;
 
 	    /* otherwise    : display usage information */
-	    default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n\n");
+        default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--noretransmit] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n\n");
 		     fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
 		     fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
 		     fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
@@ -427,9 +427,25 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
 		     fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
 		     fprintf(stderr, "noretransmit : turns off retransmissions\n");
-		     exit(1);
-	}
+             fprintf(stderr, "[filenames]  : list of files that can be downloaded with a 'get *'\n");
+             fprintf(stderr, "\n");
+             exit(1);
     }
+    }
+    
+    if (argc>optind) {
+        int counter;
+        fprintf(stderr, "\nThe following %d files w:\n", argc-optind);
+        parameter->file_names = argv+optind;
+        parameter->file_name_size = 0;
+        parameter->total_File = argc-optind;    
+        for (counter=0; counter < argc-optind; counter++) {
+            fprintf(stderr, "  %d) %s\n", counter+1, parameter->file_names[counter]);
+            parameter->file_name_size += strlen(parameter->file_names[counter])+1;
+        }
+        fprintf(stderr, "total characters %d\n", parameter->file_name_size);
+    }
+
     if (1==parameter->verbose_yn) {
        fprintf(stderr,"Block size: %d\n", parameter->block_size);
        fprintf(stderr,"Buffer size: %d\n", parameter->udp_buffer);
@@ -459,6 +475,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.7  2006/10/25 13:32:07  jwagnerhki
+ * build cmd line args filelist for 'get *'
+ *
  * Revision 1.6  2006/10/24 19:47:33  jwagnerhki
  * use VSIB_REALTIME gcc define to select compile mode
  *
