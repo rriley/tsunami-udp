@@ -88,7 +88,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 {
     u_int32_t        block_size = session->parameter->block_size;
     static u_int32_t last_block = 0;
-    static u_int32_t last_vsib_block = 0;
+    static u_int32_t last_written_vsib_block = 0;
     int              status = 0;
     u_int32_t        write_size;
     u_int32_t        slot_number;
@@ -102,7 +102,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     
     if (1 == block_index) {
        /* reset static vars to zero, so that the next transfer works ok also */
-       last_vsib_block = 0;
+       last_written_vsib_block = 0;
        last_block = 0;
     }
 
@@ -136,11 +136,13 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     
     #else
     
-    if (block_index != (last_block + 1))
-    fseeko64(session->transfer.vsib, (
-        (u_int64_t) session->parameter->block_size) * (block_index - 1), 
-        SEEK_SET);       
-     
+    if (block_index != (last_block + 1)) {
+        fseeko64(session->transfer.vsib, (
+            (u_int64_t) session->parameter->block_size) * (block_index - 1), 
+            SEEK_SET);     
+    }
+    //last_block = block_index; // reading the next block in line, no seek required
+    
     /* try to read in the block */
     read_vsib_block(datagram + 6, session->parameter->block_size);
     //if (status < 0) { /* Expired ? */
@@ -152,11 +154,11 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     #endif
 
     if((session->parameter->fileout) && (block_index != 0)
-          & (block_index == (last_vsib_block + 1)))
+          & (block_index == (last_written_vsib_block + 1)))
     {
           
         /* remember what we have stored */
-        last_vsib_block++;
+        last_written_vsib_block++;
         /* figure out how many bytes to write */
         write_size = (block_index == session->parameter->block_count) ? 
              (session->parameter->file_size % block_size) : block_size;
@@ -184,6 +186,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.5  2006/10/25 12:22:02  jwagnerhki
+ * renamed last_vsib_block, optinal no seek on contiguos reads
+ *
  * Revision 1.4  2006/10/25 12:07:08  jwagnerhki
  * hacked for two channel discard mode
  *
