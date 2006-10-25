@@ -19,7 +19,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.in,v 1.5 2006/10/24 19:47:33 jwagnerhki Exp $
+# $Id: Makefile.in,v 1.6 2006/10/25 12:09:41 jwagnerhki Exp $
 #
 
 
@@ -95,7 +95,7 @@ common_lib = $(top_builddir)/common/libtsunami_common.a -lm
 
 bin_PROGRAMS = rttsunamid
 
-rttsunamid_SOURCES =  			config.c 			io.c 			log.c 			main.c 			network.c 			protocol.c 			transcript.c 			server.h	vsibctl.c
+rttsunamid_SOURCES = config.c io.c log.c main.c network.c protocol.c transcript.c server.h vsibctl.c parse_evn_filename.c
 
 rttsunamid_LDADD = $(common_lib)
 rttsunamid_DEPENDENCIES = $(common_lib)
@@ -109,7 +109,7 @@ CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 rttsunamid_OBJECTS =  config.o io.o log.o main.o network.o protocol.o vsibctl.o \
-transcript.o
+transcript.o  parse_evn_filename.o
 rttsunamid_LDFLAGS = 
 CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)

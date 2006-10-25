@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.3 2006/10/18 08:33:31 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.4 2006/10/25 12:09:41 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
@@ -25,6 +25,7 @@ rttsunamid_SOURCES	= \
 			protocol.c \
 			transcript.c \
 			vsibctl.c \
+			parse_evn_filename.c \
 			server.h
 rttsunamid_LDADD	= $(common_lib)
 rttsunamid_DEPENDENCIES	= $(common_lib)
