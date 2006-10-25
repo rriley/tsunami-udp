@@ -103,7 +103,7 @@ char *get_token(char **str) {
 	p = strchr(*str, (int)'_');
 	if (!p) {
 		p = strchr(*str, (int)'\0');
-		assert(p);
+		if(!p) return NULL; // assert(p);
 		retval = strdup(*str);
 		*str = p;
 	} else {
@@ -126,36 +126,52 @@ struct evn_filename *parse_evn_filename(char *filename) {
 	parseptr = parsebuf = strdup(filename);
 	assert(parsebuf);
 
+    ef->data_start_time_ascii = NULL;
+    
 	/* Extract filetype from parsebuf. Overwrite dot with zero so
 	   that filetype does not complicate parsing of other parts.*/
 	{
 		char *dot, *filetype;
 		dot = strrchr(parseptr, (int)'.');
-		assert(dot);
+        // assert(dot);
+		if (!dot) { fprintf(stderr, "parse_evn_filename: assert(dot)\n"); return ef; }
 		filetype = dot + 1;
 		ef->file_type = get_token(&filetype);
-		assert(ef->file_type);
-		assert(strlen(ef->file_type) >= 2);
+        // assert(ef->file_type);
+		if(!ef->file_type) { fprintf(stderr, "parse_evn_filename: assert(ef->file_type)\n"); return ef; } 
+        // assert(strlen(ef->file_type)>=2);
+		if(strlen(ef->file_type) < 2) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->file_type)>=2)\n"); return ef; } 
 		*dot = 0;
 	}
 
 	ef->exp_name = get_token(&parseptr);
-	assert(ef->exp_name);
-	assert(strlen(ef->exp_name) <= 6);
+    // assert(ef->exp_name);
+    if(!ef->exp_name) { fprintf(stderr, "parse_evn_filename: assert(ef->exp_name)\n"); return ef; }
+    // assert(assert(strlen(ef->exp_name) <= 6););
+	if(strlen(ef->exp_name) > 6) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->exp_name) <= 6)\n"); return ef; }
 
 	ef->station_code = get_token(&parseptr);
-	assert(ef->station_code);
-	assert(strlen(ef->station_code) >= 2);
+	// assert(ef->station_code);
+    if(!ef->station_code) { fprintf(stderr, "parse_evn_filename: assert(ef->station_code)\n"); return ef; }
+	//assert(strlen(ef->station_code) >= 2);
+    if(strlen(ef->station_code) < 2) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->station_code) >= 2)\n"); return ef; }
 
 	ef->scan_name = get_token(&parseptr);
-	assert(ef->scan_name);
-	assert(strlen(ef->scan_name) <= 16);
+	//assert(ef->scan_name);
+    if(!ef->scan_name) { fprintf(stderr, "parse_evn_filename: assert(ef->scan_name)\n"); return ef; }
+	//assert(strlen(ef->scan_name) <= 16);
+    if(strlen(ef->scan_name) > 16) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->scan_name) <= 16)\n"); return ef; }
 
 	/* All mandatory elements read. */
 
 	ef->data_start_time_ascii = get_token(&parseptr);
 	if (ef->data_start_time_ascii) {
-		assert(strlen(ef->data_start_time_ascii) >= 2);
+		//assert(strlen(ef->data_start_time_ascii) >= 2);
+        if(strlen(ef->data_start_time_ascii) < 2) { 
+            ef->data_start_time_ascii=NULL; 
+            fprintf(stderr, "parse_evn_filename: assert(strlen(ef->data_start_time_ascii) >= 2)\n");            
+            return ef; 
+        } 
 		if (parse_time(ef->data_start_time_ascii, &ef->data_start_time)) {
 			/* Does not look like date, must be auxentry instead. */
 			add_aux_entry(ef, ef->data_start_time_ascii);
@@ -197,6 +213,9 @@ int main(int argc, char **argv) {
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.3  2006/10/25 15:25:17  jwagnerhki
+ * removed heaps of asserts from copied code
+ *
  * Revision 1.2  2006/10/25 12:14:06  jwagnerhki
  * added cvs log line
  *
