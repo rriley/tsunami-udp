@@ -57,9 +57,9 @@ typedef struct sSh {
 } tSh, *ptSh;
 
 
-  int readMode;
+  int readMode = 0;
   int vsib_started = 0;
-  int usleeps;
+  int usleeps = 0;
 
   /* Shared memory unique identifier (key) and the returned reference id. */
   key_t shKey;
@@ -80,17 +80,11 @@ vsib_ioctl(
             mode,
             arg)
   ) {
-    char *which;
     char err[255];
     
-    if (vsib_fileno == STDOUT_FILENO) {
-      which = "rd";
-    } else {
-      which = "wr";
-    }
-    snprintf(err, sizeof(err), "%s: ioctl(vsib_fileno, 0x%04x,...)", which, mode);
+    snprintf(err, sizeof(err), "Fatal VSIB access error: ioctl(vsib_fileno=0x%04x, 0x%04x, %ld) failed", 
+        vsib_fileno, mode, arg);
     perror(err);
-    fprintf(stderr, "%s: standard I/O is not an VSIB board\n", which);
     exit(EXIT_FAILURE);
   }
 }  /* vsib_ioctl */
@@ -100,10 +94,12 @@ vsib_ioctl(
 double
 tim(void) {
   struct timeval tv;
-  double t;
+  double t = 0.0;
 
-  assert( gettimeofday(&tv, NULL) == 0 );
-  t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
+  //assert( gettimeofday(&tv, NULL) == 0 );
+  if (gettimeofday(&tv, NULL) == 0) {
+    t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
+  }
   return t;
 }  /* tim */
 
@@ -120,8 +116,14 @@ start_vsib(ttp_session_t *session)
 
   /* Create and initialize 'wr<-->control' shared memory. */
   shKey = fourCharLong('v','s','i','b');
-  assert( (shId = shmget(shKey, sizeof(tSh), IPC_CREAT | 0777)) != -1 );
-  assert( (sh = (ptSh)shmat(shId, NULL, 0)) != (void *)-1 );
+  if( (shId = shmget(shKey, sizeof(tSh), IPC_CREAT | 0777)) == -1 ) {
+    fprintf(stderr, "Fatal VSIB access error: could not shmget() shared memory!\n");
+    abort();
+  }
+  if( (sh = (ptSh)shmat(shId, NULL, 0)) == (void *)-1 ) {
+    fprintf(stderr, "Fatal VSIB access error: could not shmat() shared memory, seeking not possible, exiting!\n");
+    abort();
+  }
   sh->relSeekBlocks = 0;
 
   vsib_ioctl(VSIB_SET_MODE,
@@ -177,19 +179,17 @@ void stop_vsib(ttp_session_t *session)
   }
 
 
-
   vsib_ioctl(VSIB_SET_MODE, VSIB_MODE_STOP);
 
-
-  /* Remove shared memory to mark that 'wr/rd' is no more running. */
+  /* Remove shared memory to mark that 'vsibctl' is no more running. */
   if ((shId != -1) && (sh != (ptSh)-1) && (sh != NULL)) {
     //assert( shmctl(shId, IPC_RMID, NULL) == 0 );
     //assert( shmdt(sh) == 0 );
     if( shmctl(shId, IPC_RMID, NULL) != 0 ) {
-       fprintf(stderr, "Shared memory mark remove shmctl() returned non-0\n");
+       fprintf(stderr, "VSIB access error: shared memory ID remove shmctl() returned non-0\n");
     } else {
        if( shmdt(sh) != 0 ) {
-          fprintf(stderr, "Shared memory mark remove shmdt() returned non-0\n");
+          fprintf(stderr, "VSIB access error: shared memory data remove shmdt() returned non-0\n");
        }
     }
   }  // if shared memory was allocated
