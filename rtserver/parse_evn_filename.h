@@ -17,3 +17,12 @@ struct evn_filename *parse_evn_filename(char *filename);
 char *get_aux_entry(char *key, char **auxinfo, int nr_auxinfo);
 
 #endif
+
+/*
+ * $Log: parse_evn_filename.h,v $
+ * Revision 1.2  2006/10/25 12:14:07  jwagnerhki
+ * added cvs log line
+ *
+ */ 
+
+

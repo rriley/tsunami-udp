@@ -194,3 +194,12 @@ int main(int argc, char **argv) {
 	return 0;
 }
 #endif
+
+/*
+ * $Log: parse_evn_filename.c,v $
+ * Revision 1.2  2006/10/25 12:14:06  jwagnerhki
+ * added cvs log line
+ *
+ */
+
+
