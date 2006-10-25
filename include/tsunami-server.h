@@ -66,6 +66,7 @@
 #include <netinet/in.h>  /* for struct sockaddr_in, etc.                 */
 #include <stdio.h>       /* for NULL, FILE *, etc.                       */
 #include <sys/types.h>   /* for various system data types                */
+#include <mcheck.h>
 
 #include "tsunami.h"     /* for Tsunami function prototypes and the like */
 
@@ -85,6 +86,7 @@ extern const u_char     DEFAULT_NO_RETRANSMIT;  /* server-side setting, on defau
 
 #define MAX_FILENAME_LENGTH  1024               /* maximum length of a requested filename  */
 #define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now) */
+#define FRAMES_IN_SLOT  40                      /* 0.02s timeslots for computers */
 
 /*------------------------------------------------------------------------
  * Data structures.
@@ -112,6 +114,12 @@ typedef struct {
     u_char              no_retransmit;  /* for testing, actual retransmission can be disabled */
     char                *ringbuf;       /* Pointer to ring buffer start               */
     u_int16_t           fileout;        /* Do we store the data to file?              */
+    int                 slotnumber;     /* Slot number for distributed transfer */     int                 totalslots;     /* How many slots do we have?        */
+    int                 samplerate;     /* Sample rate in MHz (optional)     */
+    char                **file_names;   /* Store the local file_names on server*/
+    u_int16_t           file_name_size; /* Store the total size of the array*/
+    u_int16_t           total_File;     /* Store the total number of file*/
+    long                wait_u_sec;
 } ttp_parameter_t;
 
 /* state of a transfer */
@@ -179,6 +187,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.2  2006/10/25 12:32:43  jwagnerhki
+ * merged with joukos rttest server.h
+ *
  * Revision 1.1  2006/10/24 19:11:05  jwagnerhki
  * common tsunami-server.h for server apps
  *
