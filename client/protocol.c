@@ -178,6 +178,37 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     if ((status <= 0) || fflush(session->server))
 	return warn("Could not request file");
 
+   /*
+     * if the requesting for files list, dump the received filenames
+     * (this protocol is quite incomplete, a Jamil modification, not pretty...)
+     */
+    if(!strcmp(remote_filename,"*"))
+    {  
+       char  sizestr[10], srvfile[MAX_COMMAND_LENGTH+1], newfile[MAX_COMMAND_LENGTH+2];
+       int   size, fileno, i;
+       fprintf(stderr, "Multimode get, querying server for files.\n");
+       if (fread(sizestr, 10, 1, session->server) < 1) return warn("Could not read file_name_size of server files list");
+       size = atoi(sizestr);
+       if (fread(sizestr, 10, 1, session->server) < 1) return warn("Could not read file_Total of server files list");
+       fileno = atoi(sizestr);
+       
+       if (fwrite(sizestr, 8, 1, session->server) < 1) return warn("Could not submit back file_name_size of received server files list");
+       
+       for(i=0; i<fileno; i++) {
+          if (fread(srvfile, size, 1, session->server) < 1) return warn("Could not read one of filename responses from server");
+          fprintf(stderr, "  file %d : %s\n", i+1, srvfile);
+       }
+                 
+       if (fwrite(sizestr, 8, 1, session->server) < 1) return warn("Could not submit back ACK on received server files list");
+
+       fprintf(stderr, "enter filename from above list> ");
+       fgets(newfile, MAX_COMMAND_LENGTH, stdin);
+       strcat(newfile, "\n");
+       
+       if (fwrite(newfile, strlen(newfile), 1, session->server) < 1) return warn("Could not submit back ACK on received server files list");
+    } /* end of multimode session*/ 
+        
+    
     /* see if the request was successful */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
@@ -555,6 +586,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.6  2006/10/25 14:20:31  jwagnerhki
+ * attempt to support multimode get already implemented in Jamil server
+ *
  * Revision 1.5  2006/10/19 08:06:31  jwagnerhki
  * fix STATS_MATLABFORMAT ifndef to ifdef
  *
