@@ -75,7 +75,7 @@
  * Definitions of global constants.
  *------------------------------------------------------------------------*/
 
-const u_int32_t PROTOCOL_REVISION  = 0x20060801; // yyyymmdd
+const u_int32_t PROTOCOL_REVISION  = 0x20061025; // yyyymmdd
 
 const u_int16_t REQUEST_RETRANSMIT = 0;
 const u_int16_t REQUEST_RESTART    = 1;
@@ -273,6 +273,9 @@ void usleep_that_works(u_int64_t usec)
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.3  2006/10/25 15:00:41  jwagnerhki
+ * decided to up the rev nr after GET* implementation
+ *
  * Revision 1.2  2006/08/07 13:23:48  jwagnerhki
  * changed revision nr
  *
