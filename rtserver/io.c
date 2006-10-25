@@ -1,7 +1,7 @@
 /*========================================================================
- * io.c  --  Disk I/O routines for Tsunami server.
+ * io.c  --  Disk I/O routines for Tsunami server with VSIB access.
  *
- * This contains disk I/O routines for the Tsunami file transfer server.
+ * This contains disk I/O routines for the realtime Tsunami file transfer server.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
  * Copyright © 2002 The Trustees of Indiana University.
@@ -61,7 +61,7 @@
  *========================================================================*/
 
 #include <tsunami-server.h>
-
+#define MODE_34TH 1
 
 /*------------------------------------------------------------------------
  * int build_datagram(ttp_session_t *session, u_int32_t block_index,
@@ -89,47 +89,87 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     u_int32_t        block_size = session->parameter->block_size;
     static u_int32_t last_block = 0;
     static u_int32_t last_vsib_block = 0;
-    int              status; 
+    int              status = 0;
     u_int32_t        write_size;
-
+    u_int32_t        slot_number;
+    u_int32_t        frame_number;
+    static u_int32_t vsib_block_index = 0;
+    #ifdef MODE_34TH
+    static u_char    packingbuffer[4*MAX_BLOCK_SIZE/3+8];
+    static u_int64_t vsib_byte_pos = 0L;
+    int              inbufpos = 0, outbufpos = 0;
+    #endif
+    
     if (1 == block_index) {
        /* reset static vars to zero, so that the next transfer works ok also */
        last_vsib_block = 0;
        last_block = 0;
     }
 
+             
+    #ifdef MODE_34TH
+    
+    //
+    // Take 3 bytes skip 4th : 6 lower BBCs included, 2 upper discarded
+    //
+    
+    /* calc sent bytes plus offset caused by discarded channel bytes */
+    vsib_byte_pos = ((u_int64_t) session->parameter->block_size) * (block_index - 1) + 
+        ((u_int64_t) session->parameter->block_size) * (block_index - 1) / 4;
+    
+    /* read enough data, over 4/3th of blocksize */ 
+    fseeko64(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
+    read_vsib_block(packingbuffer,  2 * session->parameter->block_size + 4); // 2* vs. 4/3*        
+    // if (status < 0) { /* Expired ? */ }
+    
+    /* copy, pack */
+    inbufpos=0; outbufpos=0;
+    while (outbufpos < session->parameter->block_size) {
+        if (3 == (vsib_byte_pos & 3)) {
+            inbufpos++;
+            vsib_byte_pos++;
+        } else {
+            *(datagram + 6 + (outbufpos++)) = packingbuffer[inbufpos++];
+            vsib_byte_pos++;
+        }
+    }   
+    
+    #else
+    
     if (block_index != (last_block + 1))
-      fseeko64(session->transfer.vsib, (
-          (u_int64_t) session->parameter->block_size) * (block_index - 1), 
-           SEEK_SET);
- 
+    fseeko64(session->transfer.vsib, (
+        (u_int64_t) session->parameter->block_size) * (block_index - 1), 
+        SEEK_SET);       
+     
     /* try to read in the block */
-    /*    status =  */
     read_vsib_block(datagram + 6, session->parameter->block_size);
-    if (status < 0) { /* Expired ? */
+    //if (status < 0) { /* Expired ? */
       /*      memset(datagram + 6, 0, session->parameter->block_size);  */
       /*      sprintf(g_error, "Could not read block #%u", block_index); */
       /*      return warn(g_error); */
-    }
+    //}
+    
+    #endif
 
-
-         if((session->parameter->fileout) && (block_index != 0)
-          & (block_index == (last_vsib_block + 1))){
-	  last_vsib_block++;      /* remember what we have stored */
-             /* figure out how many bytes to write */
-          write_size = (block_index == session->parameter->block_count) ? 
+    if((session->parameter->fileout) && (block_index != 0)
+          & (block_index == (last_vsib_block + 1)))
+    {
+          
+        /* remember what we have stored */
+        last_vsib_block++;
+        /* figure out how many bytes to write */
+        write_size = (block_index == session->parameter->block_count) ? 
              (session->parameter->file_size % block_size) : block_size;
-          if (write_size == 0)
-             write_size = block_size;
+        if (write_size == 0) { write_size = block_size; }
 
-	   /* write the block to disk */
-	   status = fwrite(datagram +6, 1, 
+        /* write the block to disk */
+        status = fwrite(datagram +6, 1, 
               write_size, session->transfer.file);
 
-	   if (status < write_size) {
-	     sprintf(g_error, "Could not write block %d of file", block_index);
-	     return warn(g_error);
-	     }
+        if (status < write_size) {
+           sprintf(g_error, "Could not write block %d of file", block_index);
+           return warn(g_error);
+       }   
     }
 
 
@@ -144,6 +184,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.4  2006/10/25 12:07:08  jwagnerhki
+ * hacked for two channel discard mode
+ *
  * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *
