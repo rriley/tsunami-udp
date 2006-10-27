@@ -414,6 +414,8 @@ int ttp_repeat_retransmit(ttp_session_t *session)
  *------------------------------------------------------------------------*/
 int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
 {
+   u_int32_t     tmp32_ins = 0, tmp32_up;
+   u_int32_t     idx = 0;
    retransmit_t *rexmit = &(session->transfer.retransmit);
 
    /* if we don't have space for the request */
@@ -429,8 +431,30 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
       rexmit->table_size *= 2;
    }
 
+   #ifdef RETX_REQUEST_FLOODING
    /* store the request */
    rexmit->table[(rexmit->index_max)++] = block;
+   return 0;
+   #else
+   /* Store the request via "insertion sort"
+      this maintains a sequentially sorted table and discards duplicate requests,
+      and does not flood the net with so many unnecessary retransmissions like old Tsunami did
+   */
+   while ((idx < rexmit->index_max) && (rexmit->table[idx] < block)) idx++; /* seek to insertion point or end */
+   if (idx == rexmit->index_max) { /* append at end */
+      rexmit->table[(rexmit->index_max)++] = block;
+   } else if (rexmit->table[idx] == block) { /* don't insert duplicates */
+      // fprintf(stderr, "duplicate retransmit req for block %d discarded\n", block);
+   } else { /* insert and shift remaining table upwards */
+      tmp32_ins = block;
+      do {
+         tmp32_up = rexmit->table[idx];
+         rexmit->table[idx++] = tmp32_ins;
+         tmp32_ins = tmp32_up;
+      } while(idx <= rexmit->index_max);
+      rexmit->index_max++;
+   }
+   #endif
 
    /* we succeeded */
    return 0;
@@ -584,6 +608,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.8  2006/10/27 20:12:36  jwagnerhki
+ * fix for very bad original retransmit req assembly
+ *
  * Revision 1.7  2006/10/25 14:53:16  jwagnerhki
  * removed superfluous ACK on GET*
  *
