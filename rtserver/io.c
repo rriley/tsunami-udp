@@ -116,7 +116,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     
     /* calc sent bytes plus offset caused by discarded channel bytes */
     vsib_byte_pos = ((u_int64_t) session->parameter->block_size) * (block_index - 1) + 
-        ((u_int64_t) session->parameter->block_size) * (block_index - 1) / 4;
+        ((u_int64_t) session->parameter->block_size) * (block_index - 1) / 3;
 
     // fprintf(stderr, "io.c: block=%d vsib_byte_pos=%lld\n", block_index-1, vsib_byte_pos);
     
@@ -197,6 +197,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.7  2006/10/27 08:52:34  jwagnerhki
+ * guifres bugfix
+ *
  * Revision 1.6  2006/10/27 07:05:59  jwagnerhki
  * now MODE_34TH not defined by default, added some commented out debug code
  *
