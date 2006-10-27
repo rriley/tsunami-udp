@@ -61,7 +61,7 @@
  *========================================================================*/
 
 #include <tsunami-server.h>
-#define MODE_34TH 1
+//#define MODE_34TH 1
 
 /*------------------------------------------------------------------------
  * int build_datagram(ttp_session_t *session, u_int32_t block_index,
@@ -98,6 +98,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     static u_char    packingbuffer[4*MAX_BLOCK_SIZE/3+8];
     static u_int64_t vsib_byte_pos = 0L;
     int              inbufpos = 0, outbufpos = 0;
+    // static u_int32_t old_val = 0, tmp_val = 0; // for debug
     #endif
     
     if (1 == block_index) {
@@ -116,6 +117,8 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     /* calc sent bytes plus offset caused by discarded channel bytes */
     vsib_byte_pos = ((u_int64_t) session->parameter->block_size) * (block_index - 1) + 
         ((u_int64_t) session->parameter->block_size) * (block_index - 1) / 4;
+
+    // fprintf(stderr, "io.c: block=%d vsib_byte_pos=%lld\n", block_index-1, vsib_byte_pos);
     
     /* read enough data, over 4/3th of blocksize */ 
     fseeko64(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
@@ -133,7 +136,15 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
             vsib_byte_pos++;
         }
     }   
-    
+ 
+    /* // debug:
+    tmp_val = 0x1000000*packingbuffer[3] + 0x10000*packingbuffer[2] + 0x100*packingbuffer[1] + 
+       packingbuffer[0];
+    fprintf(stderr, "val=%02x%02x%02x%02x delta=%04X\n", packingbuffer[3], packingbuffer[2], 
+       packingbuffer[1], packingbuffer[0], old_val-tmp_val);
+    old_val = tmp_val;
+    */
+   
     #else
     
     if (block_index != (last_block + 1)) {
@@ -186,6 +197,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.6  2006/10/27 07:05:59  jwagnerhki
+ * now MODE_34TH not defined by default, added some commented out debug code
+ *
  * Revision 1.5  2006/10/25 12:22:02  jwagnerhki
  * renamed last_vsib_block, optinal no seek on contiguos reads
  *
