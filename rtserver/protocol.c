@@ -156,7 +156,7 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
          printf("debug: noretransmit was specified, skipping actual retransmit\n");
       } else {
          /* build the retransmission */
-         status = build_datagram(session, retransmission->block, 'R', datagram);
+         status = build_datagram(session, retransmission->block, TS_BLOCK_RETRANSMISSION, datagram);
          if (status < 0) {
              sprintf(g_error, "Could not build retransmission for block %u", retransmission->block);
              return warn(g_error);
@@ -589,6 +589,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.11  2006/10/28 17:00:12  jwagnerhki
+ * block type defines
+ *
  * Revision 1.10  2006/10/25 13:56:47  jwagnerhki
  * 'get *' mini fix, Jamil roundtrip time guess added
  *

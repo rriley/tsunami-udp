@@ -274,7 +274,7 @@ void client_handler(ttp_session_t *session)
 
 		/* build the block */
 		xfer->block = min(xfer->block + 1, param->block_count);
-		result = build_datagram(session, xfer->block, (xfer->block == param->block_count) ? 'X' : 'O', datagram);
+		result = build_datagram(session, xfer->block, (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL, datagram);
 		if (result < 0) {
 		    sprintf(g_error, "Could not read block #%u", xfer->block);
 		    error(g_error);
@@ -478,6 +478,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.7  2006/10/28 17:00:12  jwagnerhki
+ * block type defines
+ *
  * Revision 1.6  2006/10/25 14:27:09  jwagnerhki
  * typo fix
  *

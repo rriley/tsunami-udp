@@ -318,7 +318,7 @@ int command_get(command_t *command, ttp_session_t *session)
       }
    
       /* if this is the last block */
-      if ((this_block >= xfer->block_count) || (this_type == 'X')) {
+      if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
    
           /* prepare to stop if we're done */
           if (xfer->blocks_left == 0) //rexmit->index_max == 0)
@@ -347,7 +347,7 @@ int command_get(command_t *command, ttp_session_t *session)
       }
    
       /* if this is an orignal, we expect to receive the successor to this block next */
-      if (this_type == 'O') {
+      if (this_type == TS_BLOCK_ORIGINAL) {
           xfer->stats.total_blocks = this_block;
           xfer->next_block         = this_block + 1;
       }
@@ -644,6 +644,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.7  2006/10/28 17:00:12  jwagnerhki
+ * block type defines
+ *
  * Revision 1.6  2006/10/24 21:21:36  jwagnerhki
  * fixed client loosing password
  *

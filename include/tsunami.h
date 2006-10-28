@@ -96,6 +96,9 @@ extern const u_int16_t REQUEST_ERROR_RATE;
 #define  TS_TCP_PORT    46224   /* default TCP port of the remote server        */
 #define  TS_UDP_PORT    46224   /* default UDP port of the client / 47221       */
 
+#define  TS_BLOCK_ORIGINAL          'O'   /* blocktype "original block" */
+#define  TS_BLOCK_TERMINATE         'X'   /* blocktype "end transmission" */
+#define  TS_BLOCK_RETRANSMISSION    'R'   /* blocktype "retransmitted block" */
 
 /*------------------------------------------------------------------------
  * Data structures.
