@@ -136,11 +136,8 @@ start_vsib(ttp_session_t *session)
 
 
 
-void write_vsib(ttp_session_t *session)
-
+void write_vsib(unsigned char *memblk, int blksize)
   {
-      char *memblk; 
-      int blksize;
       size_t nread;
 
     /* Write (or read) one block. */

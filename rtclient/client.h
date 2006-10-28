@@ -246,7 +246,7 @@ u_char        *ring_reserve          (ring_buffer_t *ring);
 /* vsibctl.c */ 
 void start_vsib (ttp_session_t *session); 
 void stop_vsib (ttp_session_t *session);
-void write_vsib (ttp_session_t *session);
+void write_vsib(unsigned char *memblk, int blksize);
 
 /* transcript.c */
 void           xscript_close         (ttp_session_t *session, u_int64_t delta);
@@ -260,6 +260,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.4  2006/10/28 17:08:42  jwagnerhki
+ * fixed jr's nonworking rtclient
+ *
  * Revision 1.3  2006/07/21 07:55:35  jwagnerhki
  * new UDP port define
  *

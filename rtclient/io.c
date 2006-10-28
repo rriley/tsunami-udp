@@ -99,7 +99,7 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
 	   write_size);
  
     /* check if we need to feed the VSIB */
-    write_vsib(session);
+    write_vsib(block, write_size);
  
     /* seek to the proper location */
     if (block_index != (last_block + 1)) {
@@ -127,8 +127,11 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
 
 /*========================================================================
  * $Log: io.c,v $
- * Revision 1.1  2006/07/20 09:21:19  jwagnerhki
- * Initial revision
+ * Revision 1.2  2006/10/28 17:08:42  jwagnerhki
+ * fixed jr's nonworking rtclient
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
  * added to trunk
