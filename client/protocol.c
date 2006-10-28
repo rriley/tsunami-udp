@@ -178,35 +178,6 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     if ((status <= 0) || fflush(session->server))
 	return warn("Could not request file");
 
-   /*
-     * if the requesting for files list, dump the received filenames
-     * (this protocol is quite incomplete, a Jamil modification, not pretty...)
-     */
-    if(!strcmp(remote_filename,"*"))
-    {  
-       char  sizestr[10], srvfile[MAX_COMMAND_LENGTH+1], newfile[MAX_COMMAND_LENGTH+2];
-       int   size, fileno, i;
-       fprintf(stderr, "Multimode get, querying server for files.\n");
-       if (fread(sizestr, 10, 1, session->server) < 1) return warn("Could not read file_name_size of server files list");
-       size = atoi(sizestr);
-       if (fread(sizestr, 10, 1, session->server) < 1) return warn("Could not read file_Total of server files list");
-       fileno = atoi(sizestr);
-       
-       if (fwrite(sizestr, 8, 1, session->server) < 1) return warn("Could not submit back file_name_size of received server files list");
-       
-       for(i=0; i<fileno; i++) {
-          if (fread(srvfile, size, 1, session->server) < 1) return warn("Could not read one of filename responses from server");
-          fprintf(stderr, "  file %d : %s\n", i+1, srvfile);
-       }
-                 
-       if (fwrite(sizestr, 8, 1, session->server) < 1) return warn("Could not submit back ACK on received server files list");
-
-       fprintf(stderr, "enter filename from above list> ");
-       fgets(newfile, MAX_COMMAND_LENGTH, stdin);
-       strcat(newfile, "\n");
-    } /* end of multimode session*/ 
-        
-    
     /* see if the request was successful */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
@@ -431,7 +402,7 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
       rexmit->table_size *= 2;
    }
 
-   #ifdef RETX_REQUEST_FLOODING
+   #ifndef RETX_REQBLOCK_SORTING
    /* store the request */
    rexmit->table[(rexmit->index_max)++] = block;
    return 0;
@@ -608,6 +579,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.9  2006/10/28 19:29:15  jwagnerhki
+ * jamil GET* merge, insertionsort disabled by default again
+ *
  * Revision 1.8  2006/10/27 20:12:36  jwagnerhki
  * fix for very bad original retransmit req assembly
  *

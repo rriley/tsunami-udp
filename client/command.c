@@ -212,6 +212,18 @@ int command_get(command_t *command, ttp_session_t *session)
     int             status;
     pthread_t       disk_thread_id;
 
+    /* The following variables will be used only in multiple file transfer
+     * session they are used to recieve the file names and other parameters
+     */
+    int             multimode = 0;
+    char           *file_names;
+    char          **all_fileNames = NULL;
+    int             f_counter, f_total;
+
+    /* this struct wil hold the RTT time */
+    struct timeval ping_s, ping_e;
+    long wait_u_sec = 1;
+
     /* make sure that we have a remote file name */
     if (command->count < 2)
 	return warn("Invalid command syntax (use 'help get' for details)");
@@ -223,18 +235,100 @@ int command_get(command_t *command, ttp_session_t *session)
     /* reinitialize the transfer data */
     memset(xfer, 0, sizeof(*xfer));
 
+    /* if the client asking for multiple files to be transfered */
+    f_counter = 0; 
+    f_total = 0;
+    if(!strcmp("*",command->text[1])) {
+       int   bytes_read = 0, totalSize = 0, totalNumber = 0;
+       char  file_size[10];
+       char  file_number[10];
+
+       multimode = 1;
+       printf("Requesting all available file\n");
+
+       /* Try to calculate the RTT from client to server */
+       gettimeofday(&(ping_s), NULL);
+       status = fprintf(session->server, "%s\n", command->text[1]);
+
+       status = fread(file_size, sizeof(char), 10, session->server);
+       gettimeofday(&(ping_e),NULL);
+
+       status = fread(file_number, sizeof(char), 10, session->server);
+
+       fprintf(session->server, "%s", "got size");
+
+       if ((status <= 0) || fflush(session->server))
+          return warn("Could not request file");
+
+       /* see if the request was successful */
+       if (status < 1)
+          return warn("Could not read response to file request");
+
+       /* total sent data size */
+       sscanf(file_size, "%d", &totalSize);
+       /* total number of file */
+       sscanf(file_size, "%d", &totalNumber);
+
+       printf("\nGot file size: %d\n",totalSize);
+       if((file_names=malloc(totalSize*sizeof(char)))==NULL)
+          error("Could not allocate memory\n");
+
+       fread(file_names, sizeof(char), totalSize, session->server);
+       fprintf(session->server,"%s", "got list");
+
+       if((all_fileNames=calloc(totalNumber, sizeof(char*)))==NULL)
+          error("could not allocate memory\n");
+
+       /* this while loop separates the file names */
+       while(bytes_read<totalSize) {
+           if((all_fileNames[f_counter]=malloc((strlen(file_names+bytes_read)+1)*sizeof(char)))==NULL) {
+              error("could not allocate memory\n");
+           } else {
+              strcpy(all_fileNames[f_counter],file_names+bytes_read);
+           }
+
+           bytes_read += strlen(all_fileNames[f_counter++])+1;
+           printf("%s ", all_fileNames[f_counter -1]);
+       }
+       f_total = f_counter;
+       f_counter = 0;
+
+       printf("file size %d. Getting %d files.\n", bytes_read, f_total);
+       /*free(file_names);*/
+    }
+
+    /* calculate and convert RTT to u_sec */
+    wait_u_sec = (ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
+    /* add a 10% safety margin */
+    wait_u_sec = wait_u_sec + ((int)(wait_u_sec* 0.1));
+
+    do /*---loop for single and multi file request---*/
+    {
+
+    /* reset some vars for current run */
+    complete_flag = 0;
+    iteration = 0;
+
     /* store the remote filename */
-    xfer->remote_filename = command->text[1];
+    if(!multimode)
+       xfer->remote_filename = command->text[1];
+    else
+       xfer->remote_filename = all_fileNames[f_counter];
 
     /* calculate the local filename */
-    if (command->count >= 3)
-	xfer->local_filename = command->text[2];
-    else {
-	xfer->local_filename = strrchr(command->text[1], '/');
-	if (xfer->local_filename == NULL)
-	    xfer->local_filename = command->text[1];
-	else
-	    ++(xfer->local_filename);
+    if(!multimode) {
+       if (command->count >= 3) {
+          xfer->local_filename = command->text[2];
+       } else {
+          xfer->local_filename = strrchr(command->text[1], '/');
+          if (xfer->local_filename == NULL)
+             xfer->local_filename = command->text[1];
+          else
+             ++(xfer->local_filename);
+       }
+    } else {
+       xfer->local_filename = all_fileNames[f_counter];
+       printf("GET *: now requesting file '%s'\n", xfer->local_filename);
     }
 
     /* negotiate the file request with the server */
@@ -249,6 +343,10 @@ int command_get(command_t *command, ttp_session_t *session)
     rexmit->table = (u_int32_t *) calloc(DEFAULT_TABLE_SIZE, sizeof(u_int32_t));
     if (rexmit->table == NULL)
 	error("Could not allocate retransmission table");
+
+    //rexmit->rx_table = (u_int32_t *) calloc(xfer->block_count+1, sizeof(u_int32_t));
+    //if (rexmit->rx_table == NULL)
+    //    error("Could not allocate retransmission table");
 
     /* allocate the received bitfield */
     xfer->received = (u_char *) calloc(xfer->block_count / 8 + 2, sizeof(u_char));
@@ -293,8 +391,12 @@ int command_get(command_t *command, ttp_session_t *session)
       /* try to receive a datagram */
       status = recvfrom(xfer->udp_fd, datagram, 6 + session->parameter->block_size, 0, (struct sockaddr *) &session->server_address, &session->server_address_length);
       if (status < 0) {
-          perror(NULL);
           warn("UDP data transmission error");
+          printf("Apparently frozen transfer, trying to do retransmit request\n");
+          if (ttp_repeat_retransmit(session) < 0) {  /* repeat our requests */
+             warn("Repeat of retransmission requests failed");
+             goto abort;
+          }
       }
    
       /* confirm our slot reservation */
@@ -351,7 +453,8 @@ int command_get(command_t *command, ttp_session_t *session)
           xfer->stats.total_blocks = this_block;
           xfer->next_block         = this_block + 1;
       }
-   }
+
+   } /* Transfer of the file completes here*/
 
     /* add a stop block to the ring buffer */
     datagram = ring_reserve(xfer->ring_buffer);
@@ -395,6 +498,8 @@ int command_get(command_t *command, ttp_session_t *session)
     ring_destroy(xfer->ring_buffer);
     free(rexmit->table);   rexmit->table  = NULL;
     free(xfer->received);  xfer->received = NULL;
+
+    } while(++f_counter<f_total);
 
     /* we succeeded */
     return 0;
@@ -644,6 +749,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.8  2006/10/28 19:29:15  jwagnerhki
+ * jamil GET* merge, insertionsort disabled by default again
+ *
  * Revision 1.7  2006/10/28 17:00:12  jwagnerhki
  * block type defines
  *
