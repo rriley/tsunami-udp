@@ -29,6 +29,7 @@
 #include <fcntl.h>  /* open() */
 
 #include <sys/time.h>  /* gettimeofday() */
+#include <time.h>
 #include <unistd.h>  /* gettimeofday(), usleep() */
 
 #include <string.h>  /* strstr() */
@@ -138,9 +139,11 @@ start_vsib(ttp_session_t *session)
 
 
 void read_vsib_block(char *memblk, int blksize)
-
-  {
-      size_t nread;
+{
+  size_t nread;
+  struct timespec ts;
+  ts.tv_sec = 0;
+  ts.tv_nsec = 1000000L;
 
     /* Write (or read) one block. */
     /* xxx: need to add '-1' error checks to VSIB read()/write() calls */
@@ -149,18 +152,23 @@ void read_vsib_block(char *memblk, int blksize)
       nread = read (vsib_fileno, memblk, blksize);
       while (nread < blksize) {
         /* Not one full block in buffer, wait. */
-        usleep(1000);  /* a small amount, probably ends up to be 10--20msec */
+        // usleep(1000); usleep not with pthreads! /* a small amount, probably ends up to be 10--20msec */
+        nanosleep(&ts, NULL);
 	/*        usleeps++; */
         nread += read (vsib_fileno, memblk+nread, blksize-nread);
       }  /* while not at least one full block in VSIB DMA ring buffer */
 
-  }  /* read_vsib_block */
+}  /* read_vsib_block */
 
 
 
 void stop_vsib(ttp_session_t *session)
 
   {
+
+  struct timespec ts;
+  ts.tv_sec = 0;
+  ts.tv_nsec = 100000000L;
 
   /* Stop the board, first DMA, and when the last descriptor */
   /* has been transferred, then write stop to board command register. */
@@ -172,7 +180,8 @@ void stop_vsib(ttp_session_t *session)
     while (!b) {
       fprintf(stderr, "Waiting for last DMA descriptor (sl=%d)\n",
               usleeps);
-      usleep(100000);
+      // usleep(100000); usleep not with pthreads!
+      nanosleep(&ts, NULL);
       /*      usleeps++; */
       vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
     }
