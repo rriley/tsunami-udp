@@ -429,16 +429,6 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #else
 
-    /* reserve the ring buffer */
-    param->ringbuf = malloc(param->block_size * RINGBUF_BLOCKS);
-    if (param->ringbuf == NULL) {
-        status = write(session->client_fd, "\004", 1);
-        if (status < 0) {
-            warn("Could not signal request failure to client");
-        }
-        return warn("Could not reserve space for ring buffer");
-    }
-
     /* get starting time (UTC) and detect whether local disk copy is wanted */
     start_immediately = 0; // default: start at specified time/date
     if (strrchr(filename,'/') == NULL) {
@@ -526,10 +516,10 @@ int ttp_open_transfer(ttp_session_t *session)
     start_vsib(session);                        /* start at next 1PPS pulse */
 
     #endif // end of VSIB_REALTIME section
-
+    
     /* begin round trip time estimation */
     gettimeofday(&ping_s,NULL);
-        
+    
     /* try to signal success to the client */
     status = write(session->client_fd, "\000", 1);
     if (status < 0)
@@ -542,7 +532,7 @@ int ttp_open_transfer(ttp_session_t *session)
 
     /* end round trip time estimation */
     gettimeofday(&ping_e,NULL);
-
+    
     /* read in the slowdown and speedup factors */
     if (read(session->client_fd, &param->slower_num,  2) < 0) return warn("Could not read slowdown numerator");    param->slower_num  = ntohs(param->slower_num);
     if (read(session->client_fd, &param->slower_den,  2) < 0) return warn("Could not read slowdown denominator");  param->slower_den  = ntohs(param->slower_den);
@@ -589,13 +579,16 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.11  2006/10/28 17:00:12  jwagnerhki
+ * Revision 1.12  2006/10/30 08:46:58  jwagnerhki
+ * removed memory leak unused ringbuf
+ *
+ * Revision 1.8  2006/10/28 17:00:12  jwagnerhki
  * block type defines
  *
- * Revision 1.10  2006/10/25 13:56:47  jwagnerhki
+ * Revision 1.7  2006/10/25 13:56:47  jwagnerhki
  * 'get *' mini fix, Jamil roundtrip time guess added
  *
- * Revision 1.9  2006/10/25 12:50:56  jwagnerhki
+ * Revision 1.6  2006/10/25 12:50:56  jwagnerhki
  * fallback to older datetime parser with immediate start support
  *
  * Revision 1.8  2006/10/25 12:09:08  jwagnerhki

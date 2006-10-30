@@ -337,9 +337,6 @@ void client_handler(ttp_session_t *session)
     /* stop the VSIB */
     stop_vsib(session);
 
-    /* Free the ring buffer */
-    free(param->ringbuf);
-
     #endif
     
     /* close the UDP socket */
@@ -475,6 +472,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.10  2006/10/30 08:46:58  jwagnerhki
+ * removed memory leak unused ringbuf
+ *
  * Revision 1.9  2006/10/28 17:00:12  jwagnerhki
  * block type defines
  *
