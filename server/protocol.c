@@ -546,8 +546,8 @@ int ttp_open_transfer(ttp_session_t *session)
     fseeko64(xfer->file, 0, SEEK_SET);
     #else
     /* TODO: realtime streaming, pass file length in bytes inside filename string */
-    /* Currently defaulting to an amount of bytes equivalent to 15 minutes at 512Mbps */
-    param->file_size = 60LL * 512000000LL * 15 / 8;
+    /* Currently defaulting to an amount of bytes equivalent to 4 minutes at 512Mbps */
+    param->file_size = 60LL * 512000000LL * 4LL / 8;
     #endif
     
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
@@ -579,6 +579,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.10  2006/11/02 08:25:02  jwagnerhki
+ * realtime file length shortened to 4min at 512mbps
+ *
  * Revision 1.9  2006/10/30 08:46:58  jwagnerhki
  * removed memory leak unused ringbuf
  *
