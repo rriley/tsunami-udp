@@ -48,9 +48,9 @@
 #define fourCharLong(a,b,c,d) ( ((long)a)<<24 | ((long)b)<<16 | ((long)c)<<8 | d )
 
 /* Default values for mode */
-int vsib_mode = 2;                     /* 2: low 16 bit mode */
+int vsib_mode = 0;                     /* 0: 32 bit mode, 2: low 16 bit mode */
 int vsib_mode_gigabit = 0;             /* 0: no gigabit mode */
-int vsib_mode_embed_1pps_markers = 1;  /* 1: embed markers */
+int vsib_mode_embed_1pps_markers = 0;  /* 0: don't embed PPS markers, 1: embed markers */
 int vsib_mode_skip_samples = 0;        /* 0: do not skip samples */
 
 typedef struct sSh {
