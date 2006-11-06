@@ -1,4 +1,9 @@
 
+If you have not yet downloaded the source code, you can do so with
+an anonymous CVS checkout:
+
+   cvs -z3 -d:pserver:anonymous@tsunami-udp.cvs.sf.net:/cvsroot/tsunami-udp co -P tsunami-udp
+
 For compiling tsunami, go through the normal process of:
 
    ./configure
@@ -17,11 +22,13 @@ For compiling tsunami, go through the normal process of:
 
  will install the tsunami binaries onto the system. 
  The binaries that will be installed are:
+
    App              Name        From
    Tsunami server   tsunamid    ./server/tsunamid 
    Tsunami client   tsunami     ./client/tsunami
    Realtime server  rttsunamid  ./rtserver/rttsunamid
    Realtime client  rttsunami   ./rtclient/rttsunami
+
  The binaries will be placed into /usr/local/bin or similar.
 
  Contents of individual subdirectories can be recompiled with
@@ -31,6 +38,6 @@ For compiling tsunami, go through the normal process of:
    make clean
    make
 
- (note that you should first have to compile the entire 
- source tree via ./configure and make, only after that
- recompiling individual subdirectories works without problems)
+ (Note that you first have to compile the entire 
+ source tree via './configure' and 'make'. Only after that you
+ can recompile individual subdirectories without problems)
