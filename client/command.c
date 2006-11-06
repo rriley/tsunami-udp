@@ -199,7 +199,8 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
  *------------------------------------------------------------------------*/
 int command_get(command_t *command, ttp_session_t *session)
 {
-    u_char         *datagram;           /* the buffer for incoming blocks                 */
+    u_char         *datagram;           /* the buffer (in ring) for incoming blocks       */
+    u_char         *local_datagram;     /* the local temp space for incoming block        */
     struct timeval  repeat_time;        /* the time we last sent our retransmission list  */
     u_int32_t       this_block;         /* the block number for the block just received   */
     u_int16_t       this_type;          /* the block type for the block just received     */
@@ -356,6 +357,11 @@ int command_get(command_t *command, ttp_session_t *session)
     /* allocate the ring buffer */
     xfer->ring_buffer = ring_create(session);
 
+    /* allocate the faster local buffer */
+    local_datagram = (u_char *) calloc(6 + session->parameter->block_size, sizeof(u_char));
+    if (local_datagram == NULL)
+        error("Could not allocate fast local datagram buffer in command_get()");
+
     /* start up the disk I/O thread */
     status = pthread_create(&disk_thread_id, NULL, disk_thread, session);
     if (status != 0)
@@ -385,11 +391,9 @@ int command_get(command_t *command, ttp_session_t *session)
       /* we got here again */
       ++iteration;
       
-      /* reserve a datagram slot */
-      datagram = ring_reserve(xfer->ring_buffer);
-      
       /* try to receive a datagram */
-      status = recvfrom(xfer->udp_fd, datagram, 6 + session->parameter->block_size, 0, (struct sockaddr *) &session->server_address, &session->server_address_length);
+      status = recvfrom(xfer->udp_fd, local_datagram, 6 + session->parameter->block_size, 0, 
+                        (struct sockaddr *) &session->server_address, &session->server_address_length);
       if (status < 0) {
           warn("UDP data transmission error");
           printf("Apparently frozen transfer, trying to do retransmit request\n");
@@ -398,16 +402,25 @@ int command_get(command_t *command, ttp_session_t *session)
              goto abort;
           }
       }
+
+      /* retrieve the block number and block type */
+      this_block = ntohl(*((u_int32_t *) local_datagram));
+      this_type  = ntohs(*((u_int16_t *) (local_datagram + 4)));
+
+      if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8)))) 
+      {
    
+      /* reserve a datagram slot */
+      datagram = ring_reserve(xfer->ring_buffer);
+   
+      /* copy data from local buffer into ring buffer */
+      memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
+      
       /* confirm our slot reservation */
       if (ring_confirm(xfer->ring_buffer) < 0) {
           warn("Error in accepting block");
           goto abort;
       }
-   
-      /* retrieve the block number and block type */
-      this_block = ntohl(*((u_int32_t *) datagram));
-      this_type  = ntohs(*((u_int16_t *) (datagram + 4)));
    
       /* queue any retransmits we need */
       if (this_block > xfer->next_block) {
@@ -428,6 +441,14 @@ int command_get(command_t *command, ttp_session_t *session)
           else
             ttp_repeat_retransmit(session);
       }
+
+      /* if this is an orignal, we expect to receive the successor to this block next */
+      if (this_type == TS_BLOCK_ORIGINAL) {
+          xfer->stats.total_blocks = this_block;
+          xfer->next_block         = this_block + 1;
+      }
+
+      }//if(not a duplicate block)
    
       /* repeat our requests if it's time */
       if (!(iteration % 50)) {
@@ -448,12 +469,6 @@ int command_get(command_t *command, ttp_session_t *session)
          }
       }
    
-      /* if this is an orignal, we expect to receive the successor to this block next */
-      if (this_type == TS_BLOCK_ORIGINAL) {
-          xfer->stats.total_blocks = this_block;
-          xfer->next_block         = this_block + 1;
-      }
-
    } /* Transfer of the file completes here*/
 
     /* add a stop block to the ring buffer */
@@ -498,6 +513,7 @@ int command_get(command_t *command, ttp_session_t *session)
     ring_destroy(xfer->ring_buffer);
     free(rexmit->table);   rexmit->table  = NULL;
     free(xfer->received);  xfer->received = NULL;
+    free(local_datagram);  local_datagram = NULL;
 
     } while(++f_counter<f_total);
 
@@ -749,6 +765,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.9  2006/11/06 07:42:44  jwagnerhki
+ * changed defaults, added 144MiB bigbufsize mention
+ *
  * Revision 1.8  2006/10/28 19:29:15  jwagnerhki
  * jamil GET* merge, insertionsort disabled by default again
  *

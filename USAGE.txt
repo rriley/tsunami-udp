@@ -37,6 +37,9 @@
  If you omitted the "sudo make install", you'll have to call
  the programs from within the source code directories.
 
+ For the general overview on how the Tsunami protocol
+ works, please see the older README.txt
+
 
  Very Quick Guide
  ================
@@ -75,11 +78,6 @@
  tsunami> connect server.domain.com
  tsunami> get filename
  tsunami> get *
-
- The source code documents the rest ;-))
-
- For the generic details on how Tsunami works and
- how the protocol is structured, please see README.txt
 
 
  Not So Quick Guide
@@ -165,6 +163,13 @@
  You'll need a post-01/2006 version of the vsib.c driver.
  Tsunami tries to access the VSIB card via /dev/vsib.
 
+ If you try rates of 256Mbps and above, please check that
+ your VSIB driver is loaded with a bigbufsize of at least
+ 100MiB. For example 144MiB often set in the file /etc/modules, 
+ and the value is usually sufficient for 512Mbps:
+    # load vsib with 144M 
+    vsib bigbufsize=144000000
+
  --Realtime Server--
 
  The realtime server will read data from the VSIB card and send
@@ -201,10 +206,11 @@
  and the docs/modes.txt file found in the VSIB source code that
  is available separately from Metsähovi. The default settings 
  work for nearly all cases (defaults are, for reference if you
- accidentally change the source code: mode 2, embed pps 1, 
+ accidentally change the source code: mode 0, embed pps 0, 
  skip 0 or 1, gigabit mode 0).
 
- The recording time is hard-coded to 15 minutes.
+ The recording time is hard-coded to 15 minutes, by specifying
+ the file length in protocol.c.
 
  TODO: In a later tsunami version the length will be specified in
  the file name. For now, to change the recording time, search 
