@@ -122,13 +122,13 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 	} else
 	    xfer->ipd_current = (u_int32_t) (xfer->ipd_current * (u_int64_t) param->faster_num / param->faster_den);
 
-	/* make sure the IPD is still in range */
-	xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
-
 	/* build the stats string */
 	sprintf(stats_line, "%6u %5uus %5uus %7u %6.2f%%\n",
 		retransmission->error_rate, xfer->ipd_current, param->ipd_time, xfer->block,
 		100.0 * xfer->block / param->block_count);
+
+	/* make sure the IPD is still in range */
+	xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
 
 	/* print a status report */
 	if (!(iteration++ % 23))
@@ -579,6 +579,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.11  2006/11/08 11:00:34  jwagnerhki
+ * stats lied about real ipd
+ *
  * Revision 1.10  2006/11/02 08:25:02  jwagnerhki
  * realtime file length shortened to 4min at 512mbps
  *
