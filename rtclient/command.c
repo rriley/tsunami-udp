@@ -5,7 +5,7 @@
  * file transfer CLI client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -119,7 +119,8 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 {
     int            server_fd;
     ttp_session_t *session;
-    char          *secret;
+    #define PASS_KEY "kitten"
+    char           secret[] = PASS_KEY;
 
     /* if we were given a new host, store that information */
     if (command->count > 1) {
@@ -168,7 +169,8 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
     }
 
     /* get the shared secret from the user */
-    secret = getpass("Password: ");
+    /*    secret = getpass("Password: "); */
+    strcpy(secret, PASS_KEY); /* write back the passwd erased by possible earlier ttp_auth's() */
     if (secret == NULL)
 	error("Could not read shared secret");
 
@@ -197,7 +199,8 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
  *------------------------------------------------------------------------*/
 int command_get(command_t *command, ttp_session_t *session)
 {
-    u_char         *datagram;           /* the buffer for incoming blocks                 */
+    u_char         *datagram;           /* the buffer (in ring) for incoming blocks       */
+    u_char         *local_datagram;     /* the local temp space for incoming block        */
     struct timeval  repeat_time;        /* the time we last sent our retransmission list  */
     u_int32_t       this_block;         /* the block number for the block just received   */
     u_int16_t       this_type;          /* the block type for the block just received     */
@@ -210,29 +213,123 @@ int command_get(command_t *command, ttp_session_t *session)
     int             status;
     pthread_t       disk_thread_id;
 
+    /* The following variables will be used only in multiple file transfer
+     * session they are used to recieve the file names and other parameters
+     */
+    int             multimode = 0;
+    char           *file_names;
+    char          **all_fileNames = NULL;
+    int             f_counter, f_total;
+
+    /* this struct wil hold the RTT time */
+    struct timeval ping_s, ping_e;
+    long wait_u_sec = 1;
+
     /* make sure that we have a remote file name */
     if (command->count < 2)
 	return warn("Invalid command syntax (use 'help get' for details)");
 
     /* make sure that we have an open session */
-    if (session->server == NULL)
+    if (session == NULL || session->server == NULL)
 	return warn("Not connected to a Tsunami server");
 
     /* reinitialize the transfer data */
     memset(xfer, 0, sizeof(*xfer));
 
+    /* if the client asking for multiple files to be transfered */
+    f_counter = 0; 
+    f_total = 0;
+    if(!strcmp("*",command->text[1])) {
+       int   bytes_read = 0, totalSize = 0, totalNumber = 0;
+       char  file_size[10];
+       char  file_number[10];
+
+       multimode = 1;
+       printf("Requesting all available file\n");
+
+       /* Try to calculate the RTT from client to server */
+       gettimeofday(&(ping_s), NULL);
+       status = fprintf(session->server, "%s\n", command->text[1]);
+
+       status = fread(file_size, sizeof(char), 10, session->server);
+       gettimeofday(&(ping_e),NULL);
+
+       status = fread(file_number, sizeof(char), 10, session->server);
+
+       fprintf(session->server, "%s", "got size");
+
+       if ((status <= 0) || fflush(session->server))
+          return warn("Could not request file");
+
+       /* see if the request was successful */
+       if (status < 1)
+          return warn("Could not read response to file request");
+
+       /* total sent data size */
+       sscanf(file_size, "%d", &totalSize);
+       /* total number of file */
+       sscanf(file_size, "%d", &totalNumber);
+
+       printf("\nGot file size: %d\n",totalSize);
+       if((file_names=malloc(totalSize*sizeof(char)))==NULL)
+          error("Could not allocate memory\n");
+
+       fread(file_names, sizeof(char), totalSize, session->server);
+       fprintf(session->server,"%s", "got list");
+
+       if((all_fileNames=calloc(totalNumber, sizeof(char*)))==NULL)
+          error("could not allocate memory\n");
+
+       /* this while loop separates the file names */
+       while(bytes_read<totalSize) {
+           if((all_fileNames[f_counter]=malloc((strlen(file_names+bytes_read)+1)*sizeof(char)))==NULL) {
+              error("could not allocate memory\n");
+           } else {
+              strcpy(all_fileNames[f_counter],file_names+bytes_read);
+           }
+
+           bytes_read += strlen(all_fileNames[f_counter++])+1;
+           printf("%s ", all_fileNames[f_counter -1]);
+       }
+       f_total = f_counter;
+       f_counter = 0;
+
+       printf("file size %d. Getting %d files.\n", bytes_read, f_total);
+       /*free(file_names);*/
+    }
+
+    /* calculate and convert RTT to u_sec */
+    wait_u_sec = (ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
+    /* add a 10% safety margin */
+    wait_u_sec = wait_u_sec + ((int)(wait_u_sec* 0.1));
+
+    do /*---loop for single and multi file request---*/
+    {
+
+    /* reset some vars for current run */
+    complete_flag = 0;
+    iteration = 0;
+
     /* store the remote filename */
-    xfer->remote_filename = command->text[1];
+    if(!multimode)
+       xfer->remote_filename = command->text[1];
+    else
+       xfer->remote_filename = all_fileNames[f_counter];
 
     /* calculate the local filename */
-    if (command->count >= 3)
-	xfer->local_filename = command->text[2];
-    else {
-	xfer->local_filename = strrchr(command->text[1], '/');
-	if (xfer->local_filename == NULL)
-	    xfer->local_filename = command->text[1];
-	else
-	    ++(xfer->local_filename);
+    if(!multimode) {
+       if (command->count >= 3) {
+          xfer->local_filename = command->text[2];
+       } else {
+          xfer->local_filename = strrchr(command->text[1], '/');
+          if (xfer->local_filename == NULL)
+             xfer->local_filename = command->text[1];
+          else
+             ++(xfer->local_filename);
+       }
+    } else {
+       xfer->local_filename = all_fileNames[f_counter];
+       printf("GET *: now requesting file '%s'\n", xfer->local_filename);
     }
 
     /* negotiate the file request with the server */
@@ -248,6 +345,10 @@ int command_get(command_t *command, ttp_session_t *session)
     if (rexmit->table == NULL)
 	error("Could not allocate retransmission table");
 
+    //rexmit->rx_table = (u_int32_t *) calloc(xfer->block_count+1, sizeof(u_int32_t));
+    //if (rexmit->rx_table == NULL)
+    //    error("Could not allocate retransmission table");
+
     /* allocate the received bitfield */
     xfer->received = (u_char *) calloc(xfer->block_count / 8 + 2, sizeof(u_char));
     if (xfer->received == NULL)
@@ -255,6 +356,11 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* allocate the ring buffer */
     xfer->ring_buffer = ring_create(session);
+
+    /* allocate the faster local buffer */
+    local_datagram = (u_char *) calloc(6 + session->parameter->block_size, sizeof(u_char));
+    if (local_datagram == NULL)
+        error("Could not allocate fast local datagram buffer in command_get()");
 
     /* start up the disk I/O thread */
     status = pthread_create(&disk_thread_id, NULL, disk_thread, session);
@@ -268,86 +374,103 @@ int command_get(command_t *command, ttp_session_t *session)
     /* we start by expecting block #1 */
     xfer->next_block = 1;
 
-    /*---------------------------
-     * START TIMING
-     *---------------------------*/
+   /*---------------------------
+   * START TIMING
+   *---------------------------*/
 
-    memset(&xfer->stats, 0, sizeof(xfer->stats));
-    gettimeofday(&repeat_time,              NULL);
-    gettimeofday(&(xfer->stats.start_time), NULL);
-    gettimeofday(&(xfer->stats.this_time),  NULL);
-    if (session->parameter->transcript_yn)
-	xscript_data_start(session, &(xfer->stats.start_time));
+   memset(&xfer->stats, 0, sizeof(xfer->stats));
+   gettimeofday(&repeat_time,              NULL);
+   gettimeofday(&(xfer->stats.start_time), NULL);
+   gettimeofday(&(xfer->stats.this_time),  NULL);
+   if (session->parameter->transcript_yn)
+      xscript_data_start(session, &(xfer->stats.start_time));
 
-    /* until we break out of the transfer */
-    while (!complete_flag) {
+   /* until we break out of the transfer */
+   while (!complete_flag) {
+   
+      /* we got here again */
+      ++iteration;
+      
+      /* try to receive a datagram */
+      status = recvfrom(xfer->udp_fd, local_datagram, 6 + session->parameter->block_size, 0, 
+                        (struct sockaddr *) &session->server_address, &session->server_address_length);
+      if (status < 0) {
+          warn("UDP data transmission error");
+          printf("Apparently frozen transfer, trying to do retransmit request\n");
+          if (ttp_repeat_retransmit(session) < 0) {  /* repeat our requests */
+             warn("Repeat of retransmission requests failed");
+             goto abort;
+          }
+      }
 
-	/* we got here again */
-	++iteration;
+      /* retrieve the block number and block type */
+      this_block = ntohl(*((u_int32_t *) local_datagram));
+      this_type  = ntohs(*((u_int16_t *) (local_datagram + 4)));
 
-	/* reserve a datagram slot */
-	datagram = ring_reserve(xfer->ring_buffer);
+      if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8))) || this_type == TS_BLOCK_TERMINATE) 
+      {
+   
+          /* reserve a datagram slot */
+          datagram = ring_reserve(xfer->ring_buffer);
+    
+          /* copy data from local buffer into ring buffer */
+          memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
+        
+          /* confirm our slot reservation */
+          if (ring_confirm(xfer->ring_buffer) < 0) {
+              warn("Error in accepting block");
+              goto abort;
+          }
+    
+          /* queue any retransmits we need */
+          if (this_block > xfer->next_block) {
+              for (block = xfer->next_block; block < this_block; ++block) {
+                  if (ttp_request_retransmit(session, block) < 0) {
+                      warn("Retransmission request failed");
+                      goto abort;
+                  }
+              }
+          }
+   
+          /* if this is the last block */
+          if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
+   
+            /* prepare to stop if we're done */
+            if (xfer->blocks_left == 0) //rexmit->index_max == 0)
+              complete_flag = 1;
+            else
+              ttp_repeat_retransmit(session);
+          }
 
-	/* try to receive a datagram */
-	status = recvfrom(xfer->udp_fd, datagram, 6 + session->parameter->block_size, 0, (struct sockaddr *) &session->server_address, &session->server_address_length);
-	if (status < 0) {
-	    perror(NULL);
-	    warn("UDP data transmission error");
-	}
+          /* if this is an orignal, we expect to receive the successor to this block next */
+          if (this_type == TS_BLOCK_ORIGINAL) {
+              xfer->stats.total_blocks = this_block;
+              xfer->next_block         = this_block + 1;
+          }
 
-	/* confirm our slot reservation */
-	if (ring_confirm(xfer->ring_buffer) < 0) {
-	    warn("Error in accepting block");
-	    goto abort;
-	}
-
-	/* retrieve the block number and block type */
-	this_block = ntohl(*((u_int32_t *) datagram));
-	this_type  = ntohs(*((u_int16_t *) (datagram + 4)));
-
-	/* queue any retransmits we need */
-	if (this_block > xfer->next_block)
-	    for (block = xfer->next_block; block < this_block; ++block)
-		if (ttp_request_retransmit(session, block) < 0) {
-		    warn("Retransmission request failed");
-		    goto abort;
-		}
-
-	/* if this is the last block */
-	if ((this_block >= xfer->block_count) || (this_type == 'X')) {
-
-	    /* prepare to stop if we're done */
-	    if (xfer->blocks_left == 0) //rexmit->index_max == 0)
-		complete_flag = 1;
-	    else
-		ttp_repeat_retransmit(session);
-	}
-
-	/* repeat our requests if it's time */
-	if (!(iteration % 50)) {
-
-	    /* if it's been at least a second */
-	    if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
-
-		/* repeat our requests */
-		if (ttp_repeat_retransmit(session) < 0) {
-		    warn("Repeat of retransmission requests failed");
-		    goto abort;
-		}
-
-		/* show our current statistics */
-		ttp_update_stats(session);
-
-		//gettimeofday(&repeat_time, NULL);
-	    }
-	}
-
-	/* if this is an orignal, we expect to receive the successor to this block next */
-	if (this_type == 'O') {
-	    xfer->stats.total_blocks = this_block;
-	    xfer->next_block         = this_block + 1;
-	}
-    }
+      }//if(not a duplicate block)
+   
+      /* repeat our requests if it's time */
+      if (!(iteration % 50)) {
+   
+          /* if it's been at least a second */
+          /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into 50 iterations */
+          if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
+   
+            /* repeat our requests */
+            if (ttp_repeat_retransmit(session) < 0) {
+                warn("Repeat of retransmission requests failed");
+                goto abort;
+            }
+         
+            /* show our current statistics */
+            ttp_update_stats(session);
+         
+            //gettimeofday(&repeat_time, NULL);
+         }
+      }
+   
+   } /* Transfer of the file completes here*/
 
     /* add a stop block to the ring buffer */
     datagram = ring_reserve(xfer->ring_buffer);
@@ -391,6 +514,9 @@ int command_get(command_t *command, ttp_session_t *session)
     ring_destroy(xfer->ring_buffer);
     free(rexmit->table);   rexmit->table  = NULL;
     free(xfer->received);  xfer->received = NULL;
+    free(local_datagram);  local_datagram = NULL;
+
+    } while(++f_counter<f_total);
 
     /* we succeeded */
     return 0;
@@ -522,8 +648,9 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 	} else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
+	  else if (!strcasecmp(command->text[1], "blocksize"))     parameter->block_size    = atol(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "verbose"))    parameter->verbose_yn    = (strcmp(command->text[2], "yes") == 0);
- 	  else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
+	  else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
 	  else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
 	  else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
 	  else if (!strcasecmp(command->text[1], "rate"))       { 
@@ -539,10 +666,11 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
          }
          parameter->target_rate   = multiplier * atol(cpy); 
    }
-	  else if (!strcasecmp(command->text[1], "error"))      parameter->error_rate    = atof(command->text[2]) * 1000.0;
-	  else if (!strcasecmp(command->text[1], "slowdown"))   parse_fraction(command->text[2], &parameter->slower_num, &parameter->slower_den);
-	  else if (!strcasecmp(command->text[1], "speedup"))    parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
-	  else if (!strcasecmp(command->text[1], "history"))    parameter->history       = atoi(command->text[2]);
+	  else if (!strcasecmp(command->text[1], "error"))        parameter->error_rate    = atof(command->text[2]) * 1000.0;
+	  else if (!strcasecmp(command->text[1], "slowdown"))     parse_fraction(command->text[2], &parameter->slower_num, &parameter->slower_den);
+	  else if (!strcasecmp(command->text[1], "speedup"))      parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
+	  else if (!strcasecmp(command->text[1], "history"))      parameter->history       = atoi(command->text[2]);
+	  else if (!strcasecmp(command->text[1], "noretransmit")) parameter->no_retransmit = (strcmp(command->text[2], "yes") == 0);
     }
 
     /* report on current values */
@@ -550,6 +678,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "port"))       printf("port = %u\n",        parameter->server_port);
     if (do_all || !strcasecmp(command->text[1], "udpport"))    printf("udpport = %u\n",     parameter->client_port);
     if (do_all || !strcasecmp(command->text[1], "buffer"))     printf("buffer = %u\n",      parameter->udp_buffer);
+    if (do_all || !strcasecmp(command->text[1], "blocksize"))  printf("blocksize = %u\n",   parameter->block_size);
     if (do_all || !strcasecmp(command->text[1], "verbose"))    printf("verbose = %s\n",     parameter->verbose_yn    ? "yes" : "no");
     if (do_all || !strcasecmp(command->text[1], "transcript")) printf("transcript = %s\n",  parameter->transcript_yn ? "yes" : "no");
     if (do_all || !strcasecmp(command->text[1], "ip"))         printf("ip = %s\n",          parameter->ipv6_yn       ? "v6"  : "v4");
@@ -559,6 +688,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "slowdown"))   printf("slowdown = %d/%d\n", parameter->slower_num, parameter->slower_den);
     if (do_all || !strcasecmp(command->text[1], "speedup"))    printf("speedup = %d/%d\n",  parameter->faster_num, parameter->faster_den);
     if (do_all || !strcasecmp(command->text[1], "history"))    printf("history = %d%%\n",   parameter->history);
+    if (do_all || !strcasecmp(command->text[1], "noretransmit")) printf("noretransmit = %s\n", (1==parameter->no_retransmit) ? "yes" : "no");
     printf("\n");
 
     /* we succeeded */
@@ -636,25 +766,40 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
- * Revision 1.5  2006/10/11 08:36:51  jwagnerhki
+ * Revision 1.6  2006/11/10 11:34:45  jwagnerhki
+ * merge from normal client, indentation, transmit termination fix
+ *
+ * Revision 1.10  2006/11/10 11:32:42  jwagnerhki
+ * indentation, transmit termination fix
+ *
+ * Revision 1.9  2006/11/06 07:42:44  jwagnerhki
+ * changed defaults, added 144MiB bigbufsize mention
+ *
+ * Revision 1.8  2006/10/28 19:29:15  jwagnerhki
+ * jamil GET* merge, insertionsort disabled by default again
+ *
+ * Revision 1.7  2006/10/28 17:00:12  jwagnerhki
+ * block type defines
+ *
+ * Revision 1.6  2006/10/24 21:21:36  jwagnerhki
+ * fixed client loosing password
+ *
+ * Revision 1.5  2006/10/11 08:36:50  jwagnerhki
  * added URL to SF project page for the byebye msg
  *
  * Revision 1.4  2006/09/07 13:56:57  jwagnerhki
  * udp socket reusable, udp port selectable in client
  *
- * Revision 1.3  2006/08/08 06:04:27  jwagnerhki
+ * Revision 1.3  2006/08/08 06:04:28  jwagnerhki
  * included ctype.h
  *
  * Revision 1.2  2006/07/21 07:48:56  jwagnerhki
  * set rate now also with mM gG
  *
- * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
  * reimport
  *
- * Revision 1.2  2006/07/11 07:24:12  jwagnerhki
- * copied "set rate [nnn][m|g]" format from normal tsunami
- *
- * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
- * added to trunk
+ * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
+ * deleted unnecessary files
  *
  */
