@@ -407,46 +407,46 @@ int command_get(command_t *command, ttp_session_t *session)
       this_block = ntohl(*((u_int32_t *) local_datagram));
       this_type  = ntohs(*((u_int16_t *) (local_datagram + 4)));
 
-      if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8)))) 
+      if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8))) || this_type == TS_BLOCK_TERMINATE) 
       {
    
-      /* reserve a datagram slot */
-      datagram = ring_reserve(xfer->ring_buffer);
+          /* reserve a datagram slot */
+          datagram = ring_reserve(xfer->ring_buffer);
+    
+          /* copy data from local buffer into ring buffer */
+          memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
+        
+          /* confirm our slot reservation */
+          if (ring_confirm(xfer->ring_buffer) < 0) {
+              warn("Error in accepting block");
+              goto abort;
+          }
+    
+          /* queue any retransmits we need */
+          if (this_block > xfer->next_block) {
+              for (block = xfer->next_block; block < this_block; ++block) {
+                  if (ttp_request_retransmit(session, block) < 0) {
+                      warn("Retransmission request failed");
+                      goto abort;
+                  }
+              }
+          }
    
-      /* copy data from local buffer into ring buffer */
-      memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
-      
-      /* confirm our slot reservation */
-      if (ring_confirm(xfer->ring_buffer) < 0) {
-          warn("Error in accepting block");
-          goto abort;
-      }
+          /* if this is the last block */
+          if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
    
-      /* queue any retransmits we need */
-      if (this_block > xfer->next_block) {
-          for (block = xfer->next_block; block < this_block; ++block) {
-               if (ttp_request_retransmit(session, block) < 0) {
-                   warn("Retransmission request failed");
-                   goto abort;
-               }
-         }
-      }
-   
-      /* if this is the last block */
-      if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
-   
-          /* prepare to stop if we're done */
-          if (xfer->blocks_left == 0) //rexmit->index_max == 0)
-            complete_flag = 1;
-          else
-            ttp_repeat_retransmit(session);
-      }
+            /* prepare to stop if we're done */
+            if (xfer->blocks_left == 0) //rexmit->index_max == 0)
+              complete_flag = 1;
+            else
+              ttp_repeat_retransmit(session);
+          }
 
-      /* if this is an orignal, we expect to receive the successor to this block next */
-      if (this_type == TS_BLOCK_ORIGINAL) {
-          xfer->stats.total_blocks = this_block;
-          xfer->next_block         = this_block + 1;
-      }
+          /* if this is an orignal, we expect to receive the successor to this block next */
+          if (this_type == TS_BLOCK_ORIGINAL) {
+              xfer->stats.total_blocks = this_block;
+              xfer->next_block         = this_block + 1;
+          }
 
       }//if(not a duplicate block)
    
@@ -454,6 +454,7 @@ int command_get(command_t *command, ttp_session_t *session)
       if (!(iteration % 50)) {
    
           /* if it's been at least a second */
+          /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into 50 iterations */
           if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
    
             /* repeat our requests */
@@ -765,6 +766,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.10  2006/11/10 11:32:42  jwagnerhki
+ * indentation, transmit termination fix
+ *
  * Revision 1.9  2006/11/06 07:42:44  jwagnerhki
  * changed defaults, added 144MiB bigbufsize mention
  *
