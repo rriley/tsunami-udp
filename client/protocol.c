@@ -313,6 +313,7 @@ int ttp_repeat_retransmit(ttp_session_t *session)
          session->transfer.next_block         = rexmit->table[0];
          session->transfer.stats.total_blocks = rexmit->table[0];
          session->transfer.stats.this_blocks  = rexmit->table[0];
+         session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
          rexmit->index_max                    = 0;
 	 #ifdef DEBUG_RETX
 	 warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
@@ -385,8 +386,10 @@ int ttp_repeat_retransmit(ttp_session_t *session)
  *------------------------------------------------------------------------*/
 int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
 {
+   #ifdef RETX_REQBLOCK_SORTING
    u_int32_t     tmp32_ins = 0, tmp32_up;
    u_int32_t     idx = 0;
+   #endif
    retransmit_t *rexmit = &(session->transfer.retransmit);
 
    /* if we don't have space for the request */
@@ -508,11 +511,11 @@ int ttp_update_stats(ttp_session_t *session)
     if ((status <= 0) || fflush(session->server))
 	return warn("Could not send error rate information");
 
-    /* build the stats string */
+    /* build the stats string */    
 #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%6.1f\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%3u\n",
 #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %6.1fMbps\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %3u\n",
 #endif
 	    hours, minutes, seconds, milliseconds,
 	    stats->total_blocks - stats->this_blocks,
@@ -525,7 +528,10 @@ int ttp_update_stats(ttp_session_t *session)
 	    100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
 	    session->transfer.retransmit.index_max,
 	    session->transfer.ring_buffer->count_data,
-       delta_useful * 8.0 / delta );
+        //delta_useful * 8.0 / delta,
+        session->transfer.blocks_left, 
+        stats->this_retransmits // NOTE: stats->this_retransmits seems to be 0 always ??
+        );
 
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
@@ -552,8 +558,8 @@ int ttp_update_stats(ttp_session_t *session)
 	    /* print a header if necessary */
 #ifndef STATS_NOHEADER
 	    if (!(iteration++ % 23)) {
-		printf("             last_interval                   transfer_total                   buffers\n");
-		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring\n");
+		printf("             last_interval                   transfer_total                   buffers      transfer_remaining \n");
+		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   this_retx \n");
 	    }
 #endif
 	    printf("%s", stats_line);
@@ -579,6 +585,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.10  2006/11/10 11:29:45  jwagnerhki
+ * updated stats display
+ *
  * Revision 1.9  2006/10/28 19:29:15  jwagnerhki
  * jamil GET* merge, insertionsort disabled by default again
  *
