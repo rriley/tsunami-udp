@@ -87,15 +87,16 @@ const u_int16_t REQUEST_ERROR_RATE = 3;
  * int get_random_data(u_char *buffer, size_t bytes);
  *
  * Attempts to read the given number of bytes of random data from
- * /dev/random and into the given buffer.  Returns 0 on success and -1
+ * /dev/urandom and into the given buffer.  Returns 0 on success and -1
  * on failure.
  *------------------------------------------------------------------------*/
 int get_random_data(u_char *buffer, size_t bytes)
 {
     int random_fd;
 
-    /* try to open /dev/random */
-    if ((random_fd = open("/dev/random", O_RDONLY)) < 0)
+    /* try to open /dev/urandom */
+    /* note: for better randomness but very very slow generation use /dev/random */
+    if ((random_fd = open("/dev/urandom", O_RDONLY)) < 0)
 	return -1;
 
     /* obtain the appropriate amount of data */
@@ -273,6 +274,9 @@ void usleep_that_works(u_int64_t usec)
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.4  2006/11/10 15:05:37  jwagnerhki
+ * using /dev/urandom instead of unbearably slow /dev/random
+ *
  * Revision 1.3  2006/10/25 15:00:41  jwagnerhki
  * decided to up the rev nr after GET* implementation
  *
