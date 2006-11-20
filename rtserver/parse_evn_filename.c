@@ -1,3 +1,29 @@
+/*========================================================================
+ * parse_evn_filename.c  --  EVN filename parser routines
+ *
+ * Accepts filenames not entirely EVN filename format compliant.
+ *
+ * Accepted formats:
+ *   [experimentName]_[stationCode]_[scanName]_[startTimeUTCday].vsi
+ *   [experimentName]_[stationCode]_[scanName]_[startTimeUTCday]_auxinfo1_auxinfo2_[auxinfo3...].vsi
+ *
+ * Auxinfo:
+ *   These auxiliary infos are parsed outside of parse_evn_filename.c,
+ *   right now only in protocol.c
+ *
+ *   Currently used auxinfos are, for example:
+ *      sr[n]     - samplerate
+ *      sl[n]     - total slots nr in time multiplexing (==how many servers)
+ *      sn[n]     - slot nr in time multiplexing
+ *      flen[n]   - length of data to send
+ *
+ * Example filenames:
+ *   gre53_ef_scan035_154d12h43m10s.vsi
+ *   gre53_ef_scan035_154d12h43m10s_flen14400000.vsi
+ *
+ *========================================================================
+ */
+  
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,7 +133,7 @@ char *get_token(char **str) {
 		retval = strdup(*str);
 		*str = p;
 	} else {
-		retval = strndup(*str, p - *str);
+		retval = (char*)strndup(*str, p - *str);
 		*str = p + 1;
 	}
 	return retval;
@@ -151,22 +177,22 @@ struct evn_filename *parse_evn_filename(char *filename) {
 	if(strlen(ef->exp_name) > 6) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->exp_name) <= 6)\n"); return ef; }
 
 	ef->station_code = get_token(&parseptr);
-	// assert(ef->station_code);
+    // assert(ef->station_code);
     if(!ef->station_code) { fprintf(stderr, "parse_evn_filename: assert(ef->station_code)\n"); return ef; }
-	//assert(strlen(ef->station_code) >= 2);
+    //assert(strlen(ef->station_code) >= 2);
     if(strlen(ef->station_code) < 2) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->station_code) >= 2)\n"); return ef; }
 
 	ef->scan_name = get_token(&parseptr);
-	//assert(ef->scan_name);
+    //assert(ef->scan_name);
     if(!ef->scan_name) { fprintf(stderr, "parse_evn_filename: assert(ef->scan_name)\n"); return ef; }
-	//assert(strlen(ef->scan_name) <= 16);
+    //assert(strlen(ef->scan_name) <= 16);
     if(strlen(ef->scan_name) > 16) { fprintf(stderr, "parse_evn_filename: assert(strlen(ef->scan_name) <= 16)\n"); return ef; }
 
 	/* All mandatory elements read. */
 
 	ef->data_start_time_ascii = get_token(&parseptr);
 	if (ef->data_start_time_ascii) {
-		//assert(strlen(ef->data_start_time_ascii) >= 2);
+        //assert(strlen(ef->data_start_time_ascii) >= 2);
         if(strlen(ef->data_start_time_ascii) < 2) { 
             ef->data_start_time_ascii=NULL; 
             fprintf(stderr, "parse_evn_filename: assert(strlen(ef->data_start_time_ascii) >= 2)\n");            
@@ -193,26 +219,31 @@ struct evn_filename *parse_evn_filename(char *filename) {
 int main(int argc, char **argv) {
 	struct evn_filename *ef;
 	int i;
-	if (argc < 2) {
-		printf("parsing gre53_ef_scan035_154d12h43m10s.vsi\n");
-		ef = parse_evn_filename("gre53_ef_scan035_154d12h43m10s.vsi");
-	} else {
-		ef = parse_evn_filename(argv[1]);
-	}
-	printf("ef->exp_name = %s\n", ef->exp_name);
-	printf("ef->station_code = %s\n", ef->station_code);
-	printf("ef->scan_name = %s\n", ef->scan_name);
-	printf("ef->data_start_time_ascii = %s\n", ef->data_start_time_ascii);
-	printf("ef->data_start_time = %f\n", ef->data_start_time);
-	for (i=0; i<ef->nr_auxinfo; i++)
-		printf("ef->auxinfo[%d] = %s\n", i, ef->auxinfo[i]);
-	printf("ef->file_type = %s\n", ef->file_type);
+    do {    
+	   if (argc < 2) {
+		  printf("parsing gre53_ef_scan035_154d12h43m10s.vsi\n");
+		  ef = parse_evn_filename("gre53_ef_scan035_154d12h43m10s.vsi");
+	   } else {
+		  ef = parse_evn_filename(argv[1]);
+	   }
+	   printf("ef->exp_name = %s\n", ef->exp_name);
+	   printf("ef->station_code = %s\n", ef->station_code);
+	   printf("ef->scan_name = %s\n", ef->scan_name);
+	   printf("ef->data_start_time_ascii = %s\n", ef->data_start_time_ascii);
+	   printf("ef->data_start_time = %f\n", ef->data_start_time);
+	   for (i=0; i<ef->nr_auxinfo; i++)
+		  printf("ef->auxinfo[%d] = %s\n", i, ef->auxinfo[i]);
+	   printf("ef->file_type = %s\n", ef->file_type);
+    } while(!(--argc<2));
 	return 0;
 }
 #endif
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.4  2006/11/20 14:32:02  jwagnerhki
+ * documented the format slightly better, unittest accepts several cmdline filenames
+ *
  * Revision 1.3  2006/10/25 15:25:17  jwagnerhki
  * removed heaps of asserts from copied code
  *
