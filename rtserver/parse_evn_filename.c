@@ -29,6 +29,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <math.h>
 #include "parse_evn_filename.h"
 
 void add_aux_entry(struct evn_filename *ef, char *auxentry) {
@@ -66,15 +67,36 @@ double day_to_utc(int day) { return (day-1)*24*60*60; }
 double hour_to_utc(int hour) { return hour*60*60; }
 double minute_to_utc(int minute) { return minute*60; }
 
-int parse_time(char *str, double *retval) {
-	int yyyy, mm, hh, yday, sec;
+int parse_time(const char *str, double *retval) {
+	int yyyy, mm, dd, hh, min, yday, sec;
+    double dsec;
 	int consumed;
 
+    if (sscanf(str, "%4d-%2d-%2dT%2d:%2d:%lg%n",  /* ISO basic extended */
+             &yyyy, &mm, &dd,
+             &hh, &min, &dsec, 
+             &consumed) == 6 && consumed == strlen(str)) {
+        struct tm tt;
+        time_t temp;
+        // convert to fractional Unix seconds
+        tt.tm_sec = (int)floor(dsec);
+        tt.tm_min = min;
+        tt.tm_hour = hh;
+        tt.tm_mday = dd;
+        tt.tm_mon = mm - 1;
+        tt.tm_year = yyyy - 1900;
+        tt.tm_isdst = 0;
+        temp = mktime(&tt);
+        *retval = (double)temp + (dsec - floor(dsec));
+        fprintf(stderr, "Detected time format: ISO basic extended\n");
+        return 0;        
+    }
 	if (sscanf(str, "%4dy%dd%n",
 		   &yyyy,
 		   &yday,
 		   &consumed) == 2 && consumed == strlen(str)) {
 		*retval = year_to_utc(yyyy) + day_to_utc(yday);
+        fprintf(stderr, "Detected time format: [yyyy]y[dd]d\n");
 		return 0;
 	}
 	if (sscanf(str, "%4d%d%n",
@@ -82,7 +104,8 @@ int parse_time(char *str, double *retval) {
 			  &yday,
 			  &consumed) == 2 && consumed == strlen(str)) {
 		*retval = year_to_utc(yyyy) + day_to_utc(yday);
-		return 0;
+        fprintf(stderr, "Detected time format: yyyydd\n");
+        return 0;
 	}
 	if (sscanf(str, "%dd%dh%dm%ds%n",
 			  &yday,
@@ -95,9 +118,10 @@ int parse_time(char *str, double *retval) {
                 printf("%e %e %e %e %e\n", year_to_utc(get_current_year())
                     ,day_to_utc(yday), hour_to_utc(hh), minute_to_utc(mm),
                     (double)sec);
-
+        fprintf(stderr, "Detected time format: [d]d[h]h[m]m[s]s\n");
 		return 0;
 	}
+    fprintf(stderr, "Warning: string with unknown time format passed to parse_time().\n");
 	return 1;
 }
 
@@ -198,10 +222,10 @@ struct evn_filename *parse_evn_filename(char *filename) {
             fprintf(stderr, "parse_evn_filename: assert(strlen(ef->data_start_time_ascii) >= 2)\n");            
             return ef; 
         } 
-		if (parse_time(ef->data_start_time_ascii, &ef->data_start_time)) {
-			/* Does not look like date, must be auxentry instead. */
-			add_aux_entry(ef, ef->data_start_time_ascii);
-			ef->data_start_time_ascii = NULL;
+        if (parse_time(ef->data_start_time_ascii, &ef->data_start_time)) {
+            /* Does not look like date, must be auxentry instead. */
+            add_aux_entry(ef, ef->data_start_time_ascii);
+            ef->data_start_time_ascii = NULL;
 		}
 	}
 
@@ -246,6 +270,9 @@ int main(int argc, char **argv) {
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.6  2006/11/21 08:08:06  jwagnerhki
+ * added ISO basic ext time format parse
+ *
  * Revision 1.5  2006/11/21 07:24:30  jwagnerhki
  * auxinfo values set with equal sign
  *
