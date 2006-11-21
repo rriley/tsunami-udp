@@ -5,7 +5,7 @@
  *
  * Accepted formats:
  *   [experimentName]_[stationCode]_[scanName]_[startTimeUTCday].vsi
- *   [experimentName]_[stationCode]_[scanName]_[startTimeUTCday]_auxinfo1_auxinfo2_[auxinfo3...].vsi
+ *   [experimentName]_[stationCode]_[scanName]_[startTimeUTCday]_[auxinfo1..N=val1..N].vsi
  *
  * Auxinfo:
  *   These auxiliary infos are parsed outside of parse_evn_filename.c,
@@ -19,7 +19,7 @@
  *
  * Example filenames:
  *   gre53_ef_scan035_154d12h43m10s.vsi
- *   gre53_ef_scan035_154d12h43m10s_flen14400000.vsi
+ *   gre53_ef_scan035_154d12h43m10s_flen=14400000.vsi
  *
  *========================================================================
  */
@@ -219,6 +219,7 @@ struct evn_filename *parse_evn_filename(char *filename) {
 int main(int argc, char **argv) {
 	struct evn_filename *ef;
 	int i;
+    u_int64_t li;
     do {    
 	   if (argc < 2) {
 		  printf("parsing gre53_ef_scan035_154d12h43m10s.vsi\n");
@@ -233,7 +234,11 @@ int main(int argc, char **argv) {
 	   printf("ef->data_start_time = %f\n", ef->data_start_time);
 	   for (i=0; i<ef->nr_auxinfo; i++)
 		  printf("ef->auxinfo[%d] = %s\n", i, ef->auxinfo[i]);
-	   printf("ef->file_type = %s\n", ef->file_type);
+	   printf("ef->file_type = %s\n", ef->file_type);       
+       if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
+            sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%ld", &li);
+            fprintf(stderr, "  parsed flen param: %ld\n", li);
+       } 
     } while(!(--argc<2));
 	return 0;
 }
@@ -241,6 +246,9 @@ int main(int argc, char **argv) {
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.5  2006/11/21 07:24:30  jwagnerhki
+ * auxinfo values set with equal sign
+ *
  * Revision 1.4  2006/11/20 14:32:02  jwagnerhki
  * documented the format slightly better, unittest accepts several cmdline filenames
  *
