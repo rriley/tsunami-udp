@@ -545,9 +545,13 @@ int ttp_open_transfer(ttp_session_t *session)
     param->file_size   = ftello64(xfer->file);
     fseeko64(xfer->file, 0, SEEK_SET);
     #else
-    /* TODO: realtime streaming, pass file length in bytes inside filename string */
-    /* Currently defaulting to an amount of bytes equivalent to 4 minutes at 512Mbps */
-    param->file_size = 60LL * 512000000LL * 4LL / 8;
+    /* get length of recording in bytes from filename */
+    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) == 0) {
+        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+    } else {
+        sscanf(get_aux_entry("flen",ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
+    } 
+    fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
     #endif
     
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
@@ -579,6 +583,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.12  2006/11/21 07:28:48  jwagnerhki
+ * realtime file length can be specified in filename
+ *
  * Revision 1.11  2006/11/08 11:00:34  jwagnerhki
  * stats lied about real ipd
  *
