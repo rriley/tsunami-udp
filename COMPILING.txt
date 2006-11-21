@@ -1,9 +1,16 @@
 
+Get the code 
+============
+
 If you have not yet downloaded the source code, you can do so with
 an anonymous CVS checkout:
 
    cvs -z3 -d:pserver:anonymous@tsunami-udp.cvs.sf.net:/cvsroot/tsunami-udp co -P tsunami-udp
 
+   
+Compiling
+=========   
+   
 For compiling tsunami, go through the normal process of:
 
    ./configure
@@ -41,3 +48,27 @@ For compiling tsunami, go through the normal process of:
  (Note that you first have to compile the entire 
  source tree via './configure' and 'make'. Only after that you
  can recompile individual subdirectories without problems)
+ 
+ 
+ Special compile settings
+ ========================
+
+ For real-time server:
+ 
+  ./rtserver/io.c 
+  
+    //#define MODE_34TH   
+    
+       uncomment to enable 3/4th rate transmission,
+       discards upper 4 channels (2 BBCs)
+                          
+ For normal client:
+  
+  ./client/protocol.c
+  
+    #define RETX_REQBLOCK_SORTING
+    
+       define to use linear sorting of blocks in the retransmit 
+       request, fast, discards duplicates, may improve disk I/O 
+       since more contiguous access on server side
+       

@@ -231,7 +231,6 @@
  work for nearly all cases (defaults are, for reference if you
  accidentally change the source code: mode 0, embed pps 0, 
  skip 0 or 1, gigabit mode 0).
-
  
 
  --Realtime Client--
@@ -259,7 +258,30 @@
     (this is not fully tested yet)
 
 
+    
+ Special compile settings
+ ========================
 
+ For real-time server:
+ 
+  ./rtserver/io.c 
+  
+    //#define MODE_34TH   
+    
+       uncomment to enable 3/4th rate transmission,
+       discards upper 4 channels (2 BBCs)
+                          
+ For normal client:
+  
+  ./client/protocol.c
+  
+    #define RETX_REQBLOCK_SORTING
+    
+       define to use linear sorting of blocks in the retransmit 
+       request, fast, discards duplicates, may improve disk I/O 
+       since more contiguous access on server side
+       
+    
  Troubleshooting
  ===============
 
