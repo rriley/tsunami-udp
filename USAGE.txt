@@ -12,6 +12,9 @@
 -----------------------------------------------------------
 
  CHANGES
+ 21 Oct 2006:
+   - realtime now has a new UTC time format, recording length
+     can be specified in bytes
  17 Oct 2006: 
    - realtime and normal applications now named differently
    that is, tsunami/tsunamid and rttsunami/rttsunamid             
@@ -177,29 +180,49 @@
 
  The filename requested by the client in the "get" command
  tells the realtime server when to start recording. If the
- name is an UTC format time/date string, this will be used
- as the starting time. Otherwise, recording starts immediately
- on the next 1 second rollover.
+ name is an EVN formatted time/date string, this will be used
+ as the starting time. Otherwise, recording starts right after
+ the next 1 second rollover.
 
  If the file name contains a path i.e. the character "/", 
  the server will locally create a file with that name. Data
  streamed to the network will then also be saved into that
  local file.
 
- File naming convention, UTC time:
+ The "EVN" file naming convention with UTC time and optional 
+ recording length specified in bytes is as follows:
 
-    [2 letter station code]-[yyyy]-[mm]-[dd]T[hh]:[mm]:[ss]
+    [exp]_[station]_[scan]_[yyyy]-[mm]-[dd]T[hh]:[mm]:[ss].vsi   
+    [exp]_[station]_[scan]_[yyyy]-[mm]-[dd]T[hh]:[mm]:[ss]_flen=[bytes].vsi
 
+    Where     
+    Exp:     experiment, arbitrary string
+    Station: 2-letter station ID like for example Mh, Jb, Wb, Mc, ...
+    Scan:    name of the scan, arbitrary, format often similar to "fr0089"
+    Date:    US order, month first
+    Time:    UTC time
+    Bytes:   flen file length in bytes, length of recording
+    
  Examples:
 
-  Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30UTC
-    Mh-2006-10-17T12:25:30
+    Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30UTC
+  
+       exp01_mh_scan01_2006-10-17T12:25:30.vsi
+    
+    Same as above but also make a local backup on the server 
+    into the /i1/ directory (should be a fast RAID0 disk):
+  
+      /i1/exp01_mh_scan01_2006-10-17T12:25:30.vsi
 
-  Same as above but also make a local backup on the server 
-  into the /i1/ directory (should be a fast RAID0 disk):
-    /i1/Mh-2006-10-17T12:25:30
+    Recording length specified to be 1536000000 bytes.
+    
+      exp01_mh_scan01_2006-10-17T12:25:30_flen=1536000000.vsi
+      
 
- Recording VSIB mode is currently hard-coded in the source code, 
+ The default recording length is equal to the amount of bytes
+ in 4 minutes of 512 Mbps.      
+        
+ The VSIB recording mode is currently hard-coded in the source code, 
  see 
    ./rtserver/vsibctl.c
    int vsib_mode = ...
@@ -209,15 +232,8 @@
  accidentally change the source code: mode 0, embed pps 0, 
  skip 0 or 1, gigabit mode 0).
 
- The recording time is hard-coded to 15 minutes, by specifying
- the file length in protocol.c.
-
- TODO: In a later tsunami version the length will be specified in
- the file name. For now, to change the recording time, search 
- ./rtserver/protocol.c for the string "15 minutes", and
- edit the 15 in the code below to any other desired value.
-
  
+
  --Realtime Client--
 
  The realtime client will write back data from the network
@@ -247,7 +263,7 @@
  Troubleshooting
  ===============
 
- If no data goes through over the connection, check that
+ * If no data goes through over the connection, check that
  no firewalls are blocking the default TCP and UDP port 46224.
  This can also be tested using the 'netcat' (or 'nc') linux/unix
  command line tool.
@@ -257,7 +273,7 @@
  then appear on the pc1 as netcat output, unless there are
  firewall problems.
 
- Another possibility is MTU mismatch and no path MTU discovery.
+ * Another possibility is MTU mismatch and no path MTU discovery.
  Tsunami uses a default block size of 32768 bytes. In the 
  client you could change this to below 10 Mbit LAN MTU using
  the client console command 
@@ -265,13 +281,18 @@
  and then reattempt the transfer (commands: connect, get). If
  this works, then you or your ISP need to fix the network MTU.
 
- If you get "could not create socket on port xxx" errors, this
+ * If you get "could not create socket on port xxx" errors, this
  very likely means a zombie tsunamid or tsunami process is 
  running. Try killing that process ('ps axuf', 'kill') or 
  rebooting if it is really stuck.
 
- Try to avoid using the JFS file system (till kernel 2.6.18
+ * Try to avoid using the JFS file system (till kernel 2.6.18
  or even later) together with Tsunami and RAID, as Tsunami disk 
  thread blocking may hang JFS. In the worst case you loose all 
  data on the file system. Other file systems like EXT3, XFS work 
  just fine, so it is a JFS bug. 
+
+ * If problems persist, contact the developers or submit a bug report 
+ at http://sourceforge.net/projects/tsunami-udp
+
+ 
