@@ -344,7 +344,6 @@ int ttp_open_transfer(ttp_session_t *session)
     #ifdef VSIB_REALTIME
     /* VLBI/VSIB-related variables */
     struct           evn_filename *ef;
-    char             start_immediately = 0;
     double starttime;
     struct timeval d;
     #endif
@@ -427,17 +426,12 @@ int ttp_open_transfer(ttp_session_t *session)
     #else
 
     /* get starting time (UTC) and detect whether local disk copy is wanted */
-    start_immediately = 0; // default: start at specified time/date
     if (strrchr(filename,'/') == NULL) {
         ef = parse_evn_filename(filename);          /* attempt to parse */
         param->fileout = 0;
     } else {
         ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
         param->fileout = 1;
-    }
-    if (NULL == ef->data_start_time_ascii || ef->data_start_time <= 1.0) {
-        /* with no start time specified or parseable, start immediately */
-        start_immediately = 1;
     }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
@@ -480,21 +474,16 @@ int ttp_open_transfer(ttp_session_t *session)
         }
     }
         
-    /* Start half a second before full UTC seconds change. */
-    if ( 0 == start_immediately) {
+    /* Start half a second before full UTC seconds change. If EVN filename date/time parse failed, start immediately. */
+    if (!(NULL == ef->data_start_time_ascii || ef->data_start_time <= 1.0)) {
         u_int64_t timedelta_usec;
         starttime = ef->data_start_time - 0.5;
 
         // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
         assert( gettimeofday(&d, NULL) == 0 );
         timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
-        fprintf(stderr, "Sleeping until specified time (time delta starttime-current = %lld usec)...\n", timedelta_usec);
-        // TODO: this detect of passed timepoint does not work yet:
-        if (timedelta_usec > 0) {
-            usleep_that_works(timedelta_usec);
-        } else {
-            fprintf(stderr, "Warning: start time is in the past! Will nevertheless start recording now.\n");
-        }
+        fprintf(stderr, "Sleeping until specified time (%s) for %lld usec...\n", ef->data_start_time_ascii, timedelta_usec);
+        usleep_that_works(timedelta_usec);
     }
 
     start_vsib(session);                        /* start at next 1PPS pulse */
@@ -567,6 +556,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.14  2006/11/21 09:27:35  jwagnerhki
+ * cleaned up immediate vsib start code
+ *
  * Revision 1.13  2006/11/21 08:16:43  jwagnerhki
  * old UTC timestamp parse moved to parse_evn_filename.c
  *
