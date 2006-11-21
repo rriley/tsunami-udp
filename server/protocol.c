@@ -74,9 +74,7 @@
 #include <tsunami-server.h>
 
 #ifdef VSIB_REALTIME
-/* ASCII to double seconds conversion */
-#include "tstamp.c"
-#include "parse_evn_filename.h"
+#include "parse_evn_filename.h" /* EVN file name parsing for start time, station code, etc */
 #endif
 
 /*------------------------------------------------------------------------
@@ -345,8 +343,7 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #ifdef VSIB_REALTIME
     /* VLBI/VSIB-related variables */
-    struct          evn_filename *ef;
-    char             start_time_ascii[MAX_FILENAME_LENGTH];  /* start time in ASCII     */
+    struct           evn_filename *ef;
     char             start_immediately = 0;
     double starttime;
     struct timeval d;
@@ -433,23 +430,14 @@ int ttp_open_transfer(ttp_session_t *session)
     start_immediately = 0; // default: start at specified time/date
     if (strrchr(filename,'/') == NULL) {
         ef = parse_evn_filename(filename);          /* attempt to parse */
-        strncpy(start_time_ascii, filename+3, 19);  /* for fallback, UTC time in ASCII */
         param->fileout = 0;
     } else {
         ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
-        strncpy(start_time_ascii, strrchr(filename, '/')+4, 19); /* for fallback, UTC time in ASCII */
         param->fileout = 1;
     }
-    /* fallback format with old UTC parse with tstamp.c: get and convert target UTC time to Unix seconds. */
-    if (NULL == ef->data_start_time_ascii) {
-        fprintf(stderr, "parse_evn_filename didn't understand the date/time '%s', retrying with older parser\n", start_time_ascii);
-        if (getDateTime(start_time_ascii, &starttime)) {
-            fprintf(stderr, "%s: failed to convert ISO 8601 UTC date/time \n", start_time_ascii);
-            fprintf(stderr, "warning: assuming starting time to be immediate.");
-            start_immediately = 1;
-        } else {
-            fprintf(stderr, "%s: time string parsed successfully\n", start_time_ascii);
-        }
+    if (NULL == ef->data_start_time_ascii || ef->data_start_time <= 1.0) {
+        /* with no start time specified or parseable, start immediately */
+        start_immediately = 1;
     }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
@@ -495,11 +483,7 @@ int ttp_open_transfer(ttp_session_t *session)
     /* Start half a second before full UTC seconds change. */
     if ( 0 == start_immediately) {
         u_int64_t timedelta_usec;
-        if (NULL == ef->data_start_time_ascii) {
-            starttime -= 0.5; // time from older filename parser
-        } else {
-            starttime = ef->data_start_time - 0.5; // time from newer filename parser
-        }
+        starttime = ef->data_start_time - 0.5;
 
         // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
         assert( gettimeofday(&d, NULL) == 0 );
@@ -583,6 +567,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.13  2006/11/21 08:16:43  jwagnerhki
+ * old UTC timestamp parse moved to parse_evn_filename.c
+ *
  * Revision 1.12  2006/11/21 07:28:48  jwagnerhki
  * realtime file length can be specified in filename
  *
