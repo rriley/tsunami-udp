@@ -20,6 +20,7 @@
  * Example filenames:
  *   gre53_ef_scan035_154d12h43m10s.vsi
  *   gre53_ef_scan035_154d12h43m10s_flen=14400000.vsi
+ *   gre53_ef_scan035_2006-11-21T08:45:00_flen=14400000.vsi
  *
  *========================================================================
  */
@@ -29,6 +30,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <sys/time.h>
 #include <math.h>
 #include "parse_evn_filename.h"
 
@@ -71,7 +73,10 @@ int parse_time(const char *str, double *retval) {
 	int yyyy, mm, dd, hh, min, yday, sec;
     double dsec;
 	int consumed;
+    struct timeval tvnow;
 
+    *retval = 0;
+    
     if (sscanf(str, "%4d-%2d-%2dT%2d:%2d:%lg%n",  /* ISO basic extended */
              &yyyy, &mm, &dd,
              &hh, &min, &dsec, 
@@ -89,25 +94,19 @@ int parse_time(const char *str, double *retval) {
         temp = mktime(&tt);
         *retval = (double)temp + (dsec - floor(dsec));
         fprintf(stderr, "Detected time format: ISO basic extended\n");
-        return 0;        
-    }
-	if (sscanf(str, "%4dy%dd%n",
+    } else if (sscanf(str, "%4dy%dd%n",
 		   &yyyy,
 		   &yday,
 		   &consumed) == 2 && consumed == strlen(str)) {
 		*retval = year_to_utc(yyyy) + day_to_utc(yday);
         fprintf(stderr, "Detected time format: [yyyy]y[dd]d\n");
-		return 0;
-	}
-	if (sscanf(str, "%4d%d%n",
+	} else if (sscanf(str, "%4d%d%n",
 			  &yyyy,
 			  &yday,
 			  &consumed) == 2 && consumed == strlen(str)) {
 		*retval = year_to_utc(yyyy) + day_to_utc(yday);
         fprintf(stderr, "Detected time format: yyyydd\n");
-        return 0;
-	}
-	if (sscanf(str, "%dd%dh%dm%ds%n",
+	} else if (sscanf(str, "%dd%dh%dm%ds%n",
 			  &yday,
 			  &hh,
 			  &mm,
@@ -119,10 +118,17 @@ int parse_time(const char *str, double *retval) {
                     ,day_to_utc(yday), hour_to_utc(hh), minute_to_utc(mm),
                     (double)sec);
         fprintf(stderr, "Detected time format: [d]d[h]h[m]m[s]s\n");
-		return 0;
-	}
-    fprintf(stderr, "Warning: string with unknown time format passed to parse_time().\n");
-	return 1;
+	} else {
+        // parse failed
+        fprintf(stderr, "Warning: string with unknown time format passed to parse_time().\n");
+        return 1;
+    }
+    
+    if (gettimeofday(&tvnow, NULL)==0 && difftime(*retval, tvnow.tv_sec)<=0) {
+        fprintf(stderr, "Start time in the past\n");
+        *retval = 0;
+    }    
+	return 0;
 }
 
 
@@ -270,6 +276,9 @@ int main(int argc, char **argv) {
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.7  2006/11/21 09:22:33  jwagnerhki
+ * past time catching
+ *
  * Revision 1.6  2006/11/21 08:08:06  jwagnerhki
  * added ISO basic ext time format parse
  *
