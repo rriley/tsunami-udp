@@ -7,6 +7,13 @@ an anonymous CVS checkout:
 
    cvs -z3 -d:pserver:anonymous@tsunami-udp.cvs.sf.net:/cvsroot/tsunami-udp co -P tsunami-udp
 
+Later you can use the usual
+
+   cvs update
+
+command to get and merge updates from the CVS into your local copy 
+of the code.
+
    
 Compiling
 =========   
