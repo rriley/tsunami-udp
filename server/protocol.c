@@ -416,7 +416,7 @@ int ttp_open_transfer(ttp_session_t *session)
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
     	/* signal failure to the client */
-    	status = write(session->client_fd, "\008", 1);
+    	status = write(session->client_fd, "\x008", 1);
     	if (status < 0) {
 		warn("Could not signal request failure to client");
 	}
@@ -466,7 +466,7 @@ int ttp_open_transfer(ttp_session_t *session)
         xfer->file = fopen64(filename, "wb");
         if (xfer->file == NULL) {
             sprintf(g_error, "Could not open local file '%s' for writing", filename);
-            status = write(session->client_fd, "\016", 1);
+            status = write(session->client_fd, "\x010", 1);
             if (status < 0) {
                 warn("Could not signal request failure to client");
             }
@@ -556,6 +556,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.15  2006/11/26 14:12:29  jwagnerhki
+ * fixed incorrect octals
+ *
  * Revision 1.14  2006/11/21 09:27:35  jwagnerhki
  * cleaned up immediate vsib start code
  *
