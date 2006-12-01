@@ -270,7 +270,10 @@ int command_get(command_t *command, ttp_session_t *session)
        /* total number of file */
        sscanf(file_size, "%d", &totalNumber);
 
-       printf("\nGot file size: %d\n",totalSize);
+       printf("Got file size: %d\n",totalSize);
+       if (totalSize<=0) {
+          return warn("Server advertised no files to get");
+       }
        if((file_names=malloc(totalSize*sizeof(char)))==NULL)
           error("Could not allocate memory\n");
 
@@ -766,6 +769,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.11  2006/12/01 15:25:29  jwagnerhki
+ * errormsg in mget if server offers no files
+ *
  * Revision 1.10  2006/11/10 11:32:42  jwagnerhki
  * indentation, transmit termination fix
  *
