@@ -12,6 +12,9 @@
 -----------------------------------------------------------
 
  CHANGES
+ 31 Oct 2006:
+   - some more troubleshooting help (check that no high CPU
+     programs in background, disk is fast enough, etc)
  21 Oct 2006:
    - realtime now has a new UTC time format, recording length
      can be specified in bytes
@@ -285,6 +288,21 @@
  Troubleshooting
  ===============
 
+ * If transfers are really slow, and the error rate is high,
+ check the following on both the client and server:
+
+   - no other programs should run in the background
+     and use lots of cpu: 
+     check with e.g. 'top'
+
+   - you are really writing to or reading from a fast 
+     RAID disk: 
+     check with for example 
+     'sudo hdparm -t /dev/md0' or
+     'sudo hdparm -t /dev/sdb' 
+     that the disk where you have the Tsunami data is
+     sufficiently fast compared to Tsunami target Mbps data rate
+     
  * If no data goes through over the connection, check that
  no firewalls are blocking the default TCP and UDP port 46224.
  This can also be tested using the 'netcat' (or 'nc') linux/unix
@@ -317,4 +335,4 @@
  * If problems persist, contact the developers or submit a bug report 
  at http://sourceforge.net/projects/tsunami-udp
 
- 
+
