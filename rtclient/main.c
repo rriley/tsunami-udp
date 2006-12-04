@@ -94,9 +94,9 @@ int main(int argc, const char *argv[])
     reset_client(&parameter);
 
     /* show version / build information */
-    fprintf(stderr, "Tsunami Client for protocol rev %X\nBuild version %s %s\n"
+    fprintf(stderr, "Tsunami Realtime Client for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
                     "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n",
-            PROTOCOL_REVISION, __DATE__ , __TIME__,
+            PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__,
             vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
 
     /* while the command loop is still running */   
@@ -121,7 +121,9 @@ int main(int argc, const char *argv[])
          /* assemble next command from command line arguments */
          for ( ; argc_curr<argc; argc_curr++) {
             // zero argument commands
-            if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") || !strcasecmp(argv[argc_curr], "help")) { 
+            if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") 
+                || !strcasecmp(argv[argc_curr], "exit") || !strcasecmp(argv[argc_curr], "bye")
+                || !strcasecmp(argv[argc_curr], "help")) { 
                strcpy(command_text, argv[argc_curr]);
                argc_curr += 1;
                break; 
@@ -185,6 +187,8 @@ int main(int argc, const char *argv[])
       else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
       else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
       else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
+      else if (!strcasecmp(command.text[0], "exit"))              command_quit   (&command, session);
+      else if (!strcasecmp(command.text[0], "bye"))               command_quit   (&command, session);
       else if (!strcasecmp(command.text[0], "set"))               command_set    (&command, &parameter);
       else
           fprintf(stderr, "Unrecognized command: '%s'.  Use 'HELP' for help.\n\n", command.text[0]);
@@ -230,6 +234,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.6  2006/12/04 14:45:34  jwagnerhki
+ * added more proper TSUNAMI_CVS_BUILDNR, added exit and bye commands to client
+ *
  * Revision 1.5  2006/10/19 07:44:26  jwagnerhki
  * show VSIB config at program start
  *

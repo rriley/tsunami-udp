@@ -67,6 +67,8 @@
 #include <sys/types.h>  /* for u_char, u_int16_t, etc. */
 #include <sys/time.h>   /* for struct timeval          */
 
+#include "tsunami-cvs-buildnr.h"   /* for the current TSUNAMI_CVS_BUILDNR */
+
 
 /*------------------------------------------------------------------------
  * Macro definitions.

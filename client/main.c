@@ -94,8 +94,8 @@ int main(int argc, const char *argv[])
     reset_client(&parameter);
 
     /* show version / build information */
-    fprintf(stderr, "Tsunami Client for protocol rev %X\nBuild version %s %s\n",
-            PROTOCOL_REVISION, __DATE__ , __TIME__);
+    fprintf(stderr, "Tsunami Client for protocol rev %X\nRevision: %s\nCompiled: %s %s\n",
+            PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__);
 
     /* while the command loop is still running */   
     while (1) {
@@ -119,7 +119,9 @@ int main(int argc, const char *argv[])
          /* assemble next command from command line arguments */
          for ( ; argc_curr<argc; argc_curr++) {
             // zero argument commands
-            if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") || !strcasecmp(argv[argc_curr], "help")) { 
+            if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit")
+                || !strcasecmp(argv[argc_curr], "exit")  || !strcasecmp(argv[argc_curr], "bye") 
+                || !strcasecmp(argv[argc_curr], "help")) { 
                strcpy(command_text, argv[argc_curr]);
                argc_curr += 1;
                break; 
@@ -183,6 +185,8 @@ int main(int argc, const char *argv[])
       else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
       else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
       else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
+      else if (!strcasecmp(command.text[0], "exit"))              command_quit   (&command, session);
+      else if (!strcasecmp(command.text[0], "bye"))               command_quit   (&command, session);
       else if (!strcasecmp(command.text[0], "set"))               command_set    (&command, &parameter);
       else
           fprintf(stderr, "Unrecognized command: '%s'.  Use 'HELP' for help.\n\n", command.text[0]);
@@ -228,6 +232,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.5  2006/12/04 14:45:33  jwagnerhki
+ * added more proper TSUNAMI_CVS_BUILDNR, added exit and bye commands to client
+ *
  * Revision 1.4  2006/10/19 07:26:51  jwagnerhki
  * clients now show proto version and build nr
  *
