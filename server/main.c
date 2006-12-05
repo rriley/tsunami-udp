@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
     pid_t              child_pid;
 
     /* initialize our parameters */
+    memset(&session, 0, sizeof(session));
     reset_server(&parameter);
 
     /* process our command-line options */
@@ -146,6 +147,7 @@ int main(int argc, char *argv[])
            warn("Could not create child process");
            continue;
        }
+       session.session_id++;
    
        /* if we're the child */
        if (child_pid == 0) {
@@ -328,8 +330,9 @@ void client_handler(ttp_session_t *session)
 	delta = 1000000LL * (stop.tv_sec - start.tv_sec) + stop.tv_usec - start.tv_usec;
 
 	/* report on the transfer */
-	if (param->verbose_yn)
-	    fprintf(stderr, "Transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n", param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
+        if (param->verbose_yn)
+            fprintf(stderr, "Server %d transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n",
+                    session->session_id, param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
 
 	/* close the transcript */
 	if (param->transcript_yn)
@@ -485,6 +488,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.11  2006/12/05 13:38:20  jwagnerhki
+ * identify concurrent server transfers by an own ID
+ *
  * Revision 1.10  2006/12/04 14:45:34  jwagnerhki
  * added more proper TSUNAMI_CVS_BUILDNR, added exit and bye commands to client
  *

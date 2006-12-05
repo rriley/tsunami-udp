@@ -121,16 +121,16 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 	    xfer->ipd_current = (u_int32_t) (xfer->ipd_current * (u_int64_t) param->faster_num / param->faster_den);
 
 	/* build the stats string */
-	sprintf(stats_line, "%6u %5uus %5uus %7u %6.2f%%\n",
+	sprintf(stats_line, "%6u %5uus %5uus %7u %6.2f%% %3u\n",
 		retransmission->error_rate, xfer->ipd_current, param->ipd_time, xfer->block,
-		100.0 * xfer->block / param->block_count);
+		100.0 * xfer->block / param->block_count, session->session_id);
 
 	/* make sure the IPD is still in range */
 	xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
 
 	/* print a status report */
 	if (!(iteration++ % 23))
-	    printf(" erate     ipd  target   block   %%done\n");
+	    printf(" erate     ipd  target   block   %%done srvNr\n");
 	printf(stats_line);
 
 	/* print to the transcript if the user wants */
@@ -556,6 +556,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.16  2006/12/05 13:38:20  jwagnerhki
+ * identify concurrent server transfers by an own ID
+ *
  * Revision 1.15  2006/11/26 14:12:29  jwagnerhki
  * fixed incorrect octals
  *
