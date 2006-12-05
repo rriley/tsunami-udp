@@ -380,7 +380,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 				     { "datagram",   1, NULL, 6 },
 				     { "buffer",     1, NULL, 7 },
 				     { "v",          0, NULL, 8 },
-				     { "noretransmit", 0, NULL, 9 },
 				     { NULL,         0, NULL, 0 } };
     int           which;
 
@@ -419,19 +418,14 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 	    case 7:  parameter->udp_buffer = atoi(optarg);
 		     break;
 
-	    /* --noretransmit : don't retransmit lost packets */
-	    case 9:  parameter->no_retransmit = 1;
-		     break;
-
 	    /* otherwise    : display usage information */
-	    default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--noretransmit] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n\n");
+	    default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n\n");
 		     fprintf(stderr, "Defaults: verbose       = %d\n",   DEFAULT_VERBOSE_YN);
 		     fprintf(stderr, "          transcript    = %d\n",   DEFAULT_TRANSCRIPT_YN);
 		     fprintf(stderr, "          v6            = %d\n",   DEFAULT_IPV6_YN);
 		     fprintf(stderr, "          port          = %d\n",   DEFAULT_TCP_PORT);
 		     fprintf(stderr, "          datagram      = %d\n",   DEFAULT_BLOCK_SIZE);
 		     fprintf(stderr, "          buffer        = %d\n", DEFAULT_UDP_BUFFER);
-		     fprintf(stderr, "          noretransmit  = %d (0 for False)\n\n", DEFAULT_NO_RETRANSMIT);
 		     fprintf(stderr, "verbose or v : turns on verbose output mode\n");
 		     fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
 		     fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
@@ -439,7 +433,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
 		     fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
 		     fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
-		     fprintf(stderr, "noretransmit : turns off retransmissions\n");
              fprintf(stderr, "[filenames]  : list of files that can be downloaded with a 'get *'\n");
              fprintf(stderr, "\n");
 		     exit(1);
@@ -488,6 +481,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.12  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.11  2006/12/05 13:38:20  jwagnerhki
  * identify concurrent server transfers by an own ID
  *

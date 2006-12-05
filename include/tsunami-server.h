@@ -82,7 +82,6 @@ extern const u_int32_t  DEFAULT_UDP_BUFFER;     /* default size of the UDP trans
 extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting           */
 extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting          */
 extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting                */
-extern const u_char     DEFAULT_NO_RETRANSMIT;  /* server-side setting, on default use retransmission */
 
 #define MAX_FILENAME_LENGTH  1024               /* maximum length of a requested filename  */
 #define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now) */
@@ -111,10 +110,10 @@ typedef struct {
     u_int16_t           slower_den;     /* the denominator of the increase-IPD factor */
     u_int16_t           faster_num;     /* the numerator of the decrease-IPD factor   */
     u_int16_t           faster_den;     /* the denominator of the decrease-IPD factor */
-    u_char              no_retransmit;  /* for testing, actual retransmission can be disabled */
     char                *ringbuf;       /* Pointer to ring buffer start               */
     u_int16_t           fileout;        /* Do we store the data to file?              */
-    int                 slotnumber;     /* Slot number for distributed transfer */     int                 totalslots;     /* How many slots do we have?        */
+    int                 slotnumber;     /* Slot number for distributed transfer */     
+    int                 totalslots;     /* How many slots do we have?        */
     int                 samplerate;     /* Sample rate in MHz (optional)     */
     char                **file_names;   /* Store the local file_names on server*/
     u_int16_t           file_name_size; /* Store the total size of the array*/
@@ -188,6 +187,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.4  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.3  2006/12/05 13:38:20  jwagnerhki
  * identify concurrent server transfers by an own ID
  *

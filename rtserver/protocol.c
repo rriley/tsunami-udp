@@ -150,23 +150,19 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
     /* if it's a retransmit request */
     } else if (type == REQUEST_RETRANSMIT) {
 
-      if (1 == param->no_retransmit) {
-         printf("debug: noretransmit was specified, skipping actual retransmit\n");
-      } else {
-         /* build the retransmission */
-         status = build_datagram(session, retransmission->block, TS_BLOCK_RETRANSMISSION, datagram);
-         if (status < 0) {
-             sprintf(g_error, "Could not build retransmission for block %u", retransmission->block);
-             return warn(g_error);
-         }
+        /* build the retransmission */
+        status = build_datagram(session, retransmission->block, TS_BLOCK_RETRANSMISSION, datagram);
+        if (status < 0) {
+            sprintf(g_error, "Could not build retransmission for block %u", retransmission->block);
+            return warn(g_error);
+        }
       
-         /* try to send out the block */
-         status = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
-         if (status < 0) {
-             sprintf(g_error, "Could not retransmit block %u", retransmission->block);
-             return warn(g_error);
-         }
-      }
+        /* try to send out the block */
+        status = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
+        if (status < 0) {
+            sprintf(g_error, "Could not retransmit block %u", retransmission->block);
+            return warn(g_error);
+        }
 
     /* if it's another kind of request */
     } else {
@@ -556,6 +552,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.20  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.19  2006/12/05 13:38:20  jwagnerhki
  * identify concurrent server transfers by an own ID
  *

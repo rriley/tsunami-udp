@@ -79,6 +79,7 @@ extern const int        DEFAULT_TABLE_SIZE;     /* initial size of the retransmi
 extern const char      *DEFAULT_SERVER_NAME;    /* default name of the remote server            */
 extern const u_int16_t  DEFAULT_SERVER_PORT;    /* default TCP port of the remote server        */
 extern const u_int16_t  DEFAULT_CLIENT_PORT;    /* default UDP port of the client               */
+extern const u_int16_t  DEFAULT_UDP_PORT;       /* default UDP port of the client               */
 extern const u_int32_t  DEFAULT_UDP_BUFFER;     /* default size of the UDP receive buffer       */
 extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting                */
 extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting               */
@@ -91,6 +92,7 @@ extern const u_int16_t  DEFAULT_SLOWER_DEN;     /* default denominator in the sl
 extern const u_int16_t  DEFAULT_FASTER_NUM;     /* default numerator in the speedup factor      */
 extern const u_int16_t  DEFAULT_FASTER_DEN;     /* default denominator in the speedup factor    */
 extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history in rates       */
+extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's   */
 
 #define SCREEN_MODE                0            /* screen-based output mode                     */
 #define LINE_MODE                  1            /* line-based (vmstat-like) output mode         */
@@ -167,7 +169,7 @@ typedef struct {
     u_int16_t           faster_num;               /* the numerator of the decrease-IPD factor    */
     u_int16_t           faster_den;               /* the denominator of the decrease-IPD factor  */
     u_int16_t           history;                  /* percentage of history to keep in rates      */
-    u_char              no_retransmit;            /* for testing, actual retransmission can be disabled */
+    u_char              no_retransmit;            /* the retransmissions can be disabled for data rate priority transfers */
     char                *ringbuf;                 /* Pointer to ring buffer start                */
 } ttp_parameter_t;    
 
@@ -254,6 +256,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.4  2006/12/05 15:24:49  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.3  2006/07/21 07:55:35  jwagnerhki
  * new UDP port define
  *

@@ -76,7 +76,6 @@ const u_int32_t  DEFAULT_UDP_BUFFER    = 20000000;  /* default size of the UDP t
 const u_char     DEFAULT_VERBOSE_YN    = 1;         /* the default verbosity setting           */
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;         /* the default transcript setting          */
 const u_char     DEFAULT_IPV6_YN       = 0;         /* the default IPv6 setting                */
-const u_char     DEFAULT_NO_RETRANSMIT = 0;         /* server-side setting, on default use retransmission */
 
 /*------------------------------------------------------------------------
  * void reset_server(ttp_parameter_t *parameter);
@@ -96,12 +95,14 @@ void reset_server(ttp_parameter_t *parameter)
     parameter->verbose_yn    = DEFAULT_VERBOSE_YN;
     parameter->transcript_yn = DEFAULT_TRANSCRIPT_YN;
     parameter->ipv6_yn       = DEFAULT_IPV6_YN;
-    parameter->no_retransmit = DEFAULT_NO_RETRANSMIT;
 }
 
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.4  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *

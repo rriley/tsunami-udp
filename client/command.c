@@ -245,7 +245,7 @@ int command_get(command_t *command, ttp_session_t *session)
        char  file_number[10];
 
        multimode = 1;
-       printf("Requesting all available file\n");
+       printf("Requesting all available files\n");
 
        /* Try to calculate the RTT from client to server */
        gettimeofday(&(ping_s), NULL);
@@ -270,7 +270,7 @@ int command_get(command_t *command, ttp_session_t *session)
        /* total number of file */
        sscanf(file_size, "%d", &totalNumber);
 
-       printf("Got file size: %d\n",totalSize);
+       printf("\nGot file size: %d\n",totalSize);
        if (totalSize<=0) {
           return warn("Server advertised no files to get");
        }
@@ -426,7 +426,7 @@ int command_get(command_t *command, ttp_session_t *session)
           }
     
           /* queue any retransmits we need */
-          if (this_block > xfer->next_block) {
+          if ((this_block > xfer->next_block) && (session->parameter->no_retransmit == 0)) {
               for (block = xfer->next_block; block < this_block; ++block) {
                   if (ttp_request_retransmit(session, block) < 0) {
                       warn("Retransmission request failed");
@@ -439,7 +439,7 @@ int command_get(command_t *command, ttp_session_t *session)
           if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
    
             /* prepare to stop if we're done */
-            if (xfer->blocks_left == 0) //rexmit->index_max == 0)
+            if (xfer->blocks_left == 0 || session->parameter->no_retransmit == 1) //rexmit->index_max == 0)
               complete_flag = 1;
             else
               ttp_repeat_retransmit(session);
@@ -460,10 +460,12 @@ int command_get(command_t *command, ttp_session_t *session)
           /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into 50 iterations */
           if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
    
-            /* repeat our requests */
-            if (ttp_repeat_retransmit(session) < 0) {
-                warn("Repeat of retransmission requests failed");
-                goto abort;
+            /* repeat our retransmission requests */
+            if (0 == session->parameter->no_retransmit) {
+                if (ttp_repeat_retransmit(session) < 0) {
+                    warn("Repeat of retransmission requests failed");
+                    goto abort;
+                }
             }
          
             /* show our current statistics */
@@ -769,6 +771,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.12  2006/12/05 15:24:49  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.11  2006/12/01 15:25:29  jwagnerhki
  * errormsg in mget if server offers no files
  *

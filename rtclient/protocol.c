@@ -69,7 +69,7 @@
 #include <unistd.h>       /* for standard Unix system calls        */
 
 #include "client.h"
-
+//#define DEBUG_RETX xxx // enable to show retransmit debug infos
 
 /*------------------------------------------------------------------------
  * int ttp_authenticate(ttp_session_t *session, u_char *secret);
@@ -221,16 +221,17 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     if (xfer->file == NULL)
 	return warn("Could not open local file for writing");
 
+    #ifdef VSIB_REALTIME
     /* try to open the vsib for output */
     xfer->vsib = fopen64("/dev/vsib", "wb");
     if (xfer->vsib == NULL)
-	return warn("SIB board does not exist in /dev/vsib or it cannot be read");
+	return warn("VSIB board does not exist in /dev/vsib or it cannot be read");
 
-    /* Reserve the ring buffer */ 
- 
+    /* pre-reserve the ring buffer */  
     param->ringbuf = malloc(param->block_size * RINGBUF_BLOCKS); 
     if (param->ringbuf == NULL)
 	return warn("Could not reserve space for ring buffer");
+    #endif
 
     /* if we're doing a transcript */
     if (param->transcript_yn)
@@ -306,63 +307,77 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
 
-	/* prepare a restart-at request */
-	retransmission[0].request_type = htons(REQUEST_RESTART);
-	retransmission[0].block        = htonl(rexmit->table[0]);
+        #ifdef DEBUG_RETX
+        warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
+        #endif
+    
+        /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
+        retransmission[0].request_type = htons(REQUEST_RESTART);
+        retransmission[0].block        = htonl(rexmit->table[0]);
+        
+        /* send out the request */
+        status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
+        if ((status <= 0) || fflush(session->server))
+            return warn("Could not send restart-at request");
+        
+        /* reset the retransmission table */
+        session->transfer.next_block         = rexmit->table[0];
+        session->transfer.stats.total_blocks = rexmit->table[0];
+        session->transfer.stats.this_blocks  = rexmit->table[0];
+        session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
+        rexmit->index_max                    = 0;
+        
+        #ifdef DEBUG_RETX
+        warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
+        #endif
 
-	/* send out the request */
-	status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
-	if ((status <= 0) || fflush(session->server))
-	    return warn("Could not send restart-at request");
-
-	/* reset the retransmission table */
-	session->transfer.next_block         = rexmit->table[0];
-	session->transfer.stats.total_blocks = rexmit->table[0];
-	session->transfer.stats.this_blocks  = rexmit->table[0];
-	rexmit->index_max                    = 0;
-
-	/* and return */
-	return 0;
+        /* and return */
+        return 0;
     }
 
-    /* for each table entry */
-    session->transfer.stats.this_retransmits = 0;
-    for (entry = 0; entry < rexmit->index_max; ++entry) {
+   /* for each table entry, discard from the table those blocks we don't want, and */ 
+   /* prepare a retransmit request */
+   session->transfer.stats.this_retransmits = 0;
+   for (entry = 0; entry < rexmit->index_max; ++entry) {
 
-	/* get the block number */
-	block = rexmit->table[entry];
+      /* get the block number */
+      block = rexmit->table[entry];
+      
+      /* if we want the block */
+      if (block && !(session->transfer.received[block / 8] & (1 << (block % 8)))) {
+      
+         /* save it */
+         rexmit->table[count] = block;
+         
+         /* update the statistics */
+         ++(session->transfer.stats.total_retransmits);
+         ++(session->transfer.stats.this_retransmits);
+         
+         /* prepare a retransmit request */
+         retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
+         retransmission[count].block        = htonl(block);
+         #ifdef DEBUG_RETX
+         printf("retx %ld\n", block);
+         #endif
+         ++count;
+      }
+   }
+   rexmit->index_max = count;
 
-	/* if we want the block */
-	if (block && !(session->transfer.received[block / 8] & (1 << (block % 8)))) {
+   /* send out the requests */
+   if (count > 0) {
+      status = fwrite(retransmission, sizeof(retransmission_t), count, session->server);
+      if (status <= 0) {
+         return warn("Could not send retransmit requests");
+      }
+   }
 
-	    /* save it */
-	    rexmit->table[count] = block;
+   /* flush the server connection */
+   if (fflush(session->server))
+      return warn("Could not clear retransmission buffer");
 
-	    /* update the statistics */
-	    ++(session->transfer.stats.total_retransmits);
-	    ++(session->transfer.stats.this_retransmits);
-
-	    /* prepare a retransmit request */
-	    retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
-	    retransmission[count].block        = htonl(block);
-	    ++count;
-	}
-    }
-    rexmit->index_max = count;
-
-    /* send out the requests */
-    if (count > 0) {
-	status = fwrite(retransmission, sizeof(retransmission_t), count, session->server);
-	if (status <= 0)
-	    return warn("Could not send retransmit requests");
-    }
-
-    /* flush the server connection */
-    if (fflush(session->server))
-	return warn("Could not clear retransmission buffer");
-
-    /* we succeeded */
-    return 0;
+   /* we succeeded */
+   return 0;
 }
 
 
@@ -374,26 +389,52 @@ int ttp_repeat_retransmit(ttp_session_t *session)
  *------------------------------------------------------------------------*/
 int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
 {
-    retransmit_t *rexmit = &(session->transfer.retransmit);
+   #ifdef RETX_REQBLOCK_SORTING
+   u_int32_t     tmp32_ins = 0, tmp32_up;
+   u_int32_t     idx = 0;
+   #endif    
+   retransmit_t *rexmit = &(session->transfer.retransmit);
 
-    /* if we don't have space for the request */
-    if (rexmit->index_max >= rexmit->table_size) {
+   /* if we don't have space for the request */
+   if (rexmit->index_max >= rexmit->table_size) {
 
-	/* try to reallocate the table */
-	rexmit->table = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
-	if (rexmit->table == NULL)
-	    return warn("Could not grow retransmission table");
+      /* try to reallocate the table */
+      rexmit->table = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
+      if (rexmit->table == NULL)
+         return warn("Could not grow retransmission table");
 
-	/* prepare the new table space */
-	memset(rexmit->table + rexmit->table_size, 0, 4 * rexmit->table_size);
-	rexmit->table_size *= 2;
-    }
+      /* prepare the new table space */
+      memset(rexmit->table + rexmit->table_size, 0, 4 * rexmit->table_size);
+      rexmit->table_size *= 2;
+   }
 
-    /* store the request */
-    rexmit->table[(rexmit->index_max)++] = block;
+   #ifndef RETX_REQBLOCK_SORTING
+   /* store the request */
+   rexmit->table[(rexmit->index_max)++] = block;
+   return 0;
+   #else
+   /* Store the request via "insertion sort"
+      this maintains a sequentially sorted table and discards duplicate requests,
+      and does not flood the net with so many unnecessary retransmissions like old Tsunami did
+   */
+   while ((idx < rexmit->index_max) && (rexmit->table[idx] < block)) idx++; /* seek to insertion point or end */
+   if (idx == rexmit->index_max) { /* append at end */
+      rexmit->table[(rexmit->index_max)++] = block;
+   } else if (rexmit->table[idx] == block) { /* don't insert duplicates */
+      // fprintf(stderr, "duplicate retransmit req for block %d discarded\n", block);
+   } else { /* insert and shift remaining table upwards */
+      tmp32_ins = block;
+      do {
+         tmp32_up = rexmit->table[idx];
+         rexmit->table[idx++] = tmp32_ins;
+         tmp32_ins = tmp32_up;
+      } while(idx <= rexmit->index_max);
+      rexmit->index_max++;
+   }
+   #endif
 
-    /* we succeeded */
-    return 0;
+   /* we succeeded */
+   return 0;
 }
 
 
@@ -417,13 +458,14 @@ int ttp_request_stop(ttp_session_t *session)
     /* send out the request */
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
     if ((status <= 0) || fflush(session->server))
-	return warn("Could not request end of transmission");
+    return warn("Could not request end of transmission");
 
+    #ifdef VSIB_REALTIME
     /* Wait until ring buffer is empty, then stop vsib and free buffer memory*/
-
     stop_vsib(session);
     free(session->parameter->ringbuf);
     session->parameter->ringbuf = NULL; /* it is no more... */ 
+    #endif
     
     /* we succeeded */
     return 0;
@@ -479,24 +521,27 @@ int ttp_update_stats(ttp_session_t *session)
     if ((status <= 0) || fflush(session->server))
 	return warn("Could not send error rate information");
 
-    /* build the stats string */
+    /* build the stats string */    
 #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%6.1f\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%3u\n",
 #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %6.1fMbps\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %3u\n",
 #endif
-	    hours, minutes, seconds, milliseconds,
-	    stats->total_blocks - stats->this_blocks,
-	    data_last / (1024.0 * 1024.0),
-	    (data_last * 8.0 / delta),
-	    100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
-	    session->transfer.stats.total_blocks,
-	    data_total / (1024.0 * 1024.0 * 1024.0),
-	    (data_total * 8.0 / delta_total),
-	    100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
-	    session->transfer.retransmit.index_max,
-	    session->transfer.ring_buffer->count_data,
-       delta_useful * 8.0 / delta );
+        hours, minutes, seconds, milliseconds,
+        stats->total_blocks - stats->this_blocks,
+        data_last / (1024.0 * 1024.0),
+        (data_last * 8.0 / delta),
+        100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
+        session->transfer.stats.total_blocks,
+        data_total / (1024.0 * 1024.0 * 1024.0),
+        (data_total * 8.0 / delta_total),
+        100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
+        session->transfer.retransmit.index_max,
+        session->transfer.ring_buffer->count_data,
+        //delta_useful * 8.0 / delta,
+        session->transfer.blocks_left, 
+        stats->this_retransmits // NOTE: stats->this_retransmits seems to be 0 always ??
+        );
 
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
@@ -520,12 +565,12 @@ int ttp_update_stats(ttp_session_t *session)
 	/* line mode */
 	} else {
 
-	    /* print a header if necessary */
+        /* print a header if necessary */
 #ifndef STATS_NOHEADER
-	    if (!(iteration++ % 23)) {
-		printf("             last_interval                   transfer_total                   buffers\n");
-		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring\n");
-	    }
+        if (!(iteration++ % 23)) {
+        printf("             last_interval                   transfer_total                   buffers      transfer_remaining \n");
+        printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   this_retx \n");
+        }
 #endif
 	    printf("%s", stats_line);
 	}
@@ -550,6 +595,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.4  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.3  2006/10/19 08:06:31  jwagnerhki
  * fix STATS_MATLABFORMAT ifndef to ifdef
  *

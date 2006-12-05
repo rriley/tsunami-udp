@@ -220,7 +220,19 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     xfer->file = fopen64(local_filename, "wb");
     if (xfer->file == NULL)
 	return warn("Could not open local file for writing");
-
+    
+    #ifdef VSIB_REALTIME
+    /* try to open the vsib for output */
+    xfer->vsib = fopen64("/dev/vsib", "wb");
+    if (xfer->vsib == NULL)
+    return warn("VSIB board does not exist in /dev/vsib or it cannot be read");
+    
+    /* pre-reserve the ring buffer */  
+    param->ringbuf = malloc(param->block_size * RINGBUF_BLOCKS); 
+    if (param->ringbuf == NULL)
+    return warn("Could not reserve space for ring buffer");
+    #endif
+    
     /* if we're doing a transcript */
     if (param->transcript_yn)
 	xscript_open(session);
@@ -294,33 +306,33 @@ int ttp_repeat_retransmit(ttp_session_t *session)
 
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
+    
+        #ifdef DEBUG_RETX
+        warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
+        #endif
+    
+        /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
+        retransmission[0].request_type = htons(REQUEST_RESTART);
+        retransmission[0].block        = htonl(rexmit->table[0]);
+        
+        /* send out the request */
+        status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
+        if ((status <= 0) || fflush(session->server))
+            return warn("Could not send restart-at request");
+        
+        /* reset the retransmission table */
+        session->transfer.next_block         = rexmit->table[0];
+        session->transfer.stats.total_blocks = rexmit->table[0];
+        session->transfer.stats.this_blocks  = rexmit->table[0];
+        session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
+        rexmit->index_max                    = 0;
+        
+        #ifdef DEBUG_RETX
+        warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
+        #endif
 
-	    
-	 #ifdef DEBUG_RETX
-	 warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
-         #endif
-	    
-         /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
-         retransmission[0].request_type = htons(REQUEST_RESTART);
-         retransmission[0].block        = htonl(rexmit->table[0]);
-      
-         /* send out the request */
-         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
-         if ((status <= 0) || fflush(session->server))
-             return warn("Could not send restart-at request");
-      
-         /* reset the retransmission table */
-         session->transfer.next_block         = rexmit->table[0];
-         session->transfer.stats.total_blocks = rexmit->table[0];
-         session->transfer.stats.this_blocks  = rexmit->table[0];
-         session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
-         rexmit->index_max                    = 0;
-	 #ifdef DEBUG_RETX
-	 warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
-         #endif
-	 
-         /* and return */
-         return 0;
+        /* and return */
+        return 0;
     }
 
    /* for each table entry, discard from the table those blocks we don't want, and */ 
@@ -344,9 +356,9 @@ int ttp_repeat_retransmit(ttp_session_t *session)
          /* prepare a retransmit request */
          retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
          retransmission[count].block        = htonl(block);
-	 #ifdef DEBUG_RETX
-	 printf("retx %ld\n", block);
-	 #endif
+         #ifdef DEBUG_RETX
+         printf("retx %ld\n", block);
+         #endif
          ++count;
       }
    }
@@ -357,15 +369,6 @@ int ttp_repeat_retransmit(ttp_session_t *session)
       status = fwrite(retransmission, sizeof(retransmission_t), count, session->server);
       if (status <= 0) {
          return warn("Could not send retransmit requests");
-      }
-
-      if (1 == session->parameter->no_retransmit) {
-         /* if client set to send retransmit requests only once, and disregard whether 
-            the missing data actually is resend, reset the retransmission table here */
-         session->transfer.next_block         = rexmit->table[0];
-         session->transfer.stats.total_blocks = rexmit->table[0];
-         session->transfer.stats.this_blocks  = rexmit->table[0];
-         rexmit->index_max                    = 0;
       }
    }
 
@@ -455,7 +458,14 @@ int ttp_request_stop(ttp_session_t *session)
     /* send out the request */
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
     if ((status <= 0) || fflush(session->server))
-	return warn("Could not request end of transmission");
+    return warn("Could not request end of transmission");
+    
+    #ifdef VSIB_REALTIME
+    /* Wait until ring buffer is empty, then stop vsib and free buffer memory*/
+    stop_vsib(session);
+    free(session->parameter->ringbuf);
+    session->parameter->ringbuf = NULL; /* it is no more... */ 
+    #endif
 
     /* we succeeded */
     return 0;
@@ -585,6 +595,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.11  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.10  2006/11/10 11:29:45  jwagnerhki
  * updated stats display
  *

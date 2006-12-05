@@ -67,7 +67,9 @@
 
 #include "tsunami.h"
 #include "client.h"
+#ifdef VSIB_REALTIME
 #include "vsibctl.h"
+#endif
 
 /*------------------------------------------------------------------------
  * Function prototypes (module scope).
@@ -94,11 +96,16 @@ int main(int argc, const char *argv[])
     reset_client(&parameter);
 
     /* show version / build information */
+    #ifdef VSIB_REALTIME
     fprintf(stderr, "Tsunami Realtime Client for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
                     "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n",
             PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__,
             vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
-
+    #else
+    fprintf(stderr, "Tsunami Client for protocol rev %X\nRevision: %s\nCompiled: %s %s\n",
+            PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__);    
+    #endif
+    
     /* while the command loop is still running */   
     while (1) {
 
@@ -234,6 +241,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.7  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.6  2006/12/04 14:45:34  jwagnerhki
  * added more proper TSUNAMI_CVS_BUILDNR, added exit and bye commands to client
  *

@@ -152,7 +152,6 @@ void xscript_open(ttp_session_t *session)
     fprintf(xfer->transcript, "ipd_time = %u\n",    param->ipd_time);
     fprintf(xfer->transcript, "ipd_current = %u\n", xfer->ipd_current);
     fprintf(xfer->transcript, "version = 0x%x\n",   PROTOCOL_REVISION);
-    fprintf(xfer->transcript, "noretransmission = %u\n", param->no_retransmit);
     fprintf(xfer->transcript, "ipv6 = %u\n",        param->ipv6_yn);
     fprintf(xfer->transcript, "\n");
 }
@@ -160,6 +159,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.3  2006/12/05 15:24:50  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
  * Revision 1.2  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *
