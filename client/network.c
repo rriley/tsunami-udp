@@ -203,12 +203,12 @@ int create_udp_socket(ttp_parameter_t *parameter)
           continue;
       }
 
-      /* make the socket reusable */
-      status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-      if (status < 0) {
-          close(socket_fd);
-          continue;
-      }
+      /* make the socket reusable (but then only one client can run per machine...) */
+      //status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+      //if (status < 0) {
+      //    close(socket_fd);
+      //    continue;
+      //}
    
       /* set the receive buffer size */
       status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
@@ -243,6 +243,9 @@ int create_udp_socket(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network.c,v $
+ * Revision 1.4  2006/12/05 14:24:13  jwagnerhki
+ * disabled client UDP socket reuse, multi client per PC now ok
+ *
  * Revision 1.3  2006/09/07 13:56:57  jwagnerhki
  * udp socket reusable, udp port selectable in client
  *
