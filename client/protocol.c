@@ -508,6 +508,9 @@ int ttp_update_stats(ttp_session_t *session)
     data_last  = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
     delta_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
 
+    /* get the current UDP receive error count reported by the operating system */    
+    stats->this_udp_errors = get_udp_in_errors();
+    
     /* update the rate statistics */
     stats->transmit_rate   = 0.01 * ((session->parameter->history * stats->transmit_rate)   + ((100 - session->parameter->history) * data_last * 8.0 / delta));
     stats->retransmit_rate = session->parameter->history          * (0.01 * stats->retransmit_rate) +
@@ -523,9 +526,9 @@ int ttp_update_stats(ttp_session_t *session)
 
     /* build the stats string */    
 #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%3u\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8lld\n",
 #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %3u\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8lld\n",
 #endif
 	    hours, minutes, seconds, milliseconds,
 	    stats->total_blocks - stats->this_blocks,
@@ -540,7 +543,8 @@ int ttp_update_stats(ttp_session_t *session)
 	    session->transfer.ring_buffer->count_data,
         //delta_useful * 8.0 / delta,
         session->transfer.blocks_left, 
-        stats->this_retransmits // NOTE: stats->this_retransmits seems to be 0 always ??
+        stats->this_retransmits, // NOTE: stats->this_retransmits seems to be 0 always ??
+        stats->this_udp_errors - stats->start_udp_errors
         );
 
     /* give the user a show if they want it */
@@ -561,6 +565,7 @@ int ttp_update_stats(ttp_session_t *session)
 	    printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
 	    printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
 	    printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
+        printf("OS UDP rx errors: %lld\n",             stats->this_udp_errors - stats->start_udp_errors);
 
 	/* line mode */
 	} else {
@@ -568,8 +573,8 @@ int ttp_update_stats(ttp_session_t *session)
 	    /* print a header if necessary */
 #ifndef STATS_NOHEADER
 	    if (!(iteration++ % 23)) {
-		printf("             last_interval                   transfer_total                   buffers      transfer_remaining \n");
-		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   this_retx \n");
+		printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
+		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
 	    }
 #endif
 	    printf("%s", stats_line);
@@ -595,6 +600,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.12  2006/12/11 13:44:17  jwagnerhki
+ * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
+ *
  * Revision 1.11  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *

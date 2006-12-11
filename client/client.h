@@ -128,6 +128,8 @@ typedef struct {
     u_int32_t           total_retransmits;        /* the total number of retransmissions         */
     u_int64_t           transmit_rate;            /* the smoothed transmission rate (bps)        */
     u_int64_t           retransmit_rate;          /* the smoothed retransmisson rate (% x 1000)  */
+    u_int64_t           start_udp_errors;         /* the initial UDP error counter value of OS   */
+    u_int64_t           this_udp_errors;          /* the current UDP error counter value of OS   */
 } statistics_t;
 
 /* state of the retransmission table for a transfer */
@@ -244,6 +246,13 @@ u_char        *ring_peek             (ring_buffer_t *ring);
 int            ring_pop              (ring_buffer_t *ring);
 u_char        *ring_reserve          (ring_buffer_t *ring);
 
+#ifdef VSIB_REALTIME
+/* vsibctl.c */ 
+void start_vsib (ttp_session_t *session); 
+void stop_vsib (ttp_session_t *session);
+void write_vsib(unsigned char *memblk, int blksize);
+#endif
+
 /* transcript.c */
 void           xscript_close         (ttp_session_t *session, u_int64_t delta);
 void           xscript_data_log      (ttp_session_t *session, const char *logline);
@@ -256,6 +265,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.5  2006/12/11 13:44:17  jwagnerhki
+ * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
+ *
  * Revision 1.4  2006/12/05 15:24:49  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
