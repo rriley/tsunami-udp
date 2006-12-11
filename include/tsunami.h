@@ -134,6 +134,7 @@ u_int64_t  ntohll                  (u_int64_t value);
 u_char    *prepare_proof           (u_char *buffer, size_t bytes, const u_char *secret, u_char *digest);
 int        read_line               (int fd, char *buffer, size_t buffer_length);
 void       usleep_that_works       (u_int64_t usec);
+u_int64_t  get_udp_in_errors       ();
 
 /* error.c */
 int        error_handler           (const char *file, int line, const char *message, int fatal_yn);

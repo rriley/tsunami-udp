@@ -208,6 +208,7 @@ int command_get(command_t *command, ttp_session_t *session)
     u_int32_t       iteration     = 0;  /* the number of iterations through the main loop */
     u_int64_t       delta;              /* generic holder of elapsed times                */
     u_int32_t       block;              /* generic holder of a block number               */
+    u_int64_t       udp_errors;         /* receive errors reported by OS protocol stack   */
     ttp_transfer_t *xfer          = &(session->transfer);
     retransmit_t   *rexmit        = &(session->transfer.retransmit);
     int             status;
@@ -312,6 +313,7 @@ int command_get(command_t *command, ttp_session_t *session)
     /* reset some vars for current run */
     complete_flag = 0;
     iteration = 0;
+    udp_errors = get_udp_in_errors();
 
     /* store the remote filename */
     if(!multimode)
@@ -502,6 +504,7 @@ int command_get(command_t *command, ttp_session_t *session)
     printf("Mbits of data transmitted = %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
     printf("Duration in seconds       = %0.2f\n", delta / 1000000.0);
     printf("THROUGHPUT (Mbps)         = %0.2f\n", xfer->file_size * 8.0 / delta);
+    printf("PC UDP packet rx errors   = %lld\n",  get_udp_in_errors() - udp_errors);
     printf("\n");
 
     /* update the transcript */
@@ -771,6 +774,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.8  2006/12/11 11:11:56  jwagnerhki
+ * show operating system UDP rx error stats in summary
+ *
  * Revision 1.7  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *

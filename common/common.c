@@ -66,6 +66,7 @@
 #include <string.h>      /* for standard string handling routines */
 #include <time.h>        /* for time-handling functions           */
 #include <unistd.h>      /* for standard Unix system calls        */
+#include <stdlib.h>      /* for standard library definitions      */
 
 #include "md5.h"         /* for MD5 message digest support        */
 #include "tsunami.h"     /* for Tsunami function prototypes, etc. */
@@ -271,9 +272,56 @@ void usleep_that_works(u_int64_t usec)
     while (get_usec_since(&now) < usec);
 }
 
+/*------------------------------------------------------------------------
+ * u_int64_t get_udp_in_errors();
+ *
+ * Tries to return the current value of the UDP Input Error counter 
+ * that might be available in /proc/net/snmp
+ *------------------------------------------------------------------------*/
+u_int64_t get_udp_in_errors() 
+{
+    FILE* f = NULL;
+    u_int64_t errs = 0;
+    char buf[512], *p;
+    int len, i;
+    
+    /* need to reopen /proc/net/snmp file each time, it won't update otherwise */
+    f = fopen("/proc/net/snmp", "r");
+    if (!f) {
+        warn("could not open /proc/net/snmp");
+        return 0;
+    }
+    
+    /* seek for header line currently with poor programming using poor /proc interface...  */
+    while (!feof(f)) {
+        fgets(buf, sizeof(buf)-1, f);
+        if (strstr(buf, "Udp:") && strstr(buf, "InErrors") && !feof(f)) {
+            fgets(buf, sizeof(buf)-1, f);      
+            len = strlen(buf);
+            /* Udp: InDatagrams NoPorts InErrors OutDatagrams
+               Udp: 62771599 31995 4244 63083342              */
+            p = buf;
+            for (i=0; (i<3) && (p!=NULL) && (p < buf+len-1); i++, p++)  {
+                p = strchr(p, ' ');
+            }
+            if ((p != NULL) && (p < buf+len-1)) { 
+                errs = atol(p--);
+            } else {
+                errs = 0;
+            }
+            break;
+        }
+    }
+
+    fclose(f);
+    return errs;
+}
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.5  2006/12/11 11:11:56  jwagnerhki
+ * show operating system UDP rx error stats in summary
+ *
  * Revision 1.4  2006/11/10 15:05:37  jwagnerhki
  * using /dev/urandom instead of unbearably slow /dev/random
  *
