@@ -5,9 +5,10 @@
  0. Program Files
  1. Very Quick Guide
  2. Not So Quick Guide
- 3. Getting Help
- 4. Realtime Tsunami Notes
- 5. Troubleshooting
+ 3. Settings in the Tsunami Client
+ 4. Getting Help
+ 5. Realtime Tsunami Notes
+ 6. Troubleshooting
 
 -----------------------------------------------------------
 
@@ -24,7 +25,7 @@
 
 -----------------------------------------------------------
 
- Program Files
+ 0. Program Files
  =============
 
  The program files are:
@@ -47,7 +48,7 @@
  works, please see the older README.txt
 
 
- Very Quick Guide
+ 1. Very Quick Guide
  ================
 
  --Server--
@@ -86,7 +87,7 @@
  tsunami> get *
 
 
- Not So Quick Guide
+ 2. Not So Quick Guide
  ==================
 
  Typical usage example where PC1 is the server and PC2 the client.
@@ -126,7 +127,43 @@
  commands and your shell does globbing, you will have to use "get \*" with
  a slash.
 
- Getting Help
+
+ 3. Settings in the Tsunami Client
+ ============
+
+Settings available in the Tsunami Client, and a short description:
+
+$ tsunami
+Tsunami Client for protocol rev 20061025
+Revision: v1.1 devel cvsbuild 7
+Compiled: Dec 15 2006 14:57:59
+
+tsunami> set
+   server = localhost      -- to which currently connected
+   port = 46224            -- TCP control port on server
+   udpport = 46224         -- UDP receiving port on client to use
+   buffer = 20000000       -- size of the ring buffer in RAM in bytes
+   blocksize = 32768       -- how large UDP blocks to use
+   verbose = yes           -- give a bit more output
+   transcript = no         -- 'yes' to write all screen output to a transcript file,
+                              file naming is automatic in "2006-12-15-13-21-41.tsuc" style
+   ip = v4                 -- use ip version 'v4' or 'v6'
+   output = line           -- output statistics mode is 'line' for scrolling
+                              statistics, or 'screen' for a single updating page
+   rate = 650000000        -- the target transfer rate (you may use 'm','M','g','G' so
+                              for example '128M' or '1G')
+   error = 7.50%           -- maximum error rate to maintain by rate throttling
+   slowdown = 25/24        -- how fast to start throttling the rate
+   speedup = 5/6           -- how fast to recover and move up towards target rate again
+   history = 25%           -- weighting of past error rates in the throttling algorithm
+   noretransmit = no       -- 'yes' to disable retransmission of unreceived packets
+   blockdump = no          -- 'yes' to write a block bitmap dump to a file, shows
+                              packets that were not received as bit value 0,
+                              file format is 4 bytes (long) contains number of blocks (bits),
+                              followed by number of block count of bits, and two extra bytes
+                              that may be ignored
+
+ 4. Getting Help
  ============
 
  Server application, to get a list of command line options use:
@@ -153,7 +190,7 @@
 
 
 
- Realtime Tsunami Notes
+ 5. Realtime Tsunami Notes
  ======================
  
  The realtime version of the tsunami applications uses the 
@@ -262,7 +299,7 @@
 
 
     
- Special compile settings
+ 6. Special compile settings
  ========================
 
  For real-time server:
