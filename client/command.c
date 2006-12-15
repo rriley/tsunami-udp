@@ -514,6 +514,26 @@ int command_get(command_t *command, ttp_session_t *session)
 	xscript_close(session, delta);
     }
 
+    /* dump the received packet bitfield to a file, with added filename prefix ".blockmap" */
+    if (session->parameter->blockdump) {
+       FILE *fbits;
+       u_char *dump_file;
+
+       dump_file = calloc(strlen(xfer->local_filename) + 16, sizeof(u_char));
+       strcpy(dump_file, xfer->local_filename);
+       strcat(dump_file, ".blockmap");
+
+       fbits = fopen64(dump_file, "wb");
+       if (fbits != NULL) {
+         fwrite(&xfer->block_count, 1, sizeof(xfer->block_count), fbits);
+         fwrite(xfer->received, xfer->block_count / 8 + 2, sizeof(u_char), fbits);
+         fclose(fbits);
+       } else {
+         warn("Could not create a file for the blockmap dump");
+       }
+       free(dump_file);
+    }
+
     /* close our open files */
     close(xfer->udp_fd);
     fclose(xfer->file);    xfer->file     = NULL;
@@ -656,7 +676,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 	} else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "blocksize"))     parameter->block_size    = atol(command->text[2]);
+	  else if (!strcasecmp(command->text[1], "blocksize"))  parameter->block_size    = atol(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "verbose"))    parameter->verbose_yn    = (strcmp(command->text[2], "yes") == 0);
 	  else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
 	  else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
@@ -679,6 +699,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 	  else if (!strcasecmp(command->text[1], "speedup"))      parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
 	  else if (!strcasecmp(command->text[1], "history"))      parameter->history       = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "noretransmit")) parameter->no_retransmit = (strcmp(command->text[2], "yes") == 0);
+	  else if (!strcasecmp(command->text[1], "blockdump"))    parameter->blockdump     = (strcmp(command->text[2], "yes") == 0);
     }
 
     /* report on current values */
@@ -696,7 +717,8 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "slowdown"))   printf("slowdown = %d/%d\n", parameter->slower_num, parameter->slower_den);
     if (do_all || !strcasecmp(command->text[1], "speedup"))    printf("speedup = %d/%d\n",  parameter->faster_num, parameter->faster_den);
     if (do_all || !strcasecmp(command->text[1], "history"))    printf("history = %d%%\n",   parameter->history);
-    if (do_all || !strcasecmp(command->text[1], "noretransmit")) printf("noretransmit = %s\n", (1==parameter->no_retransmit) ? "yes" : "no");
+    if (do_all || !strcasecmp(command->text[1], "noretransmit")) printf("noretransmit = %s\n", parameter->no_retransmit ? "yes" : "no");
+    if (do_all || !strcasecmp(command->text[1], "blockdump"))  printf("blockdump = %s\n",   parameter->blockdump ? "yes" : "no");
     printf("\n");
 
     /* we succeeded */
@@ -774,6 +796,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.15  2006/12/15 12:57:41  jwagnerhki
+ * added client 'blockdump' block bitmap dump to file feature
+ *
  * Revision 1.14  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *

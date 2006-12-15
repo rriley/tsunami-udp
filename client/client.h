@@ -92,7 +92,8 @@ extern const u_int16_t  DEFAULT_SLOWER_DEN;     /* default denominator in the sl
 extern const u_int16_t  DEFAULT_FASTER_NUM;     /* default numerator in the speedup factor      */
 extern const u_int16_t  DEFAULT_FASTER_DEN;     /* default denominator in the speedup factor    */
 extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history in rates       */
-extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's   */
+extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's        */
+extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap dump to a file   */
 
 #define SCREEN_MODE                0            /* screen-based output mode                     */
 #define LINE_MODE                  1            /* line-based (vmstat-like) output mode         */
@@ -171,7 +172,8 @@ typedef struct {
     u_int16_t           faster_num;               /* the numerator of the decrease-IPD factor    */
     u_int16_t           faster_den;               /* the denominator of the decrease-IPD factor  */
     u_int16_t           history;                  /* percentage of history to keep in rates      */
-    u_char              no_retransmit;            /* the retransmissions can be disabled for data rate priority transfers */
+    u_char              no_retransmit;            /* 1 for no retransmissions, data rate priority*/
+    u_char              blockdump;                /* 1 to write received block bitmap to a file  */
     char                *ringbuf;                 /* Pointer to ring buffer start                */
 } ttp_parameter_t;    
 
@@ -265,6 +267,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.6  2006/12/15 12:57:41  jwagnerhki
+ * added client 'blockdump' block bitmap dump to file feature
+ *
  * Revision 1.5  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *

@@ -88,6 +88,7 @@ const u_int16_t  DEFAULT_FASTER_NUM    = 5;            /* default numerator in t
 const u_int16_t  DEFAULT_FASTER_DEN    = 6;            /* default denominator in the speedup factor    */
 const u_int16_t  DEFAULT_HISTORY       = 25;           /* default percentage of history in rates       */
 const u_char     DEFAULT_NO_RETRANSMIT = 0;            /* on default use retransmission                */
+const u_char     DEFAULT_BLOCKDUMP     = 0;            /* on default do not write bitmap dump to file  */
 
 const int        MAX_COMMAND_LENGTH    = 1024;         /* maximum length of a single command           */
 
@@ -124,6 +125,7 @@ void reset_client(ttp_parameter_t *parameter)
     parameter->faster_den    = DEFAULT_FASTER_DEN;
     parameter->history       = DEFAULT_HISTORY;
     parameter->no_retransmit = DEFAULT_NO_RETRANSMIT;
+    parameter->blockdump     = DEFAULT_BLOCKDUMP;
 
     /* make sure the strdup() worked */
     if (parameter->server_name == NULL)
@@ -133,6 +135,9 @@ void reset_client(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.3  2006/12/15 12:57:41  jwagnerhki
+ * added client 'blockdump' block bitmap dump to file feature
+ *
  * Revision 1.2  2006/07/21 07:55:35  jwagnerhki
  * new UDP port define
  *

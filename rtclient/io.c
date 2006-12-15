@@ -61,7 +61,7 @@
  *========================================================================*/
 
 #include "client.h"
-
+#include <string.h>    /* for memcpy() */
 
 /*------------------------------------------------------------------------
  * int accept_block(ttp_session_t *session,
@@ -127,6 +127,9 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.3  2006/12/15 12:57:41  jwagnerhki
+ * added client 'blockdump' block bitmap dump to file feature
+ *
  * Revision 1.2  2006/10/28 17:08:42  jwagnerhki
  * fixed jr's nonworking rtclient
  *
