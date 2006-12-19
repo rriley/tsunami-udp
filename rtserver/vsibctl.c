@@ -109,12 +109,9 @@ start_vsib(ttp_session_t *session)
 {
   ttp_transfer_t  *xfer  = &session->transfer;
  
-  /* Find out the file number */
- 
+  /* Find out the file number */ 
   vsib_fileno = fileno(xfer->vsib);
  
-
-
   /* Create and initialize 'wr<-->control' shared memory. */
   shKey = fourCharLong('v','s','i','b');
   if( (shId = shmget(shKey, sizeof(tSh), IPC_CREAT | 0777)) == -1 ) {
@@ -163,9 +160,8 @@ void read_vsib_block(char *memblk, int blksize)
 
 
 void stop_vsib(ttp_session_t *session)
-
-  {
-
+{
+  int timeout = 0;
   struct timespec ts;
   ts.tv_sec = 0;
   ts.tv_nsec = 100000000L;
@@ -177,16 +173,14 @@ void stop_vsib(ttp_session_t *session)
     unsigned long b;
 
     vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
-    while (!b) {
-      fprintf(stderr, "Waiting for last DMA descriptor (sl=%d)\n",
-              usleeps);
+    while ((!b) && (timeout++ < 25)) {
+      fprintf(stderr, "Waiting for last DMA descriptor (sl=%d)\n", usleeps);
       // usleep(100000); usleep not with pthreads!
       nanosleep(&ts, NULL);
-      /*      usleeps++; */
+      // usleeps++;
       vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
     }
   }
-
 
   vsib_ioctl(VSIB_SET_MODE, VSIB_MODE_STOP);
 
@@ -204,5 +198,5 @@ void stop_vsib(ttp_session_t *session)
   }  // if shared memory was allocated
 
 		    /*  return(); */
-}  /* main */
+}  /* stop_vsib */
 

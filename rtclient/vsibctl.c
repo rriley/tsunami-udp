@@ -29,6 +29,7 @@
 #include <fcntl.h>  /* open() */
 
 #include <sys/time.h>  /* gettimeofday() */
+#include <time.h>
 #include <unistd.h>  /* gettimeofday(), usleep() */
 
 #include <string.h>  /* strstr() */
@@ -137,67 +138,74 @@ start_vsib(ttp_session_t *session)
 
 
 void write_vsib(unsigned char *memblk, int blksize)
-  {
-      size_t nread;
+{
+   size_t nread;
+   struct timespec ts;
+   ts.tv_sec = 0;
+   ts.tv_nsec = 1000000L;
 
-    /* Write (or read) one block. */
-    /* xxx: need to add '-1' error checks to VSIB read()/write() calls */
+   /* Write (or read) one block. */
+   /* xxx: need to add '-1' error checks to VSIB read()/write() calls */
 
-      /* Read a block from VSIB; if not enough, sleep a little. */
-      nread = read (vsib_fileno, memblk, blksize);
-      while (nread < blksize) {
-        /* Not one full block in buffer, wait. */
-        usleep(1000);  /* a small amount, probably ends up to be 10--20msec */
-	/*        usleeps++; */
-        nread += read (vsib_fileno, memblk+nread, blksize-nread);
-      }  /* while not at least one full block in VSIB DMA ring buffer */
+   /* Read a block from VSIB; if not enough, sleep a little. */
+   nread = read (vsib_fileno, memblk, blksize);
+   while (nread < blksize) {
+       /* Not one full block in buffer, wait. */
+       // usleep(1000);  usleep not in pthreads! /* a small amount, probably ends up to be 10--20msec */
+       nanosleep(&ts, NULL);
+       // usleeps++;
+       nread += read (vsib_fileno, memblk+nread, blksize-nread);
+   }  /* while not at least one full block in VSIB DMA ring buffer */
 
-  }  /* write_vsib */
+}  /* write_vsib */
 
 
 
 void stop_vsib(ttp_session_t *session)
-  {
-    unsigned long prevb;
-    unsigned long b;
-    int status;
-    ttp_transfer_t  *xfer  = &session->transfer;
+{
+   unsigned long prevb;
+   unsigned long b;
+   int status;
+   int timeout = 0;
+   ttp_transfer_t  *xfer  = &session->transfer;
+   struct timespec ts;
+   ts.tv_sec = 0;
+   ts.tv_nsec = 10000000L;
 
-    status = fseeko64(xfer->vsib, /* seek to end of buffer */ 
-        xfer->file_size, SEEK_SET);
+   status = fseeko64(xfer->vsib, /* seek to end of buffer */ 
+                     xfer->file_size, SEEK_SET);
 
-    vsib_ioctl(VSIB_GET_BYTES_IN_BIGBUF, (unsigned long)&b);
-    prevb = b;
-    while (b <= prevb) {
-      fprintf(stderr, "Waiting for ring buffer to empty (%lu bytes, sl=%d)\n",
-              b, usleeps);
+   vsib_ioctl(VSIB_GET_BYTES_IN_BIGBUF, (unsigned long)&b);
+   prevb = b;
+   while ((b <= prevb) && (timeout++ < 100)) {
+      fprintf(stderr, "Waiting for ring buffer to empty (%lu bytes, sl=%d)\n", b, usleeps);
       /* Still bytes in bigbuf waiting for transmit. */
-      usleep(10000);  /* 0.01sec */
+      // usleep(10000);  usleep not with pthreads! /* 0.01sec */
+      nanosleep(&ts, NULL);
       usleeps++;
       prevb = b;
       vsib_ioctl(VSIB_GET_BYTES_IN_BIGBUF, (unsigned long)&b);
-    }  /* while not bigbuf empty */
+   }  /* while not bigbuf empty */
 
 
-  /* Stop the board, first DMA, and when the last descriptor */
-  /* has been transferred, then write stop to board command register. */
-  vsib_ioctl(VSIB_DELAYED_STOP_DMA, 0);
-  {
-    unsigned long b;
+   /* Stop the board, first DMA, and when the last descriptor */
+   /* has been transferred, then write stop to board command register. */
+   vsib_ioctl(VSIB_DELAYED_STOP_DMA, 0);
+   {
+   unsigned long b;
+   timeout = 0;
 
-    vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
-    while (!b) {
-      fprintf(stderr, "Waiting for last DMA descriptor (sl=%d)\n",
-              usleeps);
-      usleep(100000);
-      /*      usleeps++; */
-      vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
-    }
-  }
-
-
-
-  vsib_ioctl(VSIB_SET_MODE, VSIB_MODE_STOP);
+   vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
+   while ((!b) && (timeout++ < 25)) {
+     fprintf(stderr, "Waiting for last DMA descriptor (sl=%d)\n",
+             usleeps);
+     // usleep(100000); usleep not in pthreads!
+     nanosleep(&ts, NULL);
+     // usleeps++;
+     vsib_ioctl(VSIB_IS_DMA_DONE, (unsigned long)&b);
+   }
+   }
+   vsib_ioctl(VSIB_SET_MODE, VSIB_MODE_STOP);
 
 
   /* Remove shared memory to mark that 'wr/rd' is no more running. */
@@ -214,7 +222,4 @@ void stop_vsib(ttp_session_t *session)
   }  // if shared memory was allocated
 
 		    /*  return(); */
-}  /* main */
-
-
-
+}  /* stop_vsib */
