@@ -22,6 +22,6 @@ USC="_"
 for idx in $(seq 0 $((${#SCANS[@]} / 2 - 1)))
 do
   idx2=$(($idx * 2))
-  echo "./recpass-tsunami $EXPT_$SID_${SCANS[$idx2]} ${SCANS[$(($idx2 + 1 ))]}"
+  echo "./recpass-tsunami "$EXPT$USC$SID$USC${SCANS[$idx2]}" ${SCANS[$(($idx2 + 1 ))]}"
   ./recpass-tsunami "$EXPT$USC$SID$USC${SCANS[$idx2]}" ${SCANS[$(($idx2 + 1 ))]}
 done
