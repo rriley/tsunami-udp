@@ -393,17 +393,19 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
    u_int32_t     tmp32_ins = 0, tmp32_up;
    u_int32_t     idx = 0;
    #endif
+   u_int32_t    *ptr;
    retransmit_t *rexmit = &(session->transfer.retransmit);
 
    /* if we don't have space for the request */
    if (rexmit->index_max >= rexmit->table_size) {
 
       /* try to reallocate the table */
-      rexmit->table = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
-      if (rexmit->table == NULL)
+      ptr = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
+      if (ptr == NULL)
          return warn("Could not grow retransmission table");
 
       /* prepare the new table space */
+      rexmit->table = ptr;
       memset(rexmit->table + rexmit->table_size, 0, 4 * rexmit->table_size);
       rexmit->table_size *= 2;
    }
@@ -600,6 +602,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.13  2006/12/19 12:12:41  jwagnerhki
+ * corrected bad reallocs
+ *
  * Revision 1.12  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *
