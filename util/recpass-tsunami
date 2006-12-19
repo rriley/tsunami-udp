@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+#  RECPASS-TSUNAMI -- remote-records one contiguous time slice to disk
+#
+#    ./recpass-tsunami scanName recordTimeInSecs
+# 
+#----------------------------------------------------------
+#  !! Edit these before use: !! 
+
+# -- Realtime server
+TSUNAMISERVER="didius.mro.funet.fi"
+
+# -- Root directory where to place files
+ROOTDIR=/raid/t/
+
+# -- Remote directory where to backup files to (blank: no backup)
+REMOTEDIR=
+# REMOTEDIR="./"
+
+# -- Recording data rate
+# RATE=128000000
+RATE=256000000
+# RATE=512000000
+
+#----------------------------------------------------------
+
+# -- Params check (should be improved with regexp...)
+if [ "$1" == "" ] || [ "$2" == "" ]; then
+   echo "Syntax: ./recpass-tsunami   Expt_StationID_scanName_UTCDateTime  recordingsecs"
+   echo "        ./recpass-tsunami   R1255_Mh_scan01_2006-12-19T11:00:00  60"
+   exit
+fi
+
+FILE=$1
+SECS=$2
+
+# -- Start the tsunami transfer
+pushd $ROOTDIR
+RECLEN=$(( $SECS * $RATE / 8 ))
+FLEN="_flen="
+# echo "tsunami connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit"
+tsunami connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit
+popd
