@@ -319,14 +319,20 @@ int ttp_repeat_retransmit(ttp_session_t *session)
         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
         if ((status <= 0) || fflush(session->server))
             return warn("Could not send restart-at request");
+
+        /* remember the request was sent - we can then discard blocks that are still on the line */
+        session->transfer.restart_pending    = 1;
+        session->transfer.restart_lastidx    = rexmit->table[rexmit->index_max - 1];
+        // session->transfer.restart_lastidx    = rexmit->table[0] + MAX_RETRANSMISSION_BUFFER; 
+        // printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], session->transfer.restart_lastidx );
         
         /* reset the retransmission table */
-        session->transfer.next_block         = rexmit->table[0];
-        session->transfer.stats.total_blocks = rexmit->table[0];
-        session->transfer.stats.this_blocks  = rexmit->table[0];
+        session->transfer.next_block             = rexmit->table[0];
+        session->transfer.stats.total_blocks     = rexmit->table[0];
+        session->transfer.stats.this_blocks      = rexmit->table[0];
         session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
-        rexmit->index_max                    = 0;
-        
+        rexmit->index_max                        = 0;
+
         #ifdef DEBUG_RETX
         warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
         #endif
@@ -602,6 +608,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.14  2006/12/21 13:50:33  jwagnerhki
+ * added to client something that smells like a fix for non-working REQUEST_RESTART
+ *
  * Revision 1.13  2006/12/19 12:12:41  jwagnerhki
  * corrected bad reallocs
  *
