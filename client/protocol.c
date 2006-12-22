@@ -217,6 +217,8 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     xfer->blocks_left = xfer->block_count;
 
     /* try to open the file for writing */
+    if (access(local_filename, X_OK))
+        printf("Warning: overwriting existing file '%s'\n", local_filename);   
     xfer->file = fopen64(local_filename, "wb");
     if (xfer->file == NULL)
 	return warn("Could not open local file for writing");
@@ -608,6 +610,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.15  2006/12/22 12:06:21  jwagnerhki
+ * warn about file overwrite, truncate could take long time
+ *
  * Revision 1.14  2006/12/21 13:50:33  jwagnerhki
  * added to client something that smells like a fix for non-working REQUEST_RESTART
  *
