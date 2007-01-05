@@ -17,7 +17,7 @@ ROOTDIR=/raid/t/
 REMOTEDIR=
 # REMOTEDIR="./"
 
-# -- Recording data rate
+# -- Recording data rate in bits/sec
 # RATE=128000000
 RATE=256000000
 # RATE=512000000
