@@ -1,0 +1,73 @@
+
+-------------------------------------------------------------------------------
+- Automatic generation of 'recexpt' and 'recexpt-tsunami' scripts
+-------------------------------------------------------------------------------
+
+ First, use DRUDG to create a .SNP file for your station from the .SKD file 
+ that you received for the experiment.
+
+ To create a 'recexpt_??' script for regular recording to local RAID, use:
+
+   $ ./makeRecexpt.sh snapfile.snp experimentName stationID
+
+ To create a 'recexpt_??-tsunami' Tsunami client side script for real-time 
+ Tsunami recording, use:
+
+   $ ./makeRecexpt-tsunami.sh snapfile.snp experimentName stationID
+
+ For each new experiment, you need to re-check the settings in
+ the 'recpass' or 'recpass-tsunami' files.
+
+ Further details below.
+
+
+------------------------------------------------------------------------------
+- Recpass, recexpt
+------------------------------------------------------------------------------
+
+ Place them into the same directory where 'wr', 'dstart' and 'ndate' tools
+ reside - this may be the VSIB source code directory e.g. /usr/src/vsib/
+ 
+ Edit recpass to match your system (RAID mountpoint and directories).
+ Edit recexpt for the schedule, if manual schedule editing is necessary.
+
+ Recpass records a single scan using arguments passed on the command line.
+ Recexpt contains all scans to be recorded.
+
+ To being recording an experiment, and make a log of all output, simply use 
+ for example:
+ $ script -fa experimentX.log
+ $ ./recexpt_Mh
+
+
+------------------------------------------------------------------------------
+- Tsunami recpass-tsunami, recexpt-tsunami
+------------------------------------------------------------------------------
+
+ The two files can be placed into any (same) directory, on the client 
+ machine.
+ 
+ Edit recpass-tsunami for the correct server name and some 
+ other settings.
+
+ Edit recexpt-tsunami for the schedule, if manual schedule editing is
+ necessary.
+
+ Recpass-tsunami retrieves a single scan from a remote real-time Tsunami
+ server, and can be edited so that the server side will create a backup
+ of transmitted files if necessary.
+ Recexpt-tsunami contains all scans to be recorded.
+
+ On the server machine, start the real-time Tsunami server process via
+ $ script -fa experimentXserver.log
+ $ rttsunamid
+
+ (If you are using some special recording mode, you'll have to edit
+ the /usr/src/tsunami/rtserver/vsibctl.h file for the correct VSIB mode,
+ and recompile. See Tsunami instructions.)
+
+ To being recording an experiment on a client PC, and make a log of all 
+ output, simply use for example:
+ $ script -fa experimentX.log
+ $ ./recexpt_Mh-tsunami
+
