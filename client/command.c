@@ -199,19 +199,19 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
  *------------------------------------------------------------------------*/
 int command_get(command_t *command, ttp_session_t *session)
 {
-    u_char         *datagram;           /* the buffer (in ring) for incoming blocks       */
-    u_char         *local_datagram;     /* the local temp space for incoming block        */
-    struct timeval  repeat_time;        /* the time we last sent our retransmission list  */
-    u_int32_t       this_block;         /* the block number for the block just received   */
-    u_int16_t       this_type;          /* the block type for the block just received     */
-    u_char          complete_flag = 0;  /* set to 1 when it's time to stop                */
-    u_int32_t       iteration     = 0;  /* the number of iterations through the main loop */
-    u_int64_t       delta;              /* generic holder of elapsed times                */
-    u_int32_t       block;              /* generic holder of a block number               */
+    u_char         *datagram = NULL;            /* the buffer (in ring) for incoming blocks       */
+    u_char         *local_datagram = NULL;      /* the local temp space for incoming block        */
+    struct timeval  repeat_time;                /* the time we last sent our retransmission list  */
+    u_int32_t       this_block = 0;             /* the block number for the block just received   */
+    u_int16_t       this_type = 0;              /* the block type for the block just received     */
+    u_char          complete_flag = 0;          /* set to 1 when it's time to stop                */
+    u_int32_t       iteration     = 0;          /* the number of iterations through the main loop */
+    u_int64_t       delta = 0;                  /* generic holder of elapsed times                */
+    u_int32_t       block = 0;                  /* generic holder of a block number               */
     ttp_transfer_t *xfer          = &(session->transfer);
     retransmit_t   *rexmit        = &(session->transfer.retransmit);
-    int             status;
-    pthread_t       disk_thread_id;
+    int             status = 0;
+    pthread_t       disk_thread_id = 0;
 
     /* The following variables will be used only in multiple file transfer
      * session they are used to recieve the file names and other parameters
@@ -442,7 +442,6 @@ int command_get(command_t *command, ttp_session_t *session)
                       goto abort;
                   }
               }
-        
           }
    
           /* if this is the last block */
@@ -460,12 +459,12 @@ int command_get(command_t *command, ttp_session_t *session)
               xfer->stats.total_blocks = this_block;
               xfer->next_block         = this_block + 1;
           }
-
+          
           /* if a restart transmission request was going and last block met, reset flag */
           if (xfer->restart_pending && xfer->next_block>=session->transfer.restart_lastidx) {
               xfer->restart_pending = 0;
           }
-
+          
       }//if(not a duplicate block)
    
       /* repeat our requests if it's time */
@@ -549,13 +548,13 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* close our open files */
     close(xfer->udp_fd);
-    fclose(xfer->file);    xfer->file     = NULL;
+    if (xfer->file     != NULL) { fclose(xfer->file);    xfer->file     = NULL; }
 
     /* deallocate memory */
     ring_destroy(xfer->ring_buffer);
-    free(rexmit->table);   rexmit->table  = NULL;
-    free(xfer->received);  xfer->received = NULL;
-    free(local_datagram);  local_datagram = NULL;
+    if (rexmit->table != NULL)  { free(rexmit->table);   rexmit->table  = NULL; }
+    if (xfer->received != NULL) { free(xfer->received);  xfer->received = NULL; }
+    if (local_datagram != NULL) { free(local_datagram);  local_datagram = NULL; }
 
     } while(++f_counter<f_total);
 
@@ -569,6 +568,7 @@ int command_get(command_t *command, ttp_session_t *session)
     if (xfer->file     != NULL) { fclose(xfer->file);    xfer->file     = NULL; }
     if (rexmit->table  != NULL) { free(rexmit->table);   rexmit->table  = NULL; }
     if (xfer->received != NULL) { free(xfer->received);  xfer->received = NULL; }
+    if (local_datagram != NULL) { free(local_datagram);  local_datagram = NULL; }    
     return -1;
 }
 
@@ -809,6 +809,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.17  2007/01/11 15:15:48  jwagnerhki
+ * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ *
  * Revision 1.16  2006/12/21 13:50:33  jwagnerhki
  * added to client something that smells like a fix for non-working REQUEST_RESTART
  *

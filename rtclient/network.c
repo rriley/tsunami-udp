@@ -69,6 +69,7 @@
 #include <sys/socket.h>   /* for the BSD socket library     */
 #include <sys/types.h>    /* for standard system data types */
 #include <unistd.h>       /* for standard Unix system calls */
+#include <stdlib.h>       /* for *alloc() and free()        */
 
 #include "client.h"
 
@@ -174,68 +175,68 @@ int create_udp_socket(ttp_parameter_t *parameter)
     struct addrinfo *info_save;
     char             buffer[10];
     int              socket_fd;
-    int              yes = 1;
+    // int              yes = 1;
     int              status;
     int              higher_port_attempt = 0;
-
+    
     /* set up the hints for getaddrinfo() */
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags    = AI_PASSIVE;
     hints.ai_family   = parameter->ipv6_yn ? AF_INET6 : AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-   do {
+    do {
   
-      /* try to get address info for ourselves */
-      sprintf(buffer, "%d", parameter->client_port + higher_port_attempt);
-      status = getaddrinfo(NULL, buffer, &hints, &info);
-      if (status) {
+        /* try to get address info for ourselves */
+        sprintf(buffer, "%d", parameter->client_port + higher_port_attempt);
+        status = getaddrinfo(NULL, buffer, &hints, &info);
+        if (status) {
         return warn("Error in getting address information");
-      }
+        }
+        
+        /* for each address structure returned */
+        info_save = info;
+        do {
+   
+            /* try to create a socket of this type */
+            socket_fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+            if (socket_fd < 0) {
+                continue;
+            }
+            
+            /* make the socket reusable (but then only one client can run per machine...) */
+            //status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+            //if (status < 0) {
+            //    close(socket_fd);
+            //    continue;
+            //}
+            
+            /* set the receive buffer size */
+            status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
+            if (status < 0) {
+                close(socket_fd);
+                continue;
+            }
+            
+            /* and try to bind it */
+            status = bind(socket_fd, info->ai_addr, info->ai_addrlen);
+            if (status == 0) {
+                parameter->client_port = ntohs(((struct sockaddr_in*)info->ai_addr)->sin_port);
+                printf("Receiving data on UDP port %d\n", parameter->client_port);
+                break;
+            }
+   
+        } while ((info = info->ai_next) != NULL);
+        
+        /* free the allocated memory */
+        freeaddrinfo(info_save);
 
-      /* for each address structure returned */
-      info_save = info;
-      do {
-   
-      /* try to create a socket of this type */
-      socket_fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-      if (socket_fd < 0) {
-          continue;
-      }
-
-      /* make the socket reusable (but then only one client can run per machine...) */
-      //status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-      //if (status < 0) {
-      //    close(socket_fd);
-      //    continue;
-      //}
-   
-      /* set the receive buffer size */
-      status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
-      if (status < 0) {
-          close(socket_fd);
-          continue;
-      }
-   
-      /* and try to bind it */
-      status = bind(socket_fd, info->ai_addr, info->ai_addrlen);
-      if (status == 0) {
-         parameter->client_port = ntohs(((struct sockaddr_in*)info->ai_addr)->sin_port);
-         printf("Receiving data on UDP port %d\n", parameter->client_port);
-         break;
-      }
-   
-       } while ((info = info->ai_next) != NULL);
-   
-       /* free the allocated memory */
-       freeaddrinfo(info_save);
-
-   } while ((info == NULL) && (++higher_port_attempt < 16));
-
+    } while ((info == NULL) && (++higher_port_attempt < 16));
+    
     /* make sure that we succeeded with at least one address */
     if (info == NULL)
-	return warn("Error in creating UDP socket");
-
+    return warn("Error in creating UDP socket");
+    
     /* return the file desscriptor */
     return socket_fd;
 }
@@ -243,6 +244,9 @@ int create_udp_socket(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network.c,v $
+ * Revision 1.5  2007/01/11 15:15:49  jwagnerhki
+ * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ *
  * Revision 1.4  2006/12/05 14:24:13  jwagnerhki
  * disabled client UDP socket reuse, multi client per PC now ok
  *

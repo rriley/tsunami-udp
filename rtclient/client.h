@@ -194,6 +194,8 @@ typedef struct {
     ring_buffer_t      *ring_buffer;              /* the blocks waiting for a disk write         */
     u_char             *received;                 /* bitfield for the received blocks of data    */
     u_int32_t           blocks_left;              /* the number of blocks left to receive        */
+    u_char              restart_pending;          /* 1 to ignore too new packets                 */
+    u_int32_t           restart_lastidx;          /* the last index in the restart list          */
 } ttp_transfer_t;
 
 /* state of a Tsunami session as a whole */
@@ -267,6 +269,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.8  2007/01/11 15:15:49  jwagnerhki
+ * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ *
  * Revision 1.7  2006/12/15 12:57:41  jwagnerhki
  * added client 'blockdump' block bitmap dump to file feature
  *

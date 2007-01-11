@@ -217,7 +217,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     xfer->blocks_left = xfer->block_count;
 
     /* try to open the file for writing */
-    if (access(local_filename, X_OK))
+    if (!access(local_filename, F_OK))
         printf("Warning: overwriting existing file '%s'\n", local_filename);     
     xfer->file = fopen64(local_filename, "wb");
     if (xfer->file == NULL)
@@ -306,6 +306,9 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     //    fprintf(stderr, "Current error rate = %u\n", ntohl(retransmission[0].error_rate));
     //}
 
+    /* to keep Valgrind happy */
+    memset(retransmission, 0, sizeof(retransmission));
+        
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
     
@@ -321,7 +324,13 @@ int ttp_repeat_retransmit(ttp_session_t *session)
         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
         if ((status <= 0) || fflush(session->server))
             return warn("Could not send restart-at request");
-        
+
+        /* remember the request was sent - we can then discard blocks that are still on the line */
+        session->transfer.restart_pending    = 1;
+        session->transfer.restart_lastidx    = rexmit->table[rexmit->index_max - 1];
+        // session->transfer.restart_lastidx    = rexmit->table[0] + MAX_RETRANSMISSION_BUFFER; 
+        // printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], session->transfer.restart_lastidx );
+                    
         /* reset the retransmission table */
         session->transfer.next_block         = rexmit->table[0];
         session->transfer.stats.total_blocks = rexmit->table[0];
@@ -522,6 +531,7 @@ int ttp_update_stats(ttp_session_t *session)
 	                                                             0.50 * 1000 * session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED);
 
     /* send along the current error rate information */
+    memset(&retransmission, 0, sizeof(retransmission));
     retransmission.request_type = htons(REQUEST_ERROR_RATE);
     retransmission.error_rate   = htonl(session->transfer.stats.retransmit_rate);
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
@@ -604,6 +614,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.8  2007/01/11 15:15:49  jwagnerhki
+ * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ *
  * Revision 1.7  2006/12/22 12:06:22  jwagnerhki
  * warn about file overwrite, truncate could take long time
  *

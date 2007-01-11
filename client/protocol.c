@@ -217,8 +217,8 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     xfer->blocks_left = xfer->block_count;
 
     /* try to open the file for writing */
-    if (access(local_filename, X_OK))
-        printf("Warning: overwriting existing file '%s'\n", local_filename);   
+    if (!access(local_filename, F_OK))
+        printf("Warning: overwriting existing file '%s'\n", local_filename);     
     xfer->file = fopen64(local_filename, "wb");
     if (xfer->file == NULL)
 	return warn("Could not open local file for writing");
@@ -305,6 +305,9 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     //    fprintf(stderr, "Repeating retransmission requests [%d].\n", rexmit->index_max);      
     //    fprintf(stderr, "Current error rate = %u\n", ntohl(retransmission[0].error_rate));
     //}
+    
+    /* to keep Valgrind happy */
+    memset(retransmission, 0, sizeof(retransmission));
 
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
@@ -528,6 +531,7 @@ int ttp_update_stats(ttp_session_t *session)
 	                                                             0.50 * 1000 * session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED);
 
     /* send along the current error rate information */
+    memset(&retransmission, 0, sizeof(retransmission));
     retransmission.request_type = htons(REQUEST_ERROR_RATE);
     retransmission.error_rate   = htonl(session->transfer.stats.retransmit_rate);
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
@@ -610,6 +614,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.16  2007/01/11 15:15:48  jwagnerhki
+ * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ *
  * Revision 1.15  2006/12/22 12:06:21  jwagnerhki
  * warn about file overwrite, truncate could take long time
  *
