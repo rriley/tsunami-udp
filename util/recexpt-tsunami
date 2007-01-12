@@ -3,6 +3,10 @@
 #  RECEXPT-TSUNAMI -- records given scans from a 
 #                     remote real-time Tsunami server
 #
+#  Very simple manual script for quick testing. You may
+#  prefer the 'makeTsunami-recexpt.sh' autogenerator for 
+#  real observations.
+#
 #----------------------------------------------------------
 # !! Edit before use: ./recpass-tsunami, and data below: !!
 
