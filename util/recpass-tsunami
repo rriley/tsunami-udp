@@ -7,20 +7,24 @@
 #----------------------------------------------------------
 #  !! Edit these before use: !! 
 
-# -- Realtime server
+# -- Remote real-time Tsunami server (IP or Hostname)
 TSUNAMISERVER="didius.mro.funet.fi"
-
-# -- Root directory where to place files
-ROOTDIR=/raid/t/
 
 # -- Remote directory where to backup files to (blank: no backup)
 REMOTEDIR=
 # REMOTEDIR="./"
 
-# -- Recording data rate in bits/sec
+# -- Local root directory where to place downloaded files
+ROOTDIR=/raid/t/
+
+# -- Recording data rate in bits/sec (check schedule or .prc file for this)
 # RATE=128000000
 RATE=256000000
 # RATE=512000000
+
+# -- Full path to the 'tsunami' client application directory
+TSCLIPATH=`which tsunami`
+# TSCLIPATH=/home/oper/cvs/tsunami-udp/client/tsunami
 
 #----------------------------------------------------------
 
@@ -35,9 +39,9 @@ FILE=$1
 SECS=$2
 
 # -- Start the tsunami transfer
-pushd $ROOTDIR
+pushd $ROOTDIR > /dev/null
 RECLEN=$(( $SECS * $RATE / 8 ))
 FLEN="_flen="
-# echo "tsunami connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit"
-tsunami connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit
-popd
+echo -e "\n$0: $TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit\n"
+$TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit
+popd > /dev/null

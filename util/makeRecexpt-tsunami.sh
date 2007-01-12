@@ -60,8 +60,8 @@ cat merged | while read scan expt dur1 dur2 year day clock; do
    
    # scan03_2006-12-19T11:15:00  300
    # debug
-   echo "   ${scan}_${datestr}T${clock} ${dur1}"
-   echo "   ${scan}_${datestr}T${clock} ${dur1}"  >> recexpt_$STATION-tsunami
+   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"
+   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"  >> recexpt_$STATION-tsunami
 done
 echo ")" >> recexpt_$STATION-tsunami
 echo "SID=${STATION}" >> recexpt_$STATION-tsunami
