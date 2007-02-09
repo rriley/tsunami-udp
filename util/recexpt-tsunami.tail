@@ -22,7 +22,8 @@ do
   # -- wait until start of next scan
   #    using HEADROOM startup safety margin
 
-  sysSecs2start=`date --utc --date "01/01/$scanYear $scanStart + $((scanDay - 1)) days" +%s`
+  # sysSecs2start=`date --utc --date "01/01/$scanYear $scanStart + $((scanDay - 1)) days" +%s`
+  sysSecs2start=`date --utc --date "01/01/$scanYear + $((scanDay - 1)) days $scanStart " +%s`
   sysSecsNow=`date --utc +%s`
   waitTime=$((sysSecs2start - sysSecsNow - HEADROOM))
   if ((waitTime>0)); then
@@ -64,3 +65,6 @@ do
   sleep $scanDuration
 
 done
+
+fg
+
