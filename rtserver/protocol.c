@@ -429,6 +429,9 @@ int ttp_open_transfer(ttp_session_t *session)
         ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
         param->fileout = 1;
     }
+    if (!ef->valid) {
+        fprintf(stderr, "Warning: EVN filename parsing failed, '%s' not following EVN File Naming Convention?\n", filename); 
+    }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
     if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0)
@@ -475,12 +478,16 @@ int ttp_open_transfer(ttp_session_t *session)
         u_int64_t timedelta_usec;
         starttime = ef->data_start_time - 0.5;
 
-        // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
         assert( gettimeofday(&d, NULL) == 0 );
         timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
         fprintf(stderr, "Sleeping until specified time (%s) for %lld usec...\n", ef->data_start_time_ascii, timedelta_usec);
         usleep_that_works(timedelta_usec);
     }
+
+    /* Check if the client is still connected after the long(?) wait */
+    // if(recv(session->client_fd, &status, 1, MSG_PEEK)<0) {
+    //    connection has terminated, exit
+    // }
 
     start_vsib(session);                        /* start at next 1PPS pulse */
 
@@ -515,11 +522,13 @@ int ttp_open_transfer(ttp_session_t *session)
     fseeko64(xfer->file, 0, SEEK_SET);
     #else
     /* get length of recording in bytes from filename */
-    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) == 0) {
-        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
+        sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
+    } else if (get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo) != 0) {
+        sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
     } else {
-        sscanf(get_aux_entry("flen",ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
-    } 
+        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+    }
     fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
     #endif
     
@@ -552,6 +561,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.21  2007/02/12 13:41:21  jwagnerhki
+ * mktime() post-fix now parsing really to utc, added 'dl' same as 'flen', added some EVN formats, added parse validity flag
+ *
  * Revision 1.20  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
