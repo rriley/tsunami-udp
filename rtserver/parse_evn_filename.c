@@ -85,23 +85,36 @@ double minute_to_utc(int minute) { return minute*60; }
 double interpret_as_utc(int year, int daycount, int month, int day, int hour, int min, int sec) {
     time_t ret;
     struct tm tt;
+    struct tm* p_tt2;
+    time_t timet;
 
 	memset(&tt, 0, sizeof(tt));
-    tt.tm_sec = sec;
-    tt.tm_min = min;
-    tt.tm_hour = hour;
-    if (daycount==0 && (1<=day && day<=31)) {
-       tt.tm_mday = day;        // day of month [1...31]
-       tt.tm_mon  = month - 1;  // months since 1. Jan [0...11]       
-    } else {
-       tt.tm_mon  = 0;          // see kludge 1, unfortunately no yday
+
+    if (daycount==0 && (day!=0 && month!=0)) {
+       tt.tm_mday = day;        // 1..31
+       tt.tm_mon  = month - 1;  // 0..11
+    } else if(daycount!=0 && (day==0 && month==0)) {
        tt.tm_mday = 1;
+       tt.tm_mon  = 0;          // see kludge 1, unfortunately no use of yday
+    } else if(daycount==0 && day==0 && month==0) {
+       time(&timet);
+       p_tt2 = gmtime(&timet);  // default to current day and month
+       tt.tm_mon  = p_tt2->tm_mon;
+       tt.tm_mday = p_tt2->tm_mday;
+       year = 0;
     }
-    if (year==0) {
+
+    if (year==0) {              // default to current year
        year = get_current_year();
     }
     tt.tm_year = year - 1900;
+
+    tt.tm_sec = sec;
+    tt.tm_min = min;
+    tt.tm_hour = hour;
+
     tt.tm_isdst = 0;
+
     ret = mktime(&tt);
 
     // kludge 1: stupid mktime() can't handle yday or wday
@@ -112,7 +125,7 @@ double interpret_as_utc(int year, int daycount, int month, int day, int hour, in
     // kludge 2: mktime() assumes given time is in local timezone, can't specify own (!?)
 	ret -= timezone; // 'timezone' is in seconds, a glibc static global, yuck
 
-    printf("DEBUG: interpret_as_utc(%d, %d days, %d, %d, %d h, %d m, %d s) : fixed_mktime()=%f\n", 
+    printf("DEBUG: interpret_as_utc(%d, %d days, %d, %d, %dh, %dm, %ds) : fixed_mktime()=%f\n", 
            year, daycount, month, day, hour, min, sec, (double)ret);
 
     return (double)ret;
@@ -126,15 +139,16 @@ double interpret_as_utc(int year, int daycount, int month, int day, int hour, in
  */
 
 int parse_time(const char *str, double *retval) {
-	int yyyy = 0, mm = 0, dd = 0, hh = 0, min = 0, yday = 0, sec = 0;
-    double dsec = 0.0;
-	int consumed = 0;
-    struct timeval tvnow;
+   int yyyy = 0, mm = 0, dd = 0, hh = 0, min = 0, yday = 0, sec = 0;
+   double dsec = 0.0;
+   float  fsec = 0.0;
+   int consumed = 0;
+   struct timeval tvnow;
 
-    *retval = 0;
+   *retval = 0;
     
-    /* ISO basic extended */
-    if (sscanf(str, "%4d-%2d-%2dT%2d:%2d:%lg%n",
+   /* ISO basic extended */
+   if (sscanf(str, "%4d-%2d-%2dT%2d:%2d:%lg%n",
              &yyyy, &mm, &dd,
              &hh, &min, &dsec, 
              &consumed) == 6 && consumed == strlen(str)) {
@@ -143,14 +157,23 @@ int parse_time(const char *str, double *retval) {
         *retval += (dsec - floor(dsec));
         fprintf(stderr, "Detected time format: ISO basic extended\n");
 
-   /* yyyydddhhmmss */
-   } else if (sscanf(str, "%4d%3d%2d%2d%2d%n",
+   /* yyyydddhhmmss - 13 digit*/
+   } else if (strlen(str) == 13 && sscanf(str, "%04d%03d%02d%02d%02d%n",
              &yyyy, &yday,
              &hh, &mm, &sec,
              &consumed) == 5 && consumed == strlen(str)) {
 
        *retval = interpret_as_utc(yyyy, yday, 0, 0, hh, mm, sec);
        fprintf(stderr, "Detected time format: yyyydddhhmmss\n");
+
+   /* dddhhmmss - 9 digit */
+   } else if (strlen(str) == 9 && sscanf(str, "%03d%02d%02d%02d%n",
+             &yday,
+             &hh, &mm, &sec,
+             &consumed) == 4 && consumed == strlen(str)) {
+
+       *retval = interpret_as_utc(0, yday, 0, 0, hh, mm, sec);
+       fprintf(stderr, "Detected time format: dddhhmmss\n");
 
     /* [yyyy]y[d..]d */
     } else if (sscanf(str, "%4dy%dd%n",
@@ -167,13 +190,13 @@ int parse_time(const char *str, double *retval) {
         *retval = interpret_as_utc(yyyy, yday, 0, 0, hh, mm, sec);
         fprintf(stderr, "Detected time format: [yyyy]y[dd]d[hh]h[mm]m[ss]s\n");
 
-    /* yyyydd */
-	} else if (sscanf(str, "%4d%d%n",
+    /* yyyyddd - 7 digit */
+	} else if (strlen(str) == 7 && sscanf(str, "%04d%03d%n",
               &yyyy, &yday,
               &consumed) == 2 && consumed == strlen(str)) {
 
         *retval = interpret_as_utc(yyyy, yday, 0, 0, 0, 0, 0);
-        fprintf(stderr, "Detected time format: yyyydd\n");
+        fprintf(stderr, "Detected time format: yyyyddd\n");
 
     /*  [d]d[h]h[m]m[s] */
 	} else if (sscanf(str, "%dd%dh%dm%ds%n",
@@ -184,15 +207,24 @@ int parse_time(const char *str, double *retval) {
         *retval  = interpret_as_utc(0, yday, 0, 0, hh, mm, sec);
         fprintf(stderr, "Detected time format: [d]d[h]h[m]m[s]s\n");
 
+    /* hhmmss.cc - 6 digit plus decimals */
+    } else if (strlen(str)>=6 && sscanf(str, "%02d%02d%02f%n",  // %02f parse does not quite detect decimal dot '.' yet
+              &hh, &mm, &fsec,
+              &consumed) == 3 && consumed == strlen(str)) {
+
+        *retval = interpret_as_utc(0, 0, 0, 0, hh, mm, floor(fsec));
+        *retval += (fsec - floor(fsec));
+        fprintf(stderr, "Detected time format: hhmmss.cc\n");
+   
 	} else {
         // parse failed
-        fprintf(stderr, "Warning: string with unknown time format passed to parse_time().\n");
+        fprintf(stderr, "Warning: string with unknown time format passed to parse_time(), assuming it is aux entries.\n");
         return 1;
     }
     
     if (gettimeofday(&tvnow, NULL)==0 && difftime(*retval, tvnow.tv_sec)<=0) {
         fprintf(stderr, "Start time in the past\n");
-        *retval = 0;
+        *retval = 0.0;
     }    
 	return 0;
 }
@@ -316,7 +348,8 @@ int main(int argc, char *argv[]) {
 
       printf("Cut&paste to try:                                      Expected:\n");
       printf("-----------------------------------------------------------------\n");
-      printf("gre53_ef_scan035_154d12h43m10s.vsi                     1180874590\n");
+      printf("gre53_Ef_scan035_154d12h43m10s.vsi                     1180874590 (in 2007)\n");
+      printf("gre53_Ef_scan035_154124310.vsi                         1180874590 (in 2007)\n");
       printf("  date -u --date \"01/01/2007 12:43:10 + 153 days\" +%%s\n");
       printf("R1262_On_037-1240b_2007037124050_flen=5408000000.evn   1170765650\n");
       printf("  date -u --date \"01/01/2007 12:40:50 + 36 days\" +%%s\n");
@@ -325,8 +358,9 @@ int main(int argc, char *argv[]) {
       printf("  date -u --date \"01/01/2007 + 36 days 0:0:0\" +%%s\n");
       printf("R1262_On_037-1240b_2007y037d12h6m1s_dl=5408000000.vsi  1170763561\n");
       printf("  date -u --date \"01/01/2007 + 36 days 12:06:01\" +%%s\n");
-      printf("gre53_ef_scan035_2006-11-21T08:45:00_dl=14400000.vsi   1164098700\n");
-      printf("date -u --date \"11/21/2006 08:45:00\" +%%s\n");
+      printf("gre53_Ef_scan035_2006-11-21T08:45:00_dl=14400000.vsi   1164098700\n");
+      printf("  date -u --date \"11/21/2006 08:45:00\" +%%s\n");
+      printf("dummy_Mh_scan01_124500.00_dl=1500.vsi\n");
       printf("\n");
 
       return 0;
@@ -365,6 +399,9 @@ int main(int argc, char *argv[]) {
 
 /*
  * $Log: parse_evn_filename.c,v $
+ * Revision 1.9  2007/02/13 13:47:31  jwagnerhki
+ * UTC parse fixes and extensions, dl in addition to flen for realtime bytelength
+ *
  * Revision 1.8  2007/02/12 13:41:21  jwagnerhki
  * mktime() post-fix now parsing really to utc, added 'dl' same as 'flen', added some EVN formats, added parse validity flag
  *

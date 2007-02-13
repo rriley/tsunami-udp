@@ -125,8 +125,8 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 		retransmission->error_rate, xfer->ipd_current, param->ipd_time, xfer->block,
 		100.0 * xfer->block / param->block_count, session->session_id);
 
-	/* make sure the IPD is still in range, for later calculations */
-	xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
+    /* make sure the IPD is still in range, for later calculations */
+    xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
 
 	/* print a status report */
 	if (!(iteration++ % 23))
@@ -414,8 +414,8 @@ int ttp_open_transfer(ttp_session_t *session)
     	/* signal failure to the client */
     	status = write(session->client_fd, "\x008", 1);
     	if (status < 0) {
-		warn("Could not signal request failure to client");
-	}
+		   warn("Could not signal request failure to client");
+        }
         return warn(g_error);
     }
 
@@ -430,7 +430,7 @@ int ttp_open_transfer(ttp_session_t *session)
         param->fileout = 1;
     }
     if (!ef->valid) {
-        fprintf(stderr, "Warning: EVN filename parsing failed, '%s' not following EVN File Naming Convention?\n", filename); 
+        fprintf(stderr, "Warning: EVN filename parsing failed, '%s' not following EVN File Naming Convention?\n", filename);
     }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
@@ -469,6 +469,7 @@ int ttp_open_transfer(ttp_session_t *session)
             if (status < 0) {
                 warn("Could not signal request failure to client");
             }
+            fclose(xfer->vsib);
             return warn(g_error);
         }
     }
@@ -485,11 +486,14 @@ int ttp_open_transfer(ttp_session_t *session)
     }
 
     /* Check if the client is still connected after the long(?) wait */
-    // if(recv(session->client_fd, &status, 1, MSG_PEEK)<0) {
-    //    connection has terminated, exit
-    // }
+    //if(recv(session->client_fd, &status, 1, MSG_PEEK)<0) {
+    //    // connection has terminated, exit
+    //    fclose(xfer->vsib);
+    //    return warn("The client disconnected while server was sleeping.");
+    //}
 
-    start_vsib(session);                        /* start at next 1PPS pulse */
+    /* start at next 1PPS pulse */
+    start_vsib(session);
 
     #endif // end of VSIB_REALTIME section
     
@@ -561,6 +565,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.22  2007/02/13 13:47:31  jwagnerhki
+ * UTC parse fixes and extensions, dl in addition to flen for realtime bytelength
+ *
  * Revision 1.21  2007/02/12 13:41:21  jwagnerhki
  * mktime() post-fix now parsing really to utc, added 'dl' same as 'flen', added some EVN formats, added parse validity flag
  *

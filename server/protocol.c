@@ -125,8 +125,8 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 		retransmission->error_rate, xfer->ipd_current, param->ipd_time, xfer->block,
 		100.0 * xfer->block / param->block_count, session->session_id);
 
-	/* make sure the IPD is still in range */
-	xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
+    /* make sure the IPD is still in range, for later calculations */
+    xfer->ipd_current = max(min(xfer->ipd_current, 10000), param->ipd_time);
 
 	/* print a status report */
 	if (!(iteration++ % 23))
@@ -429,6 +429,9 @@ int ttp_open_transfer(ttp_session_t *session)
         ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
         param->fileout = 1;
     }
+    if (!ef->valid) {
+        fprintf(stderr, "Warning: EVN filename parsing failed, '%s' not following EVN File Naming Convention?\n", filename);
+    }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
     if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0)
@@ -466,6 +469,7 @@ int ttp_open_transfer(ttp_session_t *session)
             if (status < 0) {
                 warn("Could not signal request failure to client");
             }
+            fclose(xfer->vsib);
             return warn(g_error);
         }
     }
@@ -475,14 +479,21 @@ int ttp_open_transfer(ttp_session_t *session)
         u_int64_t timedelta_usec;
         starttime = ef->data_start_time - 0.5;
 
-        // TODO: if local timezone is other than UTC, gettimeofday() doesn't work as expected (man page says returns UTC but it doesn't)
         assert( gettimeofday(&d, NULL) == 0 );
         timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
         fprintf(stderr, "Sleeping until specified time (%s) for %lld usec...\n", ef->data_start_time_ascii, timedelta_usec);
         usleep_that_works(timedelta_usec);
     }
 
-    start_vsib(session);                        /* start at next 1PPS pulse */
+    /* Check if the client is still connected after the long(?) wait */
+    //if(recv(session->client_fd, &status, 1, MSG_PEEK)<0) {
+    //    // connection has terminated, exit
+    //    fclose(xfer->vsib);
+    //    return warn("The client disconnected while server was sleeping.");
+    //}
+
+    /* start at next 1PPS pulse */
+    start_vsib(session);
 
     #endif // end of VSIB_REALTIME section
     
@@ -515,11 +526,13 @@ int ttp_open_transfer(ttp_session_t *session)
     fseeko64(xfer->file, 0, SEEK_SET);
     #else
     /* get length of recording in bytes from filename */
-    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) == 0) {
-        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
+        sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
+    } else if (get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo) != 0) {
+        sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
     } else {
-        sscanf(get_aux_entry("flen",ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
-    } 
+        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+    }
     fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
     #endif
     
@@ -552,6 +565,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.18  2007/02/13 13:47:31  jwagnerhki
+ * UTC parse fixes and extensions, dl in addition to flen for realtime bytelength
+ *
  * Revision 1.17  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
