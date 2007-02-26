@@ -3,6 +3,15 @@
 rm parsetest
 gcc parse_evn_filename.c -DUNIT_TEST -o parsetest -lm
 
+echo "To successfully pass validation:" 
+echo "  - DEBUG: ... fixed_mktime()=...  matches 'expected' value" 
+echo "  - ef->data_start_time equals fixed_mktime() result, OR" 
+echo "  - ef->data_start_time equals 0.0 when start time is "
+echo "    in the past" 
+echo "  - system time zone does not alter fixed_mktime() result" 
+echo "  - valid or invalid file name is reported" 
+echo 
+
 ./parsetest gre53_Ef_scan035_154d12h43m10s.vsi
 echo "  expect:  1180874590 (in 2007)"
 echo
