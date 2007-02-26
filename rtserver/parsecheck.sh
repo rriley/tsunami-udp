@@ -25,10 +25,10 @@ echo
 echo "  expect:  1164098700"
 echo
 ./parsetest dummy_Mh_scan01_134330_dl=1500.vsi
-echo "  expect:  1171374210 (on test day - use 'date' to calc for today)"
+echo "  expect:  ? / 1171374210 (earlier at script edit time - use 'date' to calc for today)"
 echo
 ./parsetest dummy_Mh_scan01_124500.00_dl=1500.vsi
-echo "  expect:  1164098700 (on test day - use 'data' to calc for today)"
+echo "  expect:  ? / 1164098700 (earlier at script edit time - use 'data' to calc for today)"
 echo
 
 
