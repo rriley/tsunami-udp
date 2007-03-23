@@ -115,7 +115,8 @@ start_vsib(ttp_session_t *session)
   /* Create and initialize 'wr<-->control' shared memory. */
   shKey = fourCharLong('v','s','i','b');
   if( (shId = shmget(shKey, sizeof(tSh), IPC_CREAT | 0777)) == -1 ) {
-    fprintf(stderr, "Fatal VSIB access error: could not shmget() shared memory!\n");
+    fprintf(stderr, "Fatal VSIB access error: could not shmget() shared memory!\n"
+                    "Previous instance of Tsunami was probably run as 'root' and interrupted. Reload 'vsib' kernel module.\n");
     abort();
   }
   if( (sh = (ptSh)shmat(shId, NULL, 0)) == (void *)-1 ) {

@@ -121,10 +121,10 @@ int main(int argc, char *argv[])
     /* now show version / build information */
     #ifdef VSIB_REALTIME
     fprintf(stderr, "Tsunami Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
-                    "   /dev/vsib VSIB accesses mode is %d, gigabit=%d, 1pps embed=%d, sample skip=%d\n"
+                    "   /dev/vsib VSIB accesses mode=%d, sample skip=%d, gigabit=%d, 1pps embed=%d\n"
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__,
-            vsib_mode, vsib_mode_gigabit, vsib_mode_embed_1pps_markers, vsib_mode_skip_samples);
+            vsib_mode, vsib_mode_skip_samples, vsib_mode_gigabit, vsib_mode_embed_1pps_markers);
     #else
     fprintf(stderr, "Tsunami Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
                     "Waiting for clients to connect.\n",
@@ -377,6 +377,10 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 				     { "datagram",   1, NULL, 6 },
 				     { "buffer",     1, NULL, 7 },
 				     { "v",          0, NULL, 8 },
+                     #ifdef VSIB_REALTIME
+                     { "vsibmode",   1, NULL, 9 },
+                     { "vsibskip",   1, NULL, 10 },
+                     #endif
 				     { NULL,         0, NULL, 0 } };
     int           which;
 
@@ -415,14 +419,35 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 	    case 7:  parameter->udp_buffer = atoi(optarg);
 		     break;
 
+        #ifdef VSIB_REALTIME
+        /* --vsibmode=i   : size of socket buffer */
+        case 9:  vsib_mode = atoi(optarg);
+             break;        
+             
+        /* --vsibskip=i   : size of socket buffer */
+        case 10:  vsib_mode_skip_samples = atoi(optarg);
+             break;                     
+        #endif             
+             
 	    /* otherwise    : display usage information */
-        default: fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n\n");
+        default: 
+             #ifdef VSIB_REALTIME
+             fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n");
+             fprintf(stderr, "                [--vsibmode=mode] [--vsibskip=skip] [filename1 filename2 ...]\n\n");
+             #else
+             fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n");
+             #endif
 		     fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
 		     fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
 		     fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
 		     fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
 		     fprintf(stderr, "          datagram   = %d\n",   DEFAULT_BLOCK_SIZE);
-		     fprintf(stderr, "          buffer     = %d\n\n", DEFAULT_UDP_BUFFER);
+             fprintf(stderr, "          buffer     = %d\n",   DEFAULT_UDP_BUFFER);
+             #ifdef VSIB_REALTIME
+             fprintf(stderr, "          vsibmode   = %d\n",   0);
+             fprintf(stderr, "          vsibskip   = %d\n",   0);
+             #endif
+             fprintf(stderr, "\n");
 		     fprintf(stderr, "verbose or v : turns on verbose output mode\n");
 		     fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
 		     fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
@@ -430,7 +455,11 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
 		     fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
 		     fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
-             fprintf(stderr, "[filenames]  : list of files that can be downloaded with a 'get *'\n");
+             #ifdef VSIB_REALTIME
+             fprintf(stderr, "vsibmode     : specifies the VSIB mode to use (see VSIB documentation for modes)\n");
+             fprintf(stderr, "vsibskip     : a value N other than 0 will skip one sample after each N samples\n");
+             #endif
+             fprintf(stderr, "filenames    : list of files that can be downloaded with a 'get *'\n");
              fprintf(stderr, "\n");
              exit(1);
     }
@@ -478,6 +507,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.15  2007/03/23 07:23:15  jwagnerhki
+ * added rttsunamid vsib mode and skip CLI options
+ *
  * Revision 1.14  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
