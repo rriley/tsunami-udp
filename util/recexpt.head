@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+#  RECEXPT -- waits until specified (hard-coded) times, then
+#             records to disk for given amount of seconds
+#
+#     ./recexpt
+#
+#----------------------------------------------------------
+#  !! Edit these before use: !!
+#    - if first time edit, check in ./recpass that
+#      the output base directory there is correct
+#    - the script ./recpass, for correct VSIB mode and
+#      correct frame rate i.e. whether 512Mbit/s or 256Mbit/s
+#    - edit the UTC times and durations below 
+#----------------------------------------------------------
+#
+# Record passes at defined UTC times, for given # of seconds.
+#
+# UTC format:     yyyy-mm-ddThh:mm:ss
+# Recpass format: [name of scan (no directory, no filename suffix)] [# of seconds]
+#
+#-------------------------------------------------------------
+
