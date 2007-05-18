@@ -18,8 +18,6 @@ REMOTEDIR=
 ROOTDIR=/raid/t/
 
 # -- Recording data rate in bits/sec (check schedule or .prc file for this)
-#    This is used to calculate the expected amount of data based on recordTimeInSecs.
-#    The actual rate must be set on the FieldSystem or Mark4 formatter.
 # RATE=128000000
 RATE=256000000
 # RATE=512000000
@@ -42,9 +40,8 @@ SECS=$2
 
 # -- Start the tsunami transfer
 pushd $ROOTDIR > /dev/null
-echo -e "\n$0: using local target ROOTDIR=$ROOTDIR\n"
 RECLEN=$(( $SECS * $RATE / 8 ))
 FLEN="_flen="
-echo -e "\n$0: $TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit\n"
-$TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.m5a quit
+echo -e "\n$0: $TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.evn quit\n"
+$TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.evn quit
 popd > /dev/null
