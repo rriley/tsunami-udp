@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     /* now show version / build information */
     #ifdef VSIB_REALTIME
-    fprintf(stderr, "Tsunami Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
+    fprintf(stderr, "Tsunami Realtime Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
                     "   /dev/vsib VSIB accesses mode=%d, sample skip=%d, gigabit=%d, 1pps embed=%d\n"
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__,
@@ -510,6 +510,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.14  2007/05/18 12:49:32  jwagnerhki
+ * added Realtime to printed name
+ *
  * Revision 1.13  2007/03/23 07:23:15  jwagnerhki
  * added rttsunamid vsib mode and skip CLI options
  *
