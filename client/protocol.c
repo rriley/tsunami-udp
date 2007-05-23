@@ -221,15 +221,17 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
         printf("Warning: overwriting existing file '%s'\n", local_filename);     
     xfer->file = fopen64(xfer->local_filename, "wb");
     if (xfer->file == NULL) {
-        const char* old_filename = xfer->local_filename;
-        xfer->local_filename = rindex(xfer->local_filename, '/') + 1;
-        printf("Warning: could not open file %s for writing, placing in local directory instead.\n", old_filename);
-        if (!access(xfer->local_filename, F_OK))
-	       printf("Warning: overwriting existing file '%s'\n", xfer->local_filename);     
-	    xfer->file = fopen64(xfer->local_filename, "wb");
+        char * trimmed = rindex(xfer->local_filename, '/');
+        if ((trimmed != NULL) && (strlen(trimmed)>1)) {
+           printf("Warning: could not open file %s for writing, trying local directory instead.\n", xfer->local_filename);
+           xfer->local_filename = trimmed + 1;
+           if (!access(xfer->local_filename, F_OK))
+              printf("Warning: overwriting existing file '%s'\n", xfer->local_filename);     
+           xfer->file = fopen64(xfer->local_filename, "wb");
+        }
         if(xfer->file == NULL) {
-	       return warn("Could not open local file for writing");
-	    }
+           return warn("Could not open local file for writing");
+        }
     }
 
     #ifdef VSIB_REALTIME
@@ -623,6 +625,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.18  2007/05/23 11:58:33  jwagnerhki
+ * slightly better filename path trim
+ *
  * Revision 1.17  2007/05/21 13:51:15  jwagnerhki
  * client side path slash removal if dir not existing
  *
