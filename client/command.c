@@ -119,8 +119,7 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 {
     int            server_fd;
     ttp_session_t *session;
-    #define PASS_KEY "kitten"
-    char           secret[] = PASS_KEY;
+    char           *secret;
 
     /* if we were given a new host, store that information */
     if (command->count > 1) {
@@ -169,15 +168,18 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
     }
 
     /* get the shared secret from the user */
-    /*    secret = getpass("Password: "); */
-    strcpy(secret, PASS_KEY); /* write back the passwd erased by possible earlier ttp_auth's() */
-    if (secret == NULL)
-	error("Could not read shared secret");
+    if (parameter->passphrase == NULL)
+        secret = strdup(DEFAULT_SECRET);
+    else 
+        secret = strdup(parameter->passphrase);
+    // if (NULL == (secret = getpass("Password: ")))
+    //   error("Could not read shared secret");
 
     /* authenticate to the server */
     if (ttp_authenticate(session, secret) < 0) {
 	warn("Authentication failed");
 	fclose(session->server);
+	free(secret);
 	free(session);
 	return NULL;
     }
@@ -185,6 +187,7 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
     /* we succeeded */
     if (session->parameter->verbose_yn)
 	printf("Connected.\n\n");
+    free(secret);
     return session;
 }
 
@@ -681,11 +684,9 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     /* handle actual set operations first */
     if (command->count == 3) {
 	if (!strcasecmp(command->text[1], "server")) {
-	    if (parameter->server_name != NULL)
-		free(parameter->server_name);
+	    if (parameter->server_name != NULL) free(parameter->server_name);
 	    parameter->server_name = strdup(command->text[2]);
-	    if (parameter->server_name == NULL)
-		error("Could not update server name");
+	    if (parameter->server_name == NULL) error("Could not update server name");
 	} else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
@@ -695,24 +696,29 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 	  else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
 	  else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
 	  else if (!strcasecmp(command->text[1], "rate"))       { 
-         long multiplier = 1;
-         char *cmd = (char*)command->text[2];
-         char cpy[256];
-         int l = strlen(cmd);
-         strcpy(cpy, cmd);
-         if(l>1 && (toupper(cpy[l-1]))=='M') { 
-            multiplier = 1000000; cpy[l-1]='\0';  
-         } else if(l>1 && toupper(cpy[l-1])=='G') { 
-            multiplier = 1000000000; cpy[l-1]='\0';   
-         }
-         parameter->target_rate   = multiplier * atol(cpy); 
-   }
+	    long multiplier = 1;
+	    char *cmd = (char*)command->text[2];
+	    char cpy[256];
+	    int l = strlen(cmd);
+	    strcpy(cpy, cmd);
+	    if(l>1 && (toupper(cpy[l-1]))=='M') { 
+		multiplier = 1000000; cpy[l-1]='\0';  
+	    } else if(l>1 && toupper(cpy[l-1])=='G') { 
+		multiplier = 1000000000; cpy[l-1]='\0';   
+	    }
+	    parameter->target_rate   = multiplier * atol(cpy); 
+	  }
 	  else if (!strcasecmp(command->text[1], "error"))        parameter->error_rate    = atof(command->text[2]) * 1000.0;
 	  else if (!strcasecmp(command->text[1], "slowdown"))     parse_fraction(command->text[2], &parameter->slower_num, &parameter->slower_den);
 	  else if (!strcasecmp(command->text[1], "speedup"))      parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
 	  else if (!strcasecmp(command->text[1], "history"))      parameter->history       = atoi(command->text[2]);
 	  else if (!strcasecmp(command->text[1], "noretransmit")) parameter->no_retransmit = (strcmp(command->text[2], "yes") == 0);
 	  else if (!strcasecmp(command->text[1], "blockdump"))    parameter->blockdump     = (strcmp(command->text[2], "yes") == 0);
+	  else if (!strcasecmp(command->text[1], "passphrase")) {
+	    if (parameter->passphrase != NULL) free(parameter->passphrase);
+	    parameter->passphrase = strdup(command->text[2]);
+	    if (parameter->passphrase == NULL) error("Could not update passphrase");
+	  }
     }
 
     /* report on current values */
@@ -732,6 +738,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "history"))    printf("history = %d%%\n",   parameter->history);
     if (do_all || !strcasecmp(command->text[1], "noretransmit")) printf("noretransmit = %s\n", parameter->no_retransmit ? "yes" : "no");
     if (do_all || !strcasecmp(command->text[1], "blockdump"))  printf("blockdump = %s\n",   parameter->blockdump ? "yes" : "no");
+    if (do_all || !strcasecmp(command->text[1], "passphrase")) printf("passphrase = %s\n",  (parameter->passphrase == NULL) ? "default" : "<user-specified>");
     printf("\n");
 
     /* we succeeded */
@@ -809,6 +816,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.18  2007/05/24 10:07:21  jwagnerhki
+ * client can 'set' passphrase to other than default
+ *
  * Revision 1.17  2007/01/11 15:15:48  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *

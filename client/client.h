@@ -95,6 +95,8 @@ extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history
 extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's        */
 extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap dump to a file   */
 
+#define DEFAULT_SECRET             "kitten"     /* the default passphrase for servers */
+
 #define SCREEN_MODE                0            /* screen-based output mode                     */
 #define LINE_MODE                  1            /* line-based (vmstat-like) output mode         */
 
@@ -105,8 +107,8 @@ extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap d
 
 extern const int        MAX_COMMAND_LENGTH;     /* maximum length of a single command           */
 
-#define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now)           */
-#define START_VSIB_PACKET  14500                /* When to start output                         */
+#define RINGBUF_BLOCKS             1            /* Size of ring buffer (disabled now)           */
+#define START_VSIB_PACKET          14500        /* When to start output                         */
                                                 /* 2000 packets per second, now 8 second delay  */
 
 /*------------------------------------------------------------------------
@@ -174,6 +176,7 @@ typedef struct {
     u_int16_t           history;                  /* percentage of history to keep in rates      */
     u_char              no_retransmit;            /* 1 for no retransmissions, data rate priority*/
     u_char              blockdump;                /* 1 to write received block bitmap to a file  */
+    char                *passphrase;              /* the passphrase to use for authentication    */
     char                *ringbuf;                 /* Pointer to ring buffer start                */
 } ttp_parameter_t;    
 
@@ -269,6 +272,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.8  2007/05/24 10:07:21  jwagnerhki
+ * client can 'set' passphrase to other than default
+ *
  * Revision 1.7  2006/12/21 13:50:33  jwagnerhki
  * added to client something that smells like a fix for non-working REQUEST_RESTART
  *
