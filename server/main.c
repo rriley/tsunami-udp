@@ -293,6 +293,7 @@ void client_handler(ttp_session_t *session)
 		    warn(g_error);
 		    continue;
 		}
+                block_new = 1;
 
 	    /* if we have a partial retransmission message */
 	    } else if (result > 0) {
@@ -510,6 +511,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.15  2007/05/25 08:30:22  jwagnerhki
+ * realtime server enabled no extra delay on new VSIB blocks
+ *
  * Revision 1.14  2007/05/18 12:49:32  jwagnerhki
  * added Realtime to printed name
  *

@@ -291,6 +291,7 @@ void client_handler(ttp_session_t *session)
 		    warn(g_error);
 		    continue;
 		}
+                block_new = 1;
 
 	    /* if we have a partial retransmission message */
 	    } else if (result > 0) {
@@ -507,6 +508,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.16  2007/05/25 08:30:22  jwagnerhki
+ * realtime server enabled no extra delay on new VSIB blocks
+ *
  * Revision 1.15  2007/03/23 07:23:15  jwagnerhki
  * added rttsunamid vsib mode and skip CLI options
  *
