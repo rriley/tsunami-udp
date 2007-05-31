@@ -69,7 +69,7 @@
 #include <unistd.h>      /* for standard Unix system calls */
 #include <assert.h>
 #include <math.h>        /* floor() */
-
+#include <malloc.h>
 
 #include <tsunami-server.h>
 
@@ -565,6 +565,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.2  2007/05/31 12:04:57  jwagnerhki
+ * g++ compile warning fix, ssapi linking fix
+ *
  * Revision 1.1  2007/05/31 09:32:07  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *
