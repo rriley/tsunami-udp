@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 {
     int                server_fd, client_fd;
     struct sockaddr_in remote_address;
-    int                remote_length = sizeof(struct sockaddr_in);
+    socklen_t          remote_length = sizeof(struct sockaddr_in);
     ttp_parameter_t    parameter;
     ttp_session_t      session;
     pid_t              child_pid;
@@ -412,7 +412,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     break;
 
 	    /* --secret=s   : shared secret for the client and server */
-	    case 5:  parameter->secret     = optarg;
+	    case 5:  parameter->secret     = (unsigned char*)optarg;
 		     break;
 
 	    /* --datagram=i : size of datagrams in bytes */
@@ -511,6 +511,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.16  2007/05/31 09:16:12  jwagnerhki
+ * removed 2 compiler warnings
+ *
  * Revision 1.15  2007/05/25 08:30:22  jwagnerhki
  * realtime server enabled no extra delay on new VSIB blocks
  *
