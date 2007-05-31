@@ -91,12 +91,6 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     static u_int32_t last_written_vsib_block = 0;
     int              status = 0;
     u_int32_t        write_size;
-    #ifdef MODE_34TH
-    static u_char    packingbuffer[4*MAX_BLOCK_SIZE/3+8];
-    static u_int64_t vsib_byte_pos = 0L;
-    int              inbufpos = 0, outbufpos = 0;
-    // static u_int32_t old_val = 0, tmp_val = 0; // for debug
-    #endif
     
     if (1 == block_index) {
        /* reset static vars to zero, so that the next transfer works ok also */
@@ -105,44 +99,6 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     }
 
              
-    #ifdef MODE_34TH
-    
-    //
-    // Take 3 bytes skip 4th : 6 lower BBCs included, 2 upper discarded
-    //
-    
-    /* calc sent bytes plus offset caused by discarded channel bytes */
-    vsib_byte_pos = ((u_int64_t) session->parameter->block_size) * (block_index - 1) + 
-        ((u_int64_t) session->parameter->block_size) * (block_index - 1) / 3;
-
-    // fprintf(stderr, "io.c: block=%d vsib_byte_pos=%lld\n", block_index-1, vsib_byte_pos);
-    
-    /* read enough data, over 4/3th of blocksize */ 
-    fseeko64(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
-    read_vsib_block(packingbuffer,  2 * session->parameter->block_size + 4); // 2* vs. 4/3*        
-    // if (status < 0) { /* Expired ? */ }
-    
-    /* copy, pack */
-    inbufpos=0; outbufpos=0;
-    while (outbufpos < session->parameter->block_size) {
-        if (3 == (vsib_byte_pos & 3)) {
-            inbufpos++;
-            vsib_byte_pos++;
-        } else {
-            *(datagram + 6 + (outbufpos++)) = packingbuffer[inbufpos++];
-            vsib_byte_pos++;
-        }
-    }   
- 
-    /* // debug:
-    tmp_val = 0x1000000*packingbuffer[3] + 0x10000*packingbuffer[2] + 0x100*packingbuffer[1] + 
-       packingbuffer[0];
-    fprintf(stderr, "val=%02x%02x%02x%02x delta=%04X\n", packingbuffer[3], packingbuffer[2], 
-       packingbuffer[1], packingbuffer[0], old_val-tmp_val);
-    old_val = tmp_val;
-    */
-   
-    #else
     
     if (block_index != (last_block + 1)) {
         fseeko64(session->transfer.vsib, (
@@ -152,14 +108,15 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     //last_block = block_index; // reading the next block in line, no seek required
     
     /* try to read in the block */
-    read_vsib_block(datagram + 6, session->parameter->block_size);
+#ifdef MK5SERVER
+// Mk5 read    read_vsib_block(datagram + 6, session->parameter->block_size);
+#endif
     //if (status < 0) { /* Expired ? */
       /*      memset(datagram + 6, 0, session->parameter->block_size);  */
       /*      sprintf(g_error, "Could not read block #%u", block_index); */
       /*      return warn(g_error); */
     //}
     
-    #endif
 
     if((session->parameter->fileout) && (block_index != 0)
           & (block_index == (last_written_vsib_block + 1)))
@@ -194,7 +151,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
- * Revision 1.8  2007/05/31 09:32:08  jwagnerhki
+ * Revision 1.1  2007/05/31 09:32:04  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *
  * Revision 1.7  2006/10/27 08:52:34  jwagnerhki

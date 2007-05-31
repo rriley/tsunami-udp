@@ -175,7 +175,7 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 	error("Could not read shared secret");
 
     /* authenticate to the server */
-    if (ttp_authenticate(session, secret) < 0) {
+    if (ttp_authenticate(session, (u_char*)secret) < 0) {
 	warn("Authentication failed");
 	fclose(session->server);
 	free(session);
@@ -532,10 +532,10 @@ int command_get(command_t *command, ttp_session_t *session)
        u_char *dump_file;
 
        dump_file = calloc(strlen(xfer->local_filename) + 16, sizeof(u_char));
-       strcpy(dump_file, xfer->local_filename);
-       strcat(dump_file, ".blockmap");
+       strcpy((char*)dump_file, xfer->local_filename);
+       strcat((char*)dump_file, ".blockmap");
 
-       fbits = fopen64(dump_file, "wb");
+       fbits = fopen64((char*)dump_file, "wb");
        if (fbits != NULL) {
          fwrite(&xfer->block_count, 1, sizeof(xfer->block_count), fbits);
          fwrite(xfer->received, xfer->block_count / 8 + 2, sizeof(u_char), fbits);
@@ -809,6 +809,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.12  2007/05/31 09:32:07  jwagnerhki
+ * removed some signedness warnings, added Mark5 server devel start code
+ *
  * Revision 1.11  2007/01/11 15:15:49  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *

@@ -136,7 +136,7 @@ start_vsib(ttp_session_t *session)
 
 
 
-void read_vsib_block(char *memblk, int blksize)
+void read_vsib_block(unsigned char *memblk, size_t blksize)
 {
   size_t nread;
   struct timespec ts;

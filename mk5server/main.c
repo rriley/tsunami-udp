@@ -409,7 +409,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 		     break;
 
 	    /* --secret=s   : shared secret for the client and server */
-        case 5:  parameter->secret     = (unsigned char*)optarg;
+	    case 5:  parameter->secret     = (u_char*)optarg;
 		     break;
 
 	    /* --datagram=i : size of datagrams in bytes */
@@ -508,7 +508,7 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
- * Revision 1.17  2007/05/31 09:32:08  jwagnerhki
+ * Revision 1.1  2007/05/31 09:32:07  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *
  * Revision 1.16  2007/05/25 08:30:22  jwagnerhki

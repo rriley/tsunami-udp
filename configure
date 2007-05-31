@@ -2805,7 +2805,7 @@ fi
 #
 
 
-ac_config_files="$ac_config_files Makefile client/Makefile common/Makefile include/Makefile server/Makefile util/Makefile rtserver/Makefile rtclient/Makefile"
+ac_config_files="$ac_config_files Makefile client/Makefile common/Makefile include/Makefile server/Makefile util/Makefile rtserver/Makefile rtclient/Makefile mk5server/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3368,6 +3368,7 @@ do
   "server/Makefile" ) CONFIG_FILES="$CONFIG_FILES server/Makefile" ;;
   "rtserver/Makefile" ) CONFIG_FILES="$CONFIG_FILES rtserver/Makefile" ;;
   "rtclient/Makefile" ) CONFIG_FILES="$CONFIG_FILES rtclient/Makefile" ;;
+  "mk5server/Makefile" ) CONFIG_FILES="$CONFIG_FILES mk5server/Makefile" ;;
   "util/Makefile" ) CONFIG_FILES="$CONFIG_FILES util/Makefile" ;;
   "depfiles" ) CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5

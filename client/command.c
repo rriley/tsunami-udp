@@ -176,7 +176,7 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
     //   error("Could not read shared secret");
 
     /* authenticate to the server */
-    if (ttp_authenticate(session, secret) < 0) {
+    if (ttp_authenticate(session, (u_char*)secret) < 0) {
 	warn("Authentication failed");
 	fclose(session->server);
 	free(secret);
@@ -535,10 +535,10 @@ int command_get(command_t *command, ttp_session_t *session)
        u_char *dump_file;
 
        dump_file = calloc(strlen(xfer->local_filename) + 16, sizeof(u_char));
-       strcpy(dump_file, xfer->local_filename);
-       strcat(dump_file, ".blockmap");
+       strcpy((char*)dump_file, xfer->local_filename);
+       strcat((char*)dump_file, ".blockmap");
 
-       fbits = fopen64(dump_file, "wb");
+       fbits = fopen64((char*)dump_file, "wb");
        if (fbits != NULL) {
          fwrite(&xfer->block_count, 1, sizeof(xfer->block_count), fbits);
          fwrite(xfer->received, xfer->block_count / 8 + 2, sizeof(u_char), fbits);
@@ -816,6 +816,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.19  2007/05/31 09:32:03  jwagnerhki
+ * removed some signedness warnings, added Mark5 server devel start code
+ *
  * Revision 1.18  2007/05/24 10:07:21  jwagnerhki
  * client can 'set' passphrase to other than default
  *

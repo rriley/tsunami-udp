@@ -84,7 +84,7 @@ void parse_command(command_t *command, char *buffer);
 int main(int argc, const char *argv[])
 {
     command_t        command;                           /* the current command being processed */
-    u_char           command_text[MAX_COMMAND_LENGTH];  /* the raw text of the command         */
+    char             command_text[MAX_COMMAND_LENGTH];  /* the raw text of the command         */
     ttp_session_t   *session = NULL;
     ttp_parameter_t  parameter;
    
@@ -241,6 +241,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.8  2007/05/31 09:32:07  jwagnerhki
+ * removed some signedness warnings, added Mark5 server devel start code
+ *
  * Revision 1.7  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
