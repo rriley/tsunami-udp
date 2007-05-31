@@ -1,5 +1,5 @@
 /*========================================================================
- * mk5api.c  --  Mark5 A/B/C API functions
+ * mk5api.h  --  Mark5 A/B/C API function declaration
  *
  * This contains the code that logs Tsunami transfer statistics
  * available on the server to disk for later analysis.
@@ -60,24 +60,23 @@
  * ASSOCIATED MATERIALS, AND TO THE PERFORMANCE AND VALIDITY OF
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
+#ifndef __MK5API_h_
+#define __MK5API_h_
 
-#include "mk5api.h"
+#include <sys/types.h>
+#include <stdio.h>
 
-MK5FILE* mk5_fopen64() {
-    return NULL;
-}
+#include "xlrapi.h"
+#include "xlrtypes.h"
 
-int mk5_fclose(MK5FILE *fp) {
-    return -1;
-}
+typedef struct MK5FILE_tt {
+   SSHANDLE    sshandle;   // handle
+   S_READDESC  rdesc;      // read descriptor: buffer pointer, disk address, data length
+} MK5FILE;
 
-int mk5_fseek(MK5FILE *stream, off_t offset, int whence) {
-    return 0;
-}
+extern MK5FILE* mk5_fopen64();
+extern int mk5_fclose(MK5FILE *fp);
+extern int mk5_fseek(MK5FILE *stream, off_t offset, int whence);
+extern size_t mk5_fread(void *ptr, size_t size, size_t nmemb, MK5FILE *stream);
 
-size_t mk5_fread(void *ptr, size_t size, size_t nmemb, MK5FILE *stream) {
-    return (size * nmemb);
-}
-
-
-
+#endif
