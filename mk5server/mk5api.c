@@ -63,21 +63,58 @@
 
 #include "mk5api.h"
 
+#define XLR_CARD_NR    1    // currently supporting just one card, first
+#define DO_ERROR(x, y, z)   errno=x; warn(y); return z
+
 MK5FILE* mk5_fopen64() {
-    return NULL;
+    if (XLRDeviceFind() <= 0) {
+        DO_ERROR(ENODEV, "No StreamStor card found", NULL);
+    }
+    // if(XLRCardReset(XLR_CARD_NR) != XLR_SUCCESS) return NULL;
+    MK5FILE* fp = (MK5FILE*)calloc(1, sizeof(MK5FILE));
+    if (XLROpen(XLR_CARD_NR, &(fp->sshandle)) != XLR_SUCCESS) {
+        XLRClose(fp->sshandle);
+        DO_ERROR(EACCES, "Could not open StreamStor card", NULL);
+    }
+    if (XLRSetMode(fp->sshandle, SS_MODE_PCI) != XLR_SUCCESS) {
+        XLRClose(fp->sshandle);
+        DO_ERROR(EACCES, "Could not set StreamStor PCI mode", NULL);
+    }
+    return fp;
 }
 
 int mk5_fclose(MK5FILE *fp) {
-    return -1;
+    if (fp != NULL) {
+        XLRClose(fp->sshandle);
+        free(fp);
+    }
+    return 0;
 }
 
 int mk5_fseek(MK5FILE *stream, off_t offset, int whence) {
+    if (stream != NULL) {
+        if (whence != SEEK_SET) {
+            DO_ERROR(EINVAL, "currently mk5_fseek supports only SEEK_SET", -1);
+        }
+        stream->rdesc.AddrHi = (offset >> 32);
+        stream->rdesc.AddrLo = offset & (unsigned long)0xFFFFFFFF;
+    }
+    return 0;
+}
+
+off_t mk5_ftello(MK5FILE *fp) {
+    if (fp != NULL) {
+        warn("mk5_ftello currently not supported");
+    }
     return 0;
 }
 
 size_t mk5_fread(void *ptr, size_t size, size_t nmemb, MK5FILE *stream) {
-    return (size * nmemb);
+    stream->rdesc.BufferAddr = (PULONG)ptr;
+    stream->rdesc.XferLength = size * nmemb;
+    if (XLRRead(stream->sshandle, &(stream->rdesc)) != XLR_SUCCESS) {
+        XLRStop(stream->sshandle);
+        DO_ERROR(EIO, "XLRRead failed", stream->rdesc.XferLength);
+    }
+    return stream->rdesc.XferLength;
 }
-
-
-

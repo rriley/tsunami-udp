@@ -65,6 +65,9 @@
 
 #include <sys/types.h>
 #include <stdio.h>
+#include <err.h>
+#include <errno.h>
+#include <malloc.h>
 
 #include "xlrapi.h"
 #include "xlrtypes.h"
@@ -75,8 +78,9 @@ typedef struct MK5FILE_tt {
 } MK5FILE;
 
 extern MK5FILE* mk5_fopen64();
-extern int mk5_fclose(MK5FILE *fp);
-extern int mk5_fseek(MK5FILE *stream, off_t offset, int whence);
-extern size_t mk5_fread(void *ptr, size_t size, size_t nmemb, MK5FILE *stream);
+extern int      mk5_fclose(MK5FILE *fp);
+extern int      mk5_fseek(MK5FILE *stream, off_t offset, int whence);
+extern off_t    mk5_ftello(MK5FILE *fp);
+extern size_t   mk5_fread(void *ptr, size_t size, size_t nmemb, MK5FILE *stream);
 
 #endif
