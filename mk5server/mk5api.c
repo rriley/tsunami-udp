@@ -62,11 +62,13 @@
  *========================================================================*/
 
 #include "mk5api.h"
+#include <err.h>
+#include <errno.h>
 
 #define XLR_CARD_NR    1    // currently supporting just one card, first
 #define DO_ERROR(x, y, z)   errno=x; warn(y); return z
 
-MK5FILE* mk5_fopen64() {
+MK5FILE* mk5_fopen64(const char *path, const char *mode) {
     if (XLRDeviceFind() <= 0) {
         DO_ERROR(ENODEV, "No StreamStor card found", NULL);
     }

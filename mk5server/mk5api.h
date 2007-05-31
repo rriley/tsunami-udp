@@ -65,8 +65,6 @@
 
 #include <sys/types.h>
 #include <stdio.h>
-#include <err.h>
-#include <errno.h>
 #include <malloc.h>
 
 #include "xlrapi.h"
@@ -77,7 +75,7 @@ typedef struct MK5FILE_tt {
    S_READDESC  rdesc;      // read descriptor: buffer pointer, disk address, data length
 } MK5FILE;
 
-extern MK5FILE* mk5_fopen64();
+extern MK5FILE* mk5_fopen64(const char *path, const char *mode);
 extern int      mk5_fclose(MK5FILE *fp);
 extern int      mk5_fseek(MK5FILE *stream, off_t offset, int whence);
 extern off_t    mk5_ftello(MK5FILE *fp);

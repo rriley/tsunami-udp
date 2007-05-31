@@ -83,73 +83,38 @@
  * success and non-zero on failure.
  *------------------------------------------------------------------------*/
 int build_datagram(ttp_session_t *session, u_int32_t block_index,
-		   u_int16_t block_type, u_char *datagram)
+           u_int16_t block_type, u_char *datagram)
 {
-    u_int32_t        block_size = session->parameter->block_size;
     static u_int32_t last_block = 0;
-    static u_int32_t last_written_vsib_block = 0;
-    int              status = 0;
-    u_int32_t        write_size;
-    
-    if (1 == block_index) {
-       /* reset static vars to zero, so that the next transfer works ok also */
-       last_written_vsib_block = 0;
-       last_block = 0;
-    }
+    int              status;
 
-             
-    
-    if (block_index != (last_block + 1)) {
-        fseeko64(session->transfer.vsib, (
-            (u_int64_t) session->parameter->block_size) * (block_index - 1), 
-            SEEK_SET);     
-    }
-    //last_block = block_index; // reading the next block in line, no seek required
-    
+    /* move the file pointer to the appropriate location */
+    if (block_index != (last_block + 1))
+    mk5_fseek(session->transfer.file, ((u_int64_t) session->parameter->block_size) * (block_index - 1), SEEK_SET);
+
     /* try to read in the block */
-#ifdef MK5SERVER
-// Mk5 read    read_vsib_block(datagram + 6, session->parameter->block_size);
-#endif
-    //if (status < 0) { /* Expired ? */
-      /*      memset(datagram + 6, 0, session->parameter->block_size);  */
-      /*      sprintf(g_error, "Could not read block #%u", block_index); */
-      /*      return warn(g_error); */
-    //}
-    
-
-    if((session->parameter->fileout) && (block_index != 0)
-          & (block_index == (last_written_vsib_block + 1)))
-    {
-          
-        /* remember what we have stored */
-        last_written_vsib_block++;
-        /* figure out how many bytes to write */
-        write_size = (block_index == session->parameter->block_count) ? 
-             (session->parameter->file_size % block_size) : block_size;
-        if (write_size == 0) { write_size = block_size; }
-
-        /* write the block to disk */
-        status = fwrite(datagram +6, 1, 
-              write_size, session->transfer.file);
-
-        if (status < write_size) {
-           sprintf(g_error, "Could not write block %d of file", block_index);
-           return warn(g_error);
-       }   
+    status = mk5_fread(datagram + 6, 1, session->parameter->block_size, session->transfer.file);
+    if (status < 0) {
+    sprintf(g_error, "Could not read block #%u", block_index);
+    return warn(g_error);
     }
-
 
     /* build the datagram header */
     *((u_int32_t *) (datagram + 0)) = htonl(block_index);
     *((u_int16_t *) (datagram + 4)) = htons(block_type);
 
     /* return success */
+    last_block = block_index;
     return 0;
 }
 
 
+
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.3  2007/05/31 12:50:26  jwagnerhki
+ * now mk5server compiles with SSAPI
+ *
  * Revision 1.2  2007/05/31 09:48:48  jwagnerhki
  * basic API
  *

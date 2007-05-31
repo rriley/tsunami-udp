@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.3 2007/05/31 12:04:57 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.4 2007/05/31 12:50:26 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include -L$(top_builddir)/common
@@ -29,6 +29,8 @@ mk5tsunamid_SOURCES	= \
 mk5tsunamid_LDADD	= $(common_lib)
 mk5tsunamid_DEPENDENCIES	= $(common_lib)
 mk5tsunamid_LDFLAGS     = -L$(top_builddir)/common
+mk5tsunamid_CFLAGS = -DMK5SERVER
+mk5tsunamid_CXXFLAGS = -DMK5SERVER
 
 # libssapi.a requires g++ instead of gcc, version 3.x or 2.x
 #    mk5tsunamid_CC = g++  -- this is not supported by automake

@@ -72,10 +72,7 @@
 #include <malloc.h>
 
 #include <tsunami-server.h>
-
-#ifdef VSIB_REALTIME
-#include "parse_evn_filename.h" /* EVN file name parsing for start time, station code, etc */
-#endif
+#include "mk5api.h"
 
 /*------------------------------------------------------------------------
  * int ttp_accept_retransmit(ttp_session_t *session,
@@ -337,13 +334,6 @@ int ttp_open_transfer(ttp_session_t *session)
     ttp_transfer_t  *xfer  = &session->transfer;
     ttp_parameter_t *param =  session->parameter;
 
-    #ifdef VSIB_REALTIME
-    /* VLBI/VSIB-related variables */
-    struct           evn_filename *ef;
-    double starttime;
-    struct timeval d;
-    #endif
-
     /*FILE *    dup_client_fd;*/
     char             size[10];
     char             message[20];
@@ -405,10 +395,8 @@ int ttp_open_transfer(ttp_session_t *session)
     if (param->verbose_yn)
 	printf("Request for file: '%s'\n", filename);
 
-    #ifndef VSIB_REALTIME
-
     /* try to open the file for reading */
-    xfer->file = fopen64(filename, "r");
+    xfer->file = mk5_fopen64(filename, "r");
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
     	/* signal failure to the client */
@@ -418,84 +406,6 @@ int ttp_open_transfer(ttp_session_t *session)
         }
         return warn(g_error);
     }
-
-    #else
-
-    /* get starting time (UTC) and detect whether local disk copy is wanted */
-    if (strrchr(filename,'/') == NULL) {
-        ef = parse_evn_filename(filename);          /* attempt to parse */
-        param->fileout = 0;
-    } else {
-        ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
-        param->fileout = 1;
-    }
-    if (!ef->valid) {
-        fprintf(stderr, "Warning: EVN filename parsing failed, '%s' not following EVN File Naming Convention?\n", filename);
-    }
-
-    /* get time multiplexing info from EVN filename (currently these are all unused) */
-    if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->totalslots= 1;          /* default to 1 */
-    else 
-      sscanf(get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo), "%d", &(param->totalslots));
-
-    if (get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->slotnumber= 1;          /* default to 1 */
-    else 
-      sscanf(get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo), "%d", &param->slotnumber);
-
-    if (get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->samplerate= 512;          /* default to 512 Msamples/s */
-    else 
-      sscanf(get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo), "%d", &param->samplerate);
-
-    /* try to open the vsib for reading */
-    xfer->vsib = fopen64("/dev/vsib", "r");
-    if (xfer->vsib == NULL) {
-        sprintf(g_error, "VSIB board does not exist in /dev/vsib or it cannot be read");
-        status = write(session->client_fd, "\002", 1);
-        if (status < 0) {
-            warn("Could not signal request failure to client");
-        }
-        return warn(g_error);
-    }
-
-    /* try to open the local disk copy file for writing */
-    if (param->fileout) {
-        xfer->file = fopen64(filename, "wb");
-        if (xfer->file == NULL) {
-            sprintf(g_error, "Could not open local file '%s' for writing", filename);
-            status = write(session->client_fd, "\x010", 1);
-            if (status < 0) {
-                warn("Could not signal request failure to client");
-            }
-            fclose(xfer->vsib);
-            return warn(g_error);
-        }
-    }
-        
-    /* Start half a second before full UTC seconds change. If EVN filename date/time parse failed, start immediately. */
-    if (!(NULL == ef->data_start_time_ascii || ef->data_start_time <= 1.0)) {
-        u_int64_t timedelta_usec;
-        starttime = ef->data_start_time - 0.5;
-
-        assert( gettimeofday(&d, NULL) == 0 );
-        timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
-        fprintf(stderr, "Sleeping until specified time (%s) for %lld usec...\n", ef->data_start_time_ascii, timedelta_usec);
-        usleep_that_works(timedelta_usec);
-    }
-
-    /* Check if the client is still connected after the long(?) wait */
-    //if(recv(session->client_fd, &status, 1, MSG_PEEK)<0) {
-    //    // connection has terminated, exit
-    //    fclose(xfer->vsib);
-    //    return warn("The client disconnected while server was sleeping.");
-    //}
-
-    /* start at next 1PPS pulse */
-    start_vsib(session);
-
-    #endif // end of VSIB_REALTIME section
     
     /* begin round trip time estimation */
     gettimeofday(&ping_s,NULL);
@@ -519,22 +429,9 @@ int ttp_open_transfer(ttp_session_t *session)
     if (read(session->client_fd, &param->faster_num,  2) < 0) return warn("Could not read speedup numerator");     param->faster_num  = ntohs(param->faster_num);
     if (read(session->client_fd, &param->faster_den,  2) < 0) return warn("Could not read speedup denominator");   param->faster_den  = ntohs(param->faster_den);
 
-    #ifndef VSIB_REALTIME
     /* try to find the file statistics */
-    fseeko64(xfer->file, 0, SEEK_END);
-    param->file_size   = ftello64(xfer->file);
-    fseeko64(xfer->file, 0, SEEK_SET);
-    #else
-    /* get length of recording in bytes from filename */
-    if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
-        sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
-    } else if (get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo) != 0) {
-        sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
-    } else {
-        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
-    }
-    fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
-    #endif
+    // fseeko64(xfer->file, 0, SEEK_END); param->file_size(xfer->file);
+    param->file_size   = 60LL * 512000000LL * 4LL / 8; // ftello64(xfer->file);
     
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
     param->epoch       = time(NULL);
@@ -565,6 +462,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.3  2007/05/31 12:50:26  jwagnerhki
+ * now mk5server compiles with SSAPI
+ *
  * Revision 1.2  2007/05/31 12:04:57  jwagnerhki
  * g++ compile warning fix, ssapi linking fix
  *
