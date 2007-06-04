@@ -70,6 +70,9 @@
 
 #include "tsunami.h"     /* for Tsunami function prototypes and the like */
 
+#ifdef MK5SERVER
+#include "mk5api.h"
+#endif
 
 /*------------------------------------------------------------------------
  * Global constants.
@@ -125,7 +128,11 @@ typedef struct {
 typedef struct {
     ttp_parameter_t    *parameter;    /* the TTP protocol parameters                */
     char               *filename;     /* the path to the file                       */
+    #ifdef MK5SERVER
+    MK5FILE            *file;         /* the open Mark5 data that we're transmitting*/
+    #else
     FILE               *file;         /* the open file that we're transmitting      */
+    #endif
     FILE               *vsib;         /* the vsib file number                       */
     FILE               *transcript;   /* the open transcript file for statistics    */
     int                 udp_fd;       /* the file descriptor of our UDP socket      */
@@ -187,6 +194,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.6  2007/06/04 12:17:21  jwagnerhki
+ * exclude mk5server from normal build, header fix
+ *
  * Revision 1.5  2007/05/31 09:32:03  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

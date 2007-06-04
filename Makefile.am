@@ -7,10 +7,11 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.2 2007/05/31 09:32:03 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.3 2007/06/04 12:17:21 jwagnerhki Exp $
 #
 
-SUBDIRS			= include common client server util rtserver rtclient mk5server
+SUBDIRS			= include common client server util rtserver rtclient
+# SUBDIRS			= include common client server util rtserver rtclient mk5server
 
 # For some reason, we have to list depcomp explicitly, even though
 # it's an automake-generated file.  :-(
