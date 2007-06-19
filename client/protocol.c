@@ -316,21 +316,24 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     //    fprintf(stderr, "Repeating retransmission requests [%d].\n", rexmit->index_max);      
     //    fprintf(stderr, "Current error rate = %u\n", ntohl(retransmission[0].error_rate));
     //}
-    
+
+    /* skip blanks (e.g. in semi-lossy, or completely lossess transfer) */
+    if (rexmit->index_max == 0) return 0;
+
     /* to keep Valgrind happy */
     memset(retransmission, 0, sizeof(retransmission));
 
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
-    
+
         #ifdef DEBUG_RETX
         warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
         #endif
-    
+
         /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
         retransmission[0].request_type = htons(REQUEST_RESTART);
         retransmission[0].block        = htonl(rexmit->table[0]);
-        
+
         /* send out the request */
         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
         if ((status <= 0) || fflush(session->server))
@@ -341,7 +344,7 @@ int ttp_repeat_retransmit(ttp_session_t *session)
         session->transfer.restart_lastidx    = rexmit->table[rexmit->index_max - 1];
         // session->transfer.restart_lastidx    = rexmit->table[0] + MAX_RETRANSMISSION_BUFFER; 
         // printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], session->transfer.restart_lastidx );
-        
+
         /* reset the retransmission table */
         session->transfer.next_block             = rexmit->table[0];
         session->transfer.stats.total_blocks     = rexmit->table[0];
@@ -364,17 +367,17 @@ int ttp_repeat_retransmit(ttp_session_t *session)
 
       /* get the block number */
       block = rexmit->table[entry];
-      
+
       /* if we want the block */
       if (block && !(session->transfer.received[block / 8] & (1 << (block % 8)))) {
-      
+
          /* save it */
          rexmit->table[count] = block;
-         
+
          /* update the statistics */
          ++(session->transfer.stats.total_retransmits);
          ++(session->transfer.stats.this_retransmits);
-         
+
          /* prepare a retransmit request */
          retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
          retransmission[count].block        = htonl(block);
@@ -506,13 +509,13 @@ int ttp_request_stop(ttp_session_t *session)
 int ttp_update_stats(ttp_session_t *session)
 {
     time_t            now_epoch = time(NULL);                 /* the current Unix epoch                         */
-    u_int64_t         delta;                                  /* the data transferred since last stats          */
-    u_int64_t         delta_total;                            /* the total data transferred since last stats    */
-    u_int64_t         delta_useful;                           /* the real trhoughput since last stats           */
+    u_int64_t         delta;                                  /* time delta since last statistics update (usec) */
+    u_int64_t         delta_total;                            /* tiem delta since start of transmission (usec)  */
     u_int64_t         temp;                                   /* temporary value for building the elapsed time  */
     int               hours, minutes, seconds, milliseconds;  /* parts of the elapsed time                      */
-    u_int64_t         data_total;                             /* the total amount of data transferred           */
+    u_int64_t         data_total;                             /* the total amount of data transferred (bytes)   */
     u_int64_t         data_last;                              /* the total amount of data since last stat time  */
+    u_int64_t         data_useful;                            /* the real trhoughput since last stats           */
     statistics_t     *stats = &(session->transfer.stats);
     retransmission_t  retransmission;
     int               status;
@@ -528,44 +531,53 @@ int ttp_update_stats(ttp_session_t *session)
     hours        = temp;
 
     /* find the amount of data transferred */
-    data_total = ((u_int64_t) session->parameter->block_size) *  stats->total_blocks;
-    data_last  = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
-    delta_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
+    data_total  = ((u_int64_t) session->parameter->block_size) *  stats->total_blocks;
+    data_last   = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
+    data_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
 
-    /* get the current UDP receive error count reported by the operating system */    
+    /* get the current UDP receive error count reported by the operating system */
     stats->this_udp_errors = get_udp_in_errors();
-    
-    /* update the rate statistics */
-    stats->transmit_rate   = 0.01 * ((session->parameter->history * stats->transmit_rate)   + ((100 - session->parameter->history) * data_last * 8.0 / delta));
-    stats->retransmit_rate = session->parameter->history          * (0.01 * stats->retransmit_rate) +
-    	                     (100 - session->parameter->history)  * (0.50 * 1000 * (stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks)) +
-	                                                             0.50 * 1000 * session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED);
 
-    /* send along the current error rate information */
+    /* update the rate statistics */
+    // transmit rate R = useful R (Mbit/s) + retransmit R (Mbit/s)
+    stats->this_transmit_rate   = data_last * 8.0 / delta; 
+    stats->this_retransmit_rate = (data_last - data_useful) * 8.0 / delta;
+    // IIRfilter(rate R) = (1.0 - h) * current_rate  +  h * old_rate 
+    stats->transmit_rate        = 0.01 * ( 
+         (100 - session->parameter->history) * stats->this_transmit_rate
+       + (session->parameter->history * stats->transmit_rate) );
+    // IIR filtered composite error and loss, some sort of knee function
+    stats->error_rate = session->parameter->history * (0.01 * stats->error_rate) +
+    	 (100 - session->parameter->history)
+          * 0.50 * 1000 
+          * ( (stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks)) 
+               + session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED );
+
+    /* send the current error rate information to the server */
     memset(&retransmission, 0, sizeof(retransmission));
     retransmission.request_type = htons(REQUEST_ERROR_RATE);
-    retransmission.error_rate   = htonl(session->transfer.stats.retransmit_rate);
+    retransmission.error_rate   = htonl((u_int64_t) session->transfer.stats.error_rate);
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
     if ((status <= 0) || fflush(session->server))
-	return warn("Could not send error rate information");
+        return warn("Could not send error rate information");
 
     /* build the stats string */    
-#ifdef STATS_MATLABFORMAT
+    #ifdef STATS_MATLABFORMAT
     sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8lld\n",
-#else
+    #else
     sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8lld\n",
-#endif
-	    hours, minutes, seconds, milliseconds,
-	    stats->total_blocks - stats->this_blocks,
-	    data_last / (1024.0 * 1024.0),
-	    (data_last * 8.0 / delta),
-	    100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
-	    session->transfer.stats.total_blocks,
-	    data_total / (1024.0 * 1024.0 * 1024.0),
-	    (data_total * 8.0 / delta_total),
-	    100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
-	    session->transfer.retransmit.index_max,
-	    session->transfer.ring_buffer->count_data,
+    #endif
+        hours, minutes, seconds, milliseconds,
+        stats->total_blocks - stats->this_blocks,
+        stats->this_retransmit_rate,
+        stats->this_transmit_rate,
+        100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
+        session->transfer.stats.total_blocks,
+        data_total / (1024.0 * 1024.0 * 1024.0),
+        (data_total * 8.0 / delta_total),
+        100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
+        session->transfer.retransmit.index_max,
+        session->transfer.ring_buffer->count_data,
         //delta_useful * 8.0 / delta,
         session->transfer.blocks_left, 
         stats->this_retransmits, // NOTE: stats->this_retransmits seems to be 0 always ??
@@ -625,6 +637,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.19  2007/06/19 13:35:24  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
  * Revision 1.18  2007/05/23 11:58:33  jwagnerhki
  * slightly better filename path trim
  *

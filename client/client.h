@@ -92,7 +92,8 @@ extern const u_int16_t  DEFAULT_SLOWER_DEN;     /* default denominator in the sl
 extern const u_int16_t  DEFAULT_FASTER_NUM;     /* default numerator in the speedup factor      */
 extern const u_int16_t  DEFAULT_FASTER_DEN;     /* default denominator in the speedup factor    */
 extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history in rates       */
-extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's        */
+extern const u_char     DEFAULT_LOSSLESS;       /* default client policy for retransmit request */
+extern const u_int32_t  DEFAULT_LOSSWINDOW_MS;  /* default time window (msec) for semi-lossless */
 extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap dump to a file   */
 
 #define DEFAULT_SECRET             "kitten"     /* the default passphrase for servers */
@@ -102,7 +103,7 @@ extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap d
 
 #define MAX_COMMAND_WORDS          10           /* maximum number of words in any command       */
 #define MAX_RETRANSMISSION_BUFFER  2048         /* maximum number of requests to send at once   */
-#define MAX_BLOCKS_QUEUED          8192         /* maximum number of blocks in ring buffer      */
+#define MAX_BLOCKS_QUEUED          4096         /* maximum number of blocks in ring buffer      */
 #define UPDATE_PERIOD              350000LL     /* length of the update period in microseconds  */
 
 extern const int        MAX_COMMAND_LENGTH;     /* maximum length of a single command           */
@@ -129,8 +130,10 @@ typedef struct {
     u_int32_t           this_retransmits;         /* the number of retransmits in this interval  */
     u_int32_t           total_blocks;             /* the total number of blocks transmitted      */
     u_int32_t           total_retransmits;        /* the total number of retransmissions         */
-    u_int64_t           transmit_rate;            /* the smoothed transmission rate (bps)        */
-    u_int64_t           retransmit_rate;          /* the smoothed retransmisson rate (% x 1000)  */
+    double              this_transmit_rate;       /* the unfiltered transmission rate (bps)      */
+    double              transmit_rate;            /* the smoothed transmission rate (bps)        */
+    double              this_retransmit_rate;     /* the unfiltered retransmission rate (bps)    */
+    double              error_rate;               /* the smoothed error rate (% x 1000)          */
     u_int64_t           start_udp_errors;         /* the initial UDP error counter value of OS   */
     u_int64_t           this_udp_errors;          /* the current UDP error counter value of OS   */
 } statistics_t;
@@ -174,7 +177,8 @@ typedef struct {
     u_int16_t           faster_num;               /* the numerator of the decrease-IPD factor    */
     u_int16_t           faster_den;               /* the denominator of the decrease-IPD factor  */
     u_int16_t           history;                  /* percentage of history to keep in rates      */
-    u_char              no_retransmit;            /* 1 for no retransmissions, data rate priority*/
+    u_char              lossless;                 /* 1 for lossless, 0 for data rate priority    */
+    u_int32_t           losswindow_ms;            /* data rate priority: time window for re-tx's */
     u_char              blockdump;                /* 1 to write received block bitmap to a file  */
     char                *passphrase;              /* the passphrase to use for authentication    */
     char                *ringbuf;                 /* Pointer to ring buffer start                */
@@ -272,6 +276,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.9  2007/06/19 13:35:23  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
  * Revision 1.8  2007/05/24 10:07:21  jwagnerhki
  * client can 'set' passphrase to other than default
  *

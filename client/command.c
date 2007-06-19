@@ -211,6 +211,7 @@ int command_get(command_t *command, ttp_session_t *session)
     u_int32_t       iteration     = 0;          /* the number of iterations through the main loop */
     u_int64_t       delta = 0;                  /* generic holder of elapsed times                */
     u_int32_t       block = 0;                  /* generic holder of a block number               */
+    u_int64_t       lostcount = 0;              /* the entirely lost/ignored blocks count         */
     ttp_transfer_t *xfer          = &(session->transfer);
     retransmit_t   *rexmit        = &(session->transfer.retransmit);
     int             status = 0;
@@ -395,10 +396,10 @@ int command_get(command_t *command, ttp_session_t *session)
 
    /* until we break out of the transfer */
    while (!complete_flag) {
-   
+
       /* we got here again */
       ++iteration;
-      
+
       /* try to receive a datagram */
       status = recvfrom(xfer->udp_fd, local_datagram, 6 + session->parameter->block_size, 0, 
                         (struct sockaddr *) &session->server_address, &session->server_address_length);
@@ -424,34 +425,63 @@ int command_get(command_t *command, ttp_session_t *session)
 
       if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8))) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending) 
       {
-   
+
           /* reserve a datagram slot */
           datagram = ring_reserve(xfer->ring_buffer);
-    
+
           /* copy data from local buffer into ring buffer */
           memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
-        
+
           /* confirm our slot reservation */
           if (ring_confirm(xfer->ring_buffer) < 0) {
               warn("Error in accepting block");
               goto abort;
           }
-    
+
           /* queue any retransmits we need */
-          if ((this_block > xfer->next_block) && (session->parameter->no_retransmit == 0)) {
-              for (block = xfer->next_block; block < this_block; ++block) {
-                  if (ttp_request_retransmit(session, block) < 0) {
-                      warn("Retransmission request failed");
-                      goto abort;
-                  }
-              }
+          if (this_block > xfer->next_block) {
+
+             /* lossy transfer mode */
+             if (!session->parameter->lossless) {
+                if (session->parameter->losswindow_ms == 0) {
+                    /* lossy transfer, no retransmits */
+                } else {
+                    /* semi-lossy transfer, purge data past specified approximate time window */
+                    double path_capability;
+                    path_capability  = 0.8 * (xfer->stats.this_transmit_rate + xfer->stats.this_retransmit_rate); // reduced effective Mbit/s rate
+                    path_capability *= (0.001 * session->parameter->losswindow_ms); // MBit inside window, round-trip user estimated in losswindow_ms!
+                    u_int32_t earliest_block = this_block -
+                       min(
+                         1024 * 1024 * path_capability / (8 * session->parameter->block_size),  // # of blocks inside window
+                         (this_block - xfer->next_block)                                        // # of blocks missing
+                       );
+                    for (block = earliest_block; block < this_block; ++block) {
+                        if (ttp_request_retransmit(session, block) < 0) {
+                            warn("Retransmission request failed");
+                            goto abort;
+                        }
+                    }
+                    // hop over the missing section
+                    xfer->blocks_left -= (earliest_block - xfer->next_block);
+                    xfer->next_block = earliest_block;
+                }
+
+             /* lossless transfer mode, request all missing data to be resent */
+             } else {
+                for (block = xfer->next_block; block < this_block; ++block) {
+                    if (ttp_request_retransmit(session, block) < 0) {
+                        warn("Retransmission request failed");
+                        goto abort;
+                    }
+                }
+             }
           }
-   
+
           /* if this is the last block */
           if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
-   
+
             /* prepare to stop if we're done */
-            if (xfer->blocks_left == 0 || session->parameter->no_retransmit == 1) //rexmit->index_max == 0)
+            if (xfer->blocks_left == 0 || !session->parameter->lossless) //rexmit->index_max == 0)
               complete_flag = 1;
             else
               ttp_repeat_retransmit(session);
@@ -462,36 +492,34 @@ int command_get(command_t *command, ttp_session_t *session)
               xfer->stats.total_blocks = this_block;
               xfer->next_block         = this_block + 1;
           }
-          
+
           /* if a restart transmission request was going and last block met, reset flag */
           if (xfer->restart_pending && xfer->next_block>=session->transfer.restart_lastidx) {
               xfer->restart_pending = 0;
           }
-          
+
       }//if(not a duplicate block)
-   
+
       /* repeat our requests if it's time */
       if (!(iteration % 50)) {
-   
+
           /* if it's been at least a second */
           /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into 50 iterations */
           if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
-   
+
             /* repeat our retransmission requests */
-            if (0 == session->parameter->no_retransmit) {
-                if (ttp_repeat_retransmit(session) < 0) {
-                    warn("Repeat of retransmission requests failed");
-                    goto abort;
-                }
+            if (ttp_repeat_retransmit(session) < 0) {
+                warn("Repeat of retransmission requests failed");
+                goto abort;
             }
-         
+
             /* show our current statistics */
             ttp_update_stats(session);
-         
+
             //gettimeofday(&repeat_time, NULL);
          }
       }
-   
+
    } /* Transfer of the file completes here*/
 
     /* add a stop block to the ring buffer */
@@ -514,19 +542,37 @@ int command_get(command_t *command, ttp_session_t *session)
 	goto abort;
     }
 
+    /* count the truly lost blocks from the 'received' bitmap table */
+    lostcount = 0;
+    for (iteration=0; iteration<xfer->block_count; iteration++) {
+        if (0 == (xfer->received[iteration / 8] & (1 << (iteration % 8))) ) lostcount++;
+    }
+
     /* display the final results */
     delta = get_usec_since(&(xfer->stats.start_time));
-    printf("Mbits of data transmitted = %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
-    printf("Duration in seconds       = %0.2f\n", delta / 1000000.0);
-    printf("THROUGHPUT (Mbps)         = %0.2f\n", xfer->file_size * 8.0 / delta);
-    printf("OS UDP packet rx errors   = %lld\n",  xfer->stats.this_udp_errors - xfer->stats.start_udp_errors);
+    printf("Mbits of data transmitted : %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
+    printf("Duration in seconds       : %0.2f\n", delta / 1000000.0);
+    printf("THROUGHPUT (Mbps)         : %0.2f\n", xfer->file_size * 8.0 / delta);
+    printf("OS UDP packet rx errors   : delta %lld\n",  xfer->stats.this_udp_errors - xfer->stats.start_udp_errors);
+    printf("Transfer type             : ");    
+    if (session->parameter->lossless) {
+        printf("lossless\n");
+    } else { 
+        if (session->parameter->losswindow_ms == 0) {
+            printf("lossy\n");
+        } else {
+            printf("semi-lossy, time window %d ms\n", session->parameter->losswindow_ms);
+        }
+        printf("Missing data blocks count : %lld (%.2f%% of data) per user-specified time window constraint\n",
+                  lostcount, ( 100.0 * lostcount ) / xfer->block_count );
+    }
     printf("\n");
 
     /* update the transcript */
     if (session->parameter->transcript_yn) {
-	gettimeofday(&repeat_time, NULL);
-	xscript_data_stop(session, &repeat_time);
-	xscript_close(session, delta);
+        gettimeofday(&repeat_time, NULL);
+        xscript_data_stop(session, &repeat_time);
+        xscript_close(session, delta);
     }
 
     /* dump the received packet bitfield to a file, with added filename prefix ".blockmap" */
@@ -540,8 +586,8 @@ int command_get(command_t *command, ttp_session_t *session)
 
        fbits = fopen64((char*)dump_file, "wb");
        if (fbits != NULL) {
-         fwrite(&xfer->block_count, 1, sizeof(xfer->block_count), fbits);
-         fwrite(xfer->received, xfer->block_count / 8 + 2, sizeof(u_char), fbits);
+         fwrite(&xfer->block_count, sizeof(xfer->block_count), 1, fbits);
+         fwrite(xfer->received, sizeof(u_char), xfer->block_count / 8 + 1, fbits);
          fclose(fbits);
        } else {
          warn("Could not create a file for the blockmap dump");
@@ -683,42 +729,43 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
 
     /* handle actual set operations first */
     if (command->count == 3) {
-	if (!strcasecmp(command->text[1], "server")) {
-	    if (parameter->server_name != NULL) free(parameter->server_name);
-	    parameter->server_name = strdup(command->text[2]);
-	    if (parameter->server_name == NULL) error("Could not update server name");
-	} else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "blocksize"))  parameter->block_size    = atol(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "verbose"))    parameter->verbose_yn    = (strcmp(command->text[2], "yes") == 0);
-	  else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
-	  else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
-	  else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
-	  else if (!strcasecmp(command->text[1], "rate"))       { 
-	    long multiplier = 1;
-	    char *cmd = (char*)command->text[2];
-	    char cpy[256];
-	    int l = strlen(cmd);
-	    strcpy(cpy, cmd);
-	    if(l>1 && (toupper(cpy[l-1]))=='M') { 
-		multiplier = 1000000; cpy[l-1]='\0';  
-	    } else if(l>1 && toupper(cpy[l-1])=='G') { 
-		multiplier = 1000000000; cpy[l-1]='\0';   
-	    }
-	    parameter->target_rate   = multiplier * atol(cpy); 
-	  }
-	  else if (!strcasecmp(command->text[1], "error"))        parameter->error_rate    = atof(command->text[2]) * 1000.0;
-	  else if (!strcasecmp(command->text[1], "slowdown"))     parse_fraction(command->text[2], &parameter->slower_num, &parameter->slower_den);
-	  else if (!strcasecmp(command->text[1], "speedup"))      parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
-	  else if (!strcasecmp(command->text[1], "history"))      parameter->history       = atoi(command->text[2]);
-	  else if (!strcasecmp(command->text[1], "noretransmit")) parameter->no_retransmit = (strcmp(command->text[2], "yes") == 0);
-	  else if (!strcasecmp(command->text[1], "blockdump"))    parameter->blockdump     = (strcmp(command->text[2], "yes") == 0);
-	  else if (!strcasecmp(command->text[1], "passphrase")) {
-	    if (parameter->passphrase != NULL) free(parameter->passphrase);
-	    parameter->passphrase = strdup(command->text[2]);
-	    if (parameter->passphrase == NULL) error("Could not update passphrase");
-	  }
+    if (!strcasecmp(command->text[1], "server")) {
+        if (parameter->server_name != NULL) free(parameter->server_name);
+        parameter->server_name = strdup(command->text[2]);
+        if (parameter->server_name == NULL) error("Could not update server name");
+    } else if (!strcasecmp(command->text[1], "port"))       parameter->server_port   = atoi(command->text[2]);
+      else if (!strcasecmp(command->text[1], "udpport"))    parameter->client_port   = atoi(command->text[2]);
+      else if (!strcasecmp(command->text[1], "buffer"))     parameter->udp_buffer    = atol(command->text[2]);
+      else if (!strcasecmp(command->text[1], "blocksize"))  parameter->block_size    = atol(command->text[2]);
+      else if (!strcasecmp(command->text[1], "verbose"))    parameter->verbose_yn    = (strcmp(command->text[2], "yes") == 0);
+      else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
+      else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
+      else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
+      else if (!strcasecmp(command->text[1], "rate"))       { 
+        long multiplier = 1;
+        char *cmd = (char*)command->text[2];
+        char cpy[256];
+        int l = strlen(cmd);
+        strcpy(cpy, cmd);
+        if(l>1 && (toupper(cpy[l-1]))=='M') { 
+            multiplier = 1000000; cpy[l-1]='\0';  
+        } else if(l>1 && toupper(cpy[l-1])=='G') { 
+            multiplier = 1000000000; cpy[l-1]='\0';   
+        }
+        parameter->target_rate   = multiplier * atol(cpy); 
+      }
+      else if (!strcasecmp(command->text[1], "error"))        parameter->error_rate    = atof(command->text[2]) * 1000.0;
+      else if (!strcasecmp(command->text[1], "slowdown"))     parse_fraction(command->text[2], &parameter->slower_num, &parameter->slower_den);
+      else if (!strcasecmp(command->text[1], "speedup"))      parse_fraction(command->text[2], &parameter->faster_num, &parameter->faster_den);
+      else if (!strcasecmp(command->text[1], "history"))      parameter->history       = atoi(command->text[2]);
+      else if (!strcasecmp(command->text[1], "lossless"))     parameter->lossless      = (strcmp(command->text[2], "yes") == 0);
+      else if (!strcasecmp(command->text[1], "losswindow"))   parameter->losswindow_ms = atol(command->text[2]);
+      else if (!strcasecmp(command->text[1], "blockdump"))    parameter->blockdump     = (strcmp(command->text[2], "yes") == 0);    
+      else if (!strcasecmp(command->text[1], "passphrase")) {
+        if (parameter->passphrase != NULL) free(parameter->passphrase);
+        parameter->passphrase = strdup(command->text[2]);
+        if (parameter->passphrase == NULL) error("Could not update passphrase");
+      }
     }
 
     /* report on current values */
@@ -736,7 +783,8 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "slowdown"))   printf("slowdown = %d/%d\n", parameter->slower_num, parameter->slower_den);
     if (do_all || !strcasecmp(command->text[1], "speedup"))    printf("speedup = %d/%d\n",  parameter->faster_num, parameter->faster_den);
     if (do_all || !strcasecmp(command->text[1], "history"))    printf("history = %d%%\n",   parameter->history);
-    if (do_all || !strcasecmp(command->text[1], "noretransmit")) printf("noretransmit = %s\n", parameter->no_retransmit ? "yes" : "no");
+    if (do_all || !strcasecmp(command->text[1], "lossless"))   printf("lossless = %s\n",    parameter->lossless ? "yes" : "no");
+    if (do_all || !strcasecmp(command->text[1], "losswindow")) printf("losswindow = %d msec\n", parameter->losswindow_ms);
     if (do_all || !strcasecmp(command->text[1], "blockdump"))  printf("blockdump = %s\n",   parameter->blockdump ? "yes" : "no");
     if (do_all || !strcasecmp(command->text[1], "passphrase")) printf("passphrase = %s\n",  (parameter->passphrase == NULL) ? "default" : "<user-specified>");
     printf("\n");
@@ -816,6 +864,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.20  2007/06/19 13:35:24  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
  * Revision 1.19  2007/05/31 09:32:03  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

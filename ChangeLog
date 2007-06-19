@@ -1,3 +1,18 @@
 
- ...
+V1.1 CvsBuild 18:
+ - client, replaced 'set noretransmit' option with 'lossless' (yes/no) and 
+   'losswindow' (milliseconds) options to allow for near-time lossless transmissions 
+   e.g. from limited VSIB memory buffer
+ - reduced client ring buffer size from 8192 to 4096
+
+V1.1 CvsBuild 17:
+ - realtime server, removed extra delay before sending newly read VSIB block
+
+V1.1 CvsBuild 16:
+ - client, added 'set passphrase' option so the user is not prompted for the password, this
+   is used for e.g. scripting (of course, plaintext password in scripts then)
 	
+V1.1 CvsBuild 15:
+ - client, "get *", if the server sends full path names, place files in that same path
+   on client side if the path exists, otherwise place in current working directory
+

@@ -88,6 +88,9 @@ const u_int16_t  DEFAULT_FASTER_NUM    = 5;            /* default numerator in t
 const u_int16_t  DEFAULT_FASTER_DEN    = 6;            /* default denominator in the speedup factor    */
 const u_int16_t  DEFAULT_HISTORY       = 25;           /* default percentage of history in rates       */
 const u_char     DEFAULT_NO_RETRANSMIT = 0;            /* on default use retransmission                */
+const u_char     DEFAULT_LOSSLESS      = 1;            /* default to lossless transfer                 */
+const u_int32_t  DEFAULT_LOSSWINDOW_MS = 1000;         /* default time window (msec) for semi-lossless */
+
 const u_char     DEFAULT_BLOCKDUMP     = 0;            /* on default do not write bitmap dump to file  */
 
 const int        MAX_COMMAND_LENGTH    = 1024;         /* maximum length of a single command           */
@@ -124,7 +127,8 @@ void reset_client(ttp_parameter_t *parameter)
     parameter->faster_num    = DEFAULT_FASTER_NUM;
     parameter->faster_den    = DEFAULT_FASTER_DEN;
     parameter->history       = DEFAULT_HISTORY;
-    parameter->no_retransmit = DEFAULT_NO_RETRANSMIT;
+    parameter->lossless      = DEFAULT_LOSSLESS;
+    parameter->losswindow_ms = DEFAULT_LOSSWINDOW_MS;
     parameter->blockdump     = DEFAULT_BLOCKDUMP;
 
     /* make sure the strdup() worked */
@@ -135,6 +139,9 @@ void reset_client(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.4  2007/06/19 13:35:24  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
  * Revision 1.3  2006/12/15 12:57:41  jwagnerhki
  * added client 'blockdump' block bitmap dump to file feature
  *
