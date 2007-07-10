@@ -468,20 +468,20 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              exit(1);
 	}
     }
-    
+
     if (argc>optind) {
         int counter;
-        fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", argc-optind);
         parameter->file_names = argv+optind;
         parameter->file_name_size = 0;
-        parameter->total_File = argc-optind;    
+        parameter->total_files = argc-optind;
+        fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", parameter->total_files);
         for (counter=0; counter < argc-optind; counter++) {
             fprintf(stderr, "  %d) %s\n", counter+1, parameter->file_names[counter]);
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
-         
+
     if (1==parameter->verbose_yn) {
        fprintf(stderr,"Block size: %d\n", parameter->block_size);
        fprintf(stderr,"Buffer size: %d\n", parameter->udp_buffer); 
@@ -511,6 +511,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.17  2007/07/10 08:18:07  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.16  2007/05/31 09:16:12  jwagnerhki
  * removed 2 compiler warnings
  *

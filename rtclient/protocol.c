@@ -101,22 +101,22 @@ int ttp_authenticate(ttp_session_t *session, u_char *secret)
     /* read in the shared secret and the challenge */
     status = fread(random, 1, 64, session->server);
     if (status < 64)
-	return warn("Could not read authentication challenge from server");
+    return warn("Could not read authentication challenge from server");
 
     /* prepare the proof of the shared secret and destroy the password */
     prepare_proof(random, 64, secret, digest);
     while (*secret)
-	*(secret++) = '\0';
+    *(secret++) = '\0';
 
     /* send the response to the server */
     status = fwrite(digest, 1, 16, session->server);
     if ((status < 16) || fflush(session->server))
-	return warn("Could not send authentication response");
+    return warn("Could not send authentication response");
 
     /* read the results back from the server */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
-	return warn("Could not read authentication status");
+    return warn("Could not read authentication status");
 
     /* check the result byte */
     return (result == 0) ? 0 : -1;
@@ -142,12 +142,12 @@ int ttp_negotiate(ttp_session_t *session)
     /* send our protocol revision number to the server */
     status = fwrite(&client_revision, 4, 1, session->server);
     if ((status < 1) || fflush(session->server))
-	return warn("Could not send protocol revision number");
+    return warn("Could not send protocol revision number");
 
     /* read the protocol revision number from the server */
     status = fread(&server_revision, 4, 1, session->server);
     if (status < 1)
-	return warn("Could not read protocol revision number");
+    return warn("Could not read protocol revision number");
 
     /* compare the numbers */
     return (client_revision == server_revision) ? 0 : -1;
@@ -176,23 +176,23 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     /* submit the transfer request */
     status = fprintf(session->server, "%s\n", remote_filename);
     if ((status <= 0) || fflush(session->server))
-	return warn("Could not request file");
+    return warn("Could not request file");
 
     /* see if the request was successful */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
-	return warn("Could not read response to file request");
+    return warn("Could not read response to file request");
 
     /* make sure the result was a good one */
     if (result != 0)
-	return warn("Server: File does not exist or cannot be transmitted");
+    return warn("Server: File does not exist or cannot be transmitted");
 
     /* Submit the block size, target bitrate, and maximum error rate */
     temp = htonl(param->block_size);   if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit block size");
     temp = htonl(param->target_rate);  if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit target rate");
     temp = htonl(param->error_rate);   if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit error rate");
     if (fflush(session->server))
-	return warn("Could not flush control channel");
+    return warn("Could not flush control channel");
 
     /* submit the slower and faster factors */
     temp = htons(param->slower_num);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit slowdown numerator");
@@ -200,7 +200,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     temp = htons(param->faster_num);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit speedup numerator");
     temp = htons(param->faster_den);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit speedup denominator");
     if (fflush(session->server))
-	return warn("Could not flush control channel");
+    return warn("Could not flush control channel");
 
     /* populate the fields of the transfer object */
     memset(xfer, 0, sizeof(*xfer));
@@ -216,13 +216,24 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     /* we start out with every block yet to transfer */
     xfer->blocks_left = xfer->block_count;
 
-    /* try to open the file for writing */
-    if (!access(local_filename, F_OK))
+    /* try to open the local file for writing */
+    if (!access(xfer->local_filename, F_OK))
         printf("Warning: overwriting existing file '%s'\n", local_filename);     
-    xfer->file = fopen64(local_filename, "wb");
-    if (xfer->file == NULL)
-	return warn("Could not open local file for writing");
-    
+    xfer->file = fopen64(xfer->local_filename, "wb");
+    if (xfer->file == NULL) {
+        char * trimmed = rindex(xfer->local_filename, '/');
+        if ((trimmed != NULL) && (strlen(trimmed)>1)) {
+           printf("Warning: could not open file %s for writing, trying local directory instead.\n", xfer->local_filename);
+           xfer->local_filename = trimmed + 1;
+           if (!access(xfer->local_filename, F_OK))
+              printf("Warning: overwriting existing file '%s'\n", xfer->local_filename);     
+           xfer->file = fopen64(xfer->local_filename, "wb");
+        }
+        if(xfer->file == NULL) {
+           return warn("Could not open local file for writing");
+        }
+    }
+
     #ifdef VSIB_REALTIME
     /* try to open the vsib for output */
     xfer->vsib = fopen64("/dev/vsib", "wb");
@@ -237,7 +248,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     
     /* if we're doing a transcript */
     if (param->transcript_yn)
-	xscript_open(session);
+    xscript_open(session);
 
     /* indicate success */
     return 0;
@@ -261,7 +272,7 @@ int ttp_open_port(ttp_session_t *session)
     /* open a new datagram socket */
     session->transfer.udp_fd = create_udp_socket(session->parameter);
     if (session->transfer.udp_fd < 0)
-	return warn("Could not create UDP socket");
+    return warn("Could not create UDP socket");
 
     /* find out the port number we're using */
     memset(&udp_address, 0, sizeof(udp_address));
@@ -273,8 +284,8 @@ int ttp_open_port(ttp_session_t *session)
     /* send that port number to the server */
     status = fwrite(port, 2, 1, session->server);
     if ((status < 1) || fflush(session->server)) {
-	close(session->transfer.udp_fd);
-	return warn("Could not send UDP port number");
+    close(session->transfer.udp_fd);
+    return warn("Could not send UDP port number");
     }
 
     /* we succeeded */
@@ -306,20 +317,23 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     //    fprintf(stderr, "Current error rate = %u\n", ntohl(retransmission[0].error_rate));
     //}
 
+    /* skip blanks (e.g. in semi-lossy, or completely lossess transfer) */
+    if (rexmit->index_max == 0) return 0;
+
     /* to keep Valgrind happy */
     memset(retransmission, 0, sizeof(retransmission));
-        
+
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
     if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
-    
+
         #ifdef DEBUG_RETX
         warn("ttp_repeat_retransmit: MAX_RETRANSMISSION_BUFFER size exceeded");
         #endif
-    
+
         /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
         retransmission[0].request_type = htons(REQUEST_RESTART);
         retransmission[0].block        = htonl(rexmit->table[0]);
-        
+
         /* send out the request */
         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
         if ((status <= 0) || fflush(session->server))
@@ -330,14 +344,14 @@ int ttp_repeat_retransmit(ttp_session_t *session)
         session->transfer.restart_lastidx    = rexmit->table[rexmit->index_max - 1];
         // session->transfer.restart_lastidx    = rexmit->table[0] + MAX_RETRANSMISSION_BUFFER; 
         // printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], session->transfer.restart_lastidx );
-                    
+
         /* reset the retransmission table */
-        session->transfer.next_block         = rexmit->table[0];
-        session->transfer.stats.total_blocks = rexmit->table[0];
-        session->transfer.stats.this_blocks  = rexmit->table[0];
+        session->transfer.next_block             = rexmit->table[0];
+        session->transfer.stats.total_blocks     = rexmit->table[0];
+        session->transfer.stats.this_blocks      = rexmit->table[0];
         session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
-        rexmit->index_max                    = 0;
-        
+        rexmit->index_max                        = 0;
+
         #ifdef DEBUG_RETX
         warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
         #endif
@@ -353,17 +367,17 @@ int ttp_repeat_retransmit(ttp_session_t *session)
 
       /* get the block number */
       block = rexmit->table[entry];
-      
+
       /* if we want the block */
       if (block && !(session->transfer.received[block / 8] & (1 << (block % 8)))) {
-      
+
          /* save it */
          rexmit->table[count] = block;
-         
+
          /* update the statistics */
          ++(session->transfer.stats.total_retransmits);
          ++(session->transfer.stats.this_retransmits);
-         
+
          /* prepare a retransmit request */
          retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
          retransmission[count].block        = htonl(block);
@@ -409,7 +423,7 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
 
    /* if we don't have space for the request */
    if (rexmit->index_max >= rexmit->table_size) {
-      
+
       /* try to reallocate the table */
       ptr = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
       if (ptr == NULL)
@@ -495,13 +509,13 @@ int ttp_request_stop(ttp_session_t *session)
 int ttp_update_stats(ttp_session_t *session)
 {
     time_t            now_epoch = time(NULL);                 /* the current Unix epoch                         */
-    u_int64_t         delta;                                  /* the data transferred since last stats          */
-    u_int64_t         delta_total;                            /* the total data transferred since last stats    */
-    u_int64_t         delta_useful;                           /* the real trhoughput since last stats           */
+    u_int64_t         delta;                                  /* time delta since last statistics update (usec) */
+    u_int64_t         delta_total;                            /* tiem delta since start of transmission (usec)  */
     u_int64_t         temp;                                   /* temporary value for building the elapsed time  */
     int               hours, minutes, seconds, milliseconds;  /* parts of the elapsed time                      */
-    u_int64_t         data_total;                             /* the total amount of data transferred           */
+    u_int64_t         data_total;                             /* the total amount of data transferred (bytes)   */
     u_int64_t         data_last;                              /* the total amount of data since last stat time  */
+    u_int64_t         data_useful;                            /* the real trhoughput since last stats           */
     statistics_t     *stats = &(session->transfer.stats);
     retransmission_t  retransmission;
     int               status;
@@ -517,44 +531,53 @@ int ttp_update_stats(ttp_session_t *session)
     hours        = temp;
 
     /* find the amount of data transferred */
-    data_total = ((u_int64_t) session->parameter->block_size) *  stats->total_blocks;
-    data_last  = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
-    delta_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
+    data_total  = ((u_int64_t) session->parameter->block_size) *  stats->total_blocks;
+    data_last   = ((u_int64_t) session->parameter->block_size) * (stats->total_blocks - stats->this_blocks);
+    data_useful = data_last - (stats->this_retransmits) * ((u_int64_t) session->parameter->block_size);
 
-    /* get the current UDP receive error count reported by the operating system */    
+    /* get the current UDP receive error count reported by the operating system */
     stats->this_udp_errors = get_udp_in_errors();
-    
-    /* update the rate statistics */
-    stats->transmit_rate   = 0.01 * ((session->parameter->history * stats->transmit_rate)   + ((100 - session->parameter->history) * data_last * 8.0 / delta));
-    stats->retransmit_rate = session->parameter->history          * (0.01 * stats->retransmit_rate) +
-    	                     (100 - session->parameter->history)  * (0.50 * 1000 * (stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks)) +
-	                                                             0.50 * 1000 * session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED);
 
-    /* send along the current error rate information */
+    /* update the rate statistics */
+    // transmit rate R = useful R (Mbit/s) + retransmit R (Mbit/s)
+    stats->this_transmit_rate   = data_last * 8.0 / delta; 
+    stats->this_retransmit_rate = (data_last - data_useful) * 8.0 / delta;
+    // IIRfilter(rate R) = (1.0 - h) * current_rate  +  h * old_rate 
+    stats->transmit_rate        = 0.01 * ( 
+         (100 - session->parameter->history) * stats->this_transmit_rate
+       + (session->parameter->history * stats->transmit_rate) );
+    // IIR filtered composite error and loss, some sort of knee function
+    stats->error_rate = session->parameter->history * (0.01 * stats->error_rate) +
+         (100 - session->parameter->history)
+          * 0.50 * 1000 
+          * ( (stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks)) 
+               + session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED );
+
+    /* send the current error rate information to the server */
     memset(&retransmission, 0, sizeof(retransmission));
     retransmission.request_type = htons(REQUEST_ERROR_RATE);
-    retransmission.error_rate   = htonl(session->transfer.stats.retransmit_rate);
+    retransmission.error_rate   = htonl((u_int64_t) session->transfer.stats.error_rate);
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
     if ((status <= 0) || fflush(session->server))
-	return warn("Could not send error rate information");
+        return warn("Could not send error rate information");
 
     /* build the stats string */    
-#ifdef STATS_MATLABFORMAT
+    #ifdef STATS_MATLABFORMAT
     sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8lld\n",
-#else
+    #else
     sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8lld\n",
-#endif
-	    hours, minutes, seconds, milliseconds,
-	    stats->total_blocks - stats->this_blocks,
-	    data_last / (1024.0 * 1024.0),
-	    (data_last * 8.0 / delta),
-	    100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
-	    session->transfer.stats.total_blocks,
-	    data_total / (1024.0 * 1024.0 * 1024.0),
-	    (data_total * 8.0 / delta_total),
-	    100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
-	    session->transfer.retransmit.index_max,
-	    session->transfer.ring_buffer->count_data,
+    #endif
+        hours, minutes, seconds, milliseconds,
+        stats->total_blocks - stats->this_blocks,
+        stats->this_retransmit_rate,
+        stats->this_transmit_rate,
+        100.0 * stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks),
+        session->transfer.stats.total_blocks,
+        data_total / (1024.0 * 1024.0 * 1024.0),
+        (data_total * 8.0 / delta_total),
+        100.0 * stats->total_retransmits / (stats->total_retransmits + stats->total_blocks),
+        session->transfer.retransmit.index_max,
+        session->transfer.ring_buffer->count_data,
         //delta_useful * 8.0 / delta,
         session->transfer.blocks_left, 
         stats->this_retransmits, // NOTE: stats->this_retransmits seems to be 0 always ??
@@ -564,43 +587,43 @@ int ttp_update_stats(ttp_session_t *session)
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
 
-	/* screen mode */
-	if (session->parameter->output_mode == SCREEN_MODE) {
-	    printf("\033[2J\033[H");
-	    printf("Current time:   %s\n", ctime(&now_epoch));
-	    printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
-	    printf("Last interval\n--------------------------------------------------\n");
-	    printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
-	    printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
-	    printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
-	    printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
-	    printf("Cumulative\n--------------------------------------------------\n");
-	    printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
-	    printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
-	    printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
-	    printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
+    /* screen mode */
+    if (session->parameter->output_mode == SCREEN_MODE) {
+        printf("\033[2J\033[H");
+        printf("Current time:   %s\n", ctime(&now_epoch));
+        printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
+        printf("Last interval\n--------------------------------------------------\n");
+        printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
+        printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
+        printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
+        printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
+        printf("Cumulative\n--------------------------------------------------\n");
+        printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
+        printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
+        printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
+        printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
         printf("OS UDP rx errors: %lld\n",             stats->this_udp_errors - stats->start_udp_errors);
 
-	/* line mode */
-	} else {
+    /* line mode */
+    } else {
 
-	    /* print a header if necessary */
+        /* print a header if necessary */
 #ifndef STATS_NOHEADER
-	    if (!(iteration++ % 23)) {
-		printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
-		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
-	    }
+        if (!(iteration++ % 23)) {
+        printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
+        printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
+        }
 #endif
-	    printf("%s", stats_line);
-	}
+        printf("%s", stats_line);
+    }
 
-	/* and flush the output */
-	fflush(stdout);
+    /* and flush the output */
+    fflush(stdout);
     }
 
     /* print to the transcript if the user wants */
     if (session->parameter->transcript_yn)
-	xscript_data_log(session, stats_line);
+    xscript_data_log(session, stats_line);
 
     /* clear out the statistics again */
     stats->this_blocks      = stats->total_blocks;
@@ -614,6 +637,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.9  2007/07/10 08:18:06  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.8  2007/01/11 15:15:49  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *

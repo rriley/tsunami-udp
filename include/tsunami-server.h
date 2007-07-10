@@ -115,12 +115,12 @@ typedef struct {
     u_int16_t           faster_den;     /* the denominator of the decrease-IPD factor */
     char                *ringbuf;       /* Pointer to ring buffer start               */
     u_int16_t           fileout;        /* Do we store the data to file?              */
-    int                 slotnumber;     /* Slot number for distributed transfer */     
-    int                 totalslots;     /* How many slots do we have?        */
-    int                 samplerate;     /* Sample rate in MHz (optional)     */
-    char                **file_names;   /* Store the local file_names on server*/
-    u_int16_t           file_name_size; /* Store the total size of the array*/
-    u_int16_t           total_File;     /* Store the total number of file*/
+    int                 slotnumber;     /* Slot number for distributed transfer       */
+    int                 totalslots;     /* How many slots do we have?                 */
+    int                 samplerate;     /* Sample rate in MHz (optional)              */
+    char                **file_names;   /* Store the local file_names on server       */
+    u_int16_t           file_name_size; /* Store the total size of the array          */
+    u_int16_t           total_files;    /* Store the total number of served files     */
     long                wait_u_sec;
 } ttp_parameter_t;
 
@@ -194,6 +194,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.7  2007/07/10 08:18:05  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.6  2007/06/04 12:17:21  jwagnerhki
  * exclude mk5server from normal build, header fix
  *

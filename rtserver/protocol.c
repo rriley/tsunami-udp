@@ -339,18 +339,17 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #ifdef VSIB_REALTIME
     /* VLBI/VSIB-related variables */
-    struct           evn_filename *ef;
+    struct evn_filename *ef;
     double starttime;
     struct timeval d;
     #endif
 
-    /*FILE *    dup_client_fd;*/
-    char             size[10];
-    char             message[20];
-    int i,j;
-    char file_no[10];
-    struct timeval ping_s, ping_e;
-    
+    char       size[10];
+    char       message[20];
+    u_int16_t  i;
+    char       file_no[10];
+    struct     timeval ping_s, ping_e;
+
     /* clear out the transfer data */
     memset(xfer, 0, sizeof(*xfer));
 
@@ -366,44 +365,37 @@ int ttp_open_transfer(ttp_session_t *session)
      */
     if(!strcmp(filename,"*"))
     {  
-       sprintf(size,"%d",param->file_name_size);
-       printf("\nServer side file size: %s\n", size);
-       
-       write(session->client_fd,size,10);       
-       
-       sprintf(file_no,"%d",param->total_File);
-       printf("\nServer side file no: %s\n", file_no);       
-       
-       write(session->client_fd,file_no,10);       
-       
-       printf("\nFile sizes sent to client\n");
-       read(session->client_fd,message,8);
-       
-       printf("Got message back:\"%s\"\n",message);
-       
-       for(i=0,j=0;i<param->file_name_size;i+=strlen(param->file_names[j])+1,j++)
-          write(session->client_fd,param->file_names[j],strlen(param->file_names[j])+1);
-       
-       
-       /*write(session->client_fd,testing, sizeof(testing));*/
-       read(session->client_fd,message,8);
-       printf("Got back :%s\n", message);       
-       
+       sprintf(size, "%u", param->file_name_size);
+       write(session->client_fd, size, 10);
+
+       sprintf(file_no, "%u", param->total_files);
+       write(session->client_fd, file_no, 10);
+
+       printf("\nSent multi-GET filename count and array size to client\n");
+       read(session->client_fd, message, 8);
+       printf("Client response: %s\n", message);
+
+       for(i=0; i<param->total_files; i++)
+          write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
+
+       read(session->client_fd, message, 8);
+       printf("Sent file list, client response: %s\n", message);
+
        status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
        printf("file name requested: %s", filename);
-       /*error("I am stuck\n");*/
+
        if (status < 0)
           error("Could not read filename from client");
-    }/*end of multimode session*/    
-    
+    }/*end of multimode session*/
+
     /* store the filename in the transfer object */
     xfer->filename = strdup(filename);
     if (xfer->filename == NULL)
-	return warn("Memory allocation error");
+    return warn("Memory allocation error");
 
     /* make a note of the request */
     if (param->verbose_yn)
-	printf("Request for file: '%s'\n", filename);
+    printf("Request for file: '%s'\n", filename);
 
     #ifndef VSIB_REALTIME
 
@@ -411,11 +403,11 @@ int ttp_open_transfer(ttp_session_t *session)
     xfer->file = fopen64(filename, "r");
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
-    	/* signal failure to the client */
-    	status = write(session->client_fd, "\x008", 1);
-    	if (status < 0) {
-		   warn("Could not signal request failure to client");
-        }
+        /* signal failure to the client */
+        status = write(session->client_fd, "\x008", 1);
+        if (status < 0) {
+        warn("Could not signal request failure to client");
+    }
         return warn(g_error);
     }
 
@@ -473,7 +465,7 @@ int ttp_open_transfer(ttp_session_t *session)
             return warn(g_error);
         }
     }
-        
+
     /* Start half a second before full UTC seconds change. If EVN filename date/time parse failed, start immediately. */
     if (!(NULL == ef->data_start_time_ascii || ef->data_start_time <= 1.0)) {
         u_int64_t timedelta_usec;
@@ -496,14 +488,14 @@ int ttp_open_transfer(ttp_session_t *session)
     start_vsib(session);
 
     #endif // end of VSIB_REALTIME section
-    
+
     /* begin round trip time estimation */
     gettimeofday(&ping_s,NULL);
-    
+
     /* try to signal success to the client */
     status = write(session->client_fd, "\000", 1);
     if (status < 0)
-	return warn("Could not signal request approval to client");
+    return warn("Could not signal request approval to client");
 
     /* read in the block size, target bitrate, and error rate */
     if (read(session->client_fd, &param->block_size,  4) < 0) return warn("Could not read block size");            param->block_size  = ntohl(param->block_size);
@@ -512,7 +504,7 @@ int ttp_open_transfer(ttp_session_t *session)
 
     /* end round trip time estimation */
     gettimeofday(&ping_e,NULL);
-    
+
     /* read in the slowdown and speedup factors */
     if (read(session->client_fd, &param->slower_num,  2) < 0) return warn("Could not read slowdown numerator");    param->slower_num  = ntohs(param->slower_num);
     if (read(session->client_fd, &param->slower_den,  2) < 0) return warn("Could not read slowdown denominator");  param->slower_den  = ntohs(param->slower_den);
@@ -535,7 +527,7 @@ int ttp_open_transfer(ttp_session_t *session)
     }
     fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
     #endif
-    
+
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
     param->epoch       = time(NULL);
 
@@ -549,14 +541,14 @@ int ttp_open_transfer(ttp_session_t *session)
     session->parameter->wait_u_sec=(ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
     /*add a 10% safety margin*/
     session->parameter->wait_u_sec = session->parameter->wait_u_sec + ((int)(session->parameter->wait_u_sec* 0.1));  
-    
+
     /* and store the inter-packet delay */
     param->ipd_time   = (u_int32_t) ((1000000LL * 8 * param->block_size) / param->target_rate);
     xfer->ipd_current = param->ipd_time * 3;
 
     /* if we're doing a transcript */
     if (param->transcript_yn)
-	xscript_open(session);
+    xscript_open(session);
 
     /* we succeeded! */
     return 0;
@@ -565,6 +557,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.23  2007/07/10 08:18:06  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.22  2007/02/13 13:47:31  jwagnerhki
  * UTC parse fixes and extensions, dl in addition to flen for realtime bytelength
  *

@@ -221,9 +221,8 @@ int command_get(command_t *command, ttp_session_t *session)
      * session they are used to recieve the file names and other parameters
      */
     int             multimode = 0;
-    char           *file_names;
-    char          **all_fileNames = NULL;
-    int             f_counter, f_total;
+    char          **file_names = NULL;
+    u_int32_t       f_counter = 0, f_total = 0, f_arrsize = 0;
 
     /* this struct wil hold the RTT time */
     struct timeval ping_s, ping_e;
@@ -241,75 +240,62 @@ int command_get(command_t *command, ttp_session_t *session)
     memset(xfer, 0, sizeof(*xfer));
 
     /* if the client asking for multiple files to be transfered */
-    f_counter = 0; 
-    f_total = 0;
     if(!strcmp("*",command->text[1])) {
-       int   bytes_read = 0, totalSize = 0, totalNumber = 0;
-       char  file_size[10];
-       char  file_number[10];
+       char  filearray_size[10];
+       char  file_count[10];
 
        multimode = 1;
        printf("Requesting all available files\n");
 
-       /* Try to calculate the RTT from client to server */
+       /* Send request and try to calculate the RTT from client to server */
        gettimeofday(&(ping_s), NULL);
        status = fprintf(session->server, "%s\n", command->text[1]);
-
-       status = fread(file_size, sizeof(char), 10, session->server);
+       status = fread(filearray_size, sizeof(char), 10, session->server);
        gettimeofday(&(ping_e),NULL);
 
-       status = fread(file_number, sizeof(char), 10, session->server);
-
-       fprintf(session->server, "%s", "got size");
+       status = fread(file_count, sizeof(char), 10, session->server);
+       fprintf(session->server, "got size");
 
        if ((status <= 0) || fflush(session->server))
           return warn("Could not request file");
 
-       /* see if the request was successful */
+       /* See if the request was successful */
        if (status < 1)
           return warn("Could not read response to file request");
 
-       /* total sent data size */
-       sscanf(file_size, "%d", &totalSize);
-       /* total number of file */
-       sscanf(file_size, "%d", &totalNumber);
+       /* Calculate and convert RTT to u_sec, with +10% margin */
+       wait_u_sec = (ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
+       wait_u_sec = wait_u_sec + ((int)(wait_u_sec* 0.1));
 
-       printf("\nGot file size: %d\n",totalSize);
-       if (totalSize<=0) {
+       /* Parse */
+       sscanf(filearray_size, "%u", &f_arrsize);
+       sscanf(file_count, "%u", &f_total);
+
+       if (f_total <= 0) {
           return warn("Server advertised no files to get");
        }
-       if((file_names=malloc(totalSize*sizeof(char)))==NULL)
+       printf("\nServer is sharing %u files\n", f_total);
+
+       /* Read the file list */
+       file_names = malloc(f_total * sizeof(char*));
+       if(file_names == NULL)
           error("Could not allocate memory\n");
 
-       fread(file_names, sizeof(char), totalSize, session->server);
-       fprintf(session->server,"%s", "got list");
-
-       if((all_fileNames=calloc(totalNumber, sizeof(char*)))==NULL)
-          error("could not allocate memory\n");
-
-       /* this while loop separates the file names */
-       while(bytes_read<totalSize) {
-           if((all_fileNames[f_counter]=malloc((strlen(file_names+bytes_read)+1)*sizeof(char)))==NULL) {
-              error("could not allocate memory\n");
-           } else {
-              strcpy(all_fileNames[f_counter],file_names+bytes_read);
-           }
-
-           bytes_read += strlen(all_fileNames[f_counter++])+1;
-           printf("%s ", all_fileNames[f_counter -1]);
+       printf("Multi-GET of %d files:\n", f_total);
+       for(f_counter=0; f_counter<f_total; f_counter++) {
+          char tmpname[1024];
+          fread_line(session->server, tmpname, 1024);
+          file_names[f_counter] = strdup(tmpname);
+          printf("%s ", file_names[f_counter]);
        }
-       f_total = f_counter;
-       f_counter = 0;
+       fprintf(session->server, "got list");
+       printf("\n");
 
-       printf("file size %d. Getting %d files.\n", bytes_read, f_total);
-       /*free(file_names);*/
+    } else {
+       f_total = 1;
     }
 
-    /* calculate and convert RTT to u_sec */
-    wait_u_sec = (ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
-    /* add a 10% safety margin */
-    wait_u_sec = wait_u_sec + ((int)(wait_u_sec* 0.1));
-
+    f_counter = 0;
     do /*---loop for single and multi file request---*/
     {
 
@@ -321,13 +307,15 @@ int command_get(command_t *command, ttp_session_t *session)
     if(!multimode)
        xfer->remote_filename = command->text[1];
     else
-       xfer->remote_filename = all_fileNames[f_counter];
+       xfer->remote_filename = file_names[f_counter];
 
-    /* calculate the local filename */
+    /* store the local filename */
     if(!multimode) {
        if (command->count >= 3) {
+          /* command was in "GET remotefile localfile" style */
           xfer->local_filename = command->text[2];
        } else {
+          /* trim into local filename without '/' */
           xfer->local_filename = strrchr(command->text[1], '/');
           if (xfer->local_filename == NULL)
              xfer->local_filename = command->text[1];
@@ -335,7 +323,8 @@ int command_get(command_t *command, ttp_session_t *session)
              ++(xfer->local_filename);
        }
     } else {
-       xfer->local_filename = all_fileNames[f_counter];
+       /* don't trim, GET* writes into remotefilename dir if exists, otherwise into CWD */
+       xfer->local_filename = file_names[f_counter];
        printf("GET *: now requesting file '%s'\n", xfer->local_filename);
     }
 
@@ -351,10 +340,6 @@ int command_get(command_t *command, ttp_session_t *session)
     rexmit->table = (u_int32_t *) calloc(DEFAULT_TABLE_SIZE, sizeof(u_int32_t));
     if (rexmit->table == NULL)
 	error("Could not allocate retransmission table");
-
-    //rexmit->rx_table = (u_int32_t *) calloc(xfer->block_count+1, sizeof(u_int32_t));
-    //if (rexmit->rx_table == NULL)
-    //    error("Could not allocate retransmission table");
 
     /* allocate the received bitfield */
     xfer->received = (u_char *) calloc(xfer->block_count / 8 + 2, sizeof(u_char));
@@ -605,7 +590,16 @@ int command_get(command_t *command, ttp_session_t *session)
     if (xfer->received != NULL) { free(xfer->received);  xfer->received = NULL; }
     if (local_datagram != NULL) { free(local_datagram);  local_datagram = NULL; }
 
+    /* more files in "GET *" ? */
     } while(++f_counter<f_total);
+
+    /* deallocate file list */
+    if(multimode) {
+       for(f_counter=0; f_counter<f_total; f_counter++) {
+           free(file_names[f_counter]);
+       }
+       free(file_names);
+    }
 
     /* we succeeded */
     return 0;
@@ -864,6 +858,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.21  2007/07/10 08:18:05  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.20  2007/06/19 13:35:24  jwagnerhki
  * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
  *

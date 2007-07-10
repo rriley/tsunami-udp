@@ -237,12 +237,38 @@ int read_line(int fd, char *buffer, size_t buffer_length)
 
     /* read in the full line */
     do {
-	if (read(fd, buffer + buffer_offset, 1) <= 0)
-	    return warn("Could not read complete line of input");
-    } while ((buffer[buffer_offset++] != '\n') && (buffer_offset < buffer_length));
+       if (read(fd, buffer + buffer_offset, 1) <= 0)
+          return warn("Could not read complete line of input");
+       buffer_offset++;
+    } while ( (buffer[buffer_offset-1] != '\0') && (buffer[buffer_offset-1] != '\n') 
+              && (buffer_offset < buffer_length) );
 
     /* terminate the string and return */
-    buffer[buffer_offset - 1] = '\0';
+    buffer[buffer_offset-1] = '\0';
+    return 0;
+}
+
+/*------------------------------------------------------------------------
+ * int fread_line(FILE *f, char *buffer, size_t buffer_length);
+ *
+ * Reads a newline-terminated line from the given file descriptor and
+ * returns it, sans the newline character.  No buffering is done.
+ * Returns 0 on success and a negative value on error.
+ *------------------------------------------------------------------------*/
+int fread_line(FILE *f, char *buffer, size_t buffer_length)
+{
+    int buffer_offset = 0;
+
+    /* read in the full line */
+    do {
+       if (fread(buffer + buffer_offset, sizeof(char), 1, f) <= 0)
+          return warn("Could not read complete line of input");
+       buffer_offset++;
+    } while ( (buffer[buffer_offset-1] != '\0') && (buffer[buffer_offset-1] != '\n') 
+              && (buffer_offset < buffer_length) );
+
+    /* terminate the string and return */
+    buffer[buffer_offset-1] = '\0';
     return 0;
 }
 
@@ -319,6 +345,9 @@ u_int64_t get_udp_in_errors()
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.7  2007/07/10 08:18:05  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.6  2007/05/31 11:45:26  jwagnerhki
  * removed compiler warning
  *

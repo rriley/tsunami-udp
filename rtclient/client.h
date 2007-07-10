@@ -92,21 +92,24 @@ extern const u_int16_t  DEFAULT_SLOWER_DEN;     /* default denominator in the sl
 extern const u_int16_t  DEFAULT_FASTER_NUM;     /* default numerator in the speedup factor      */
 extern const u_int16_t  DEFAULT_FASTER_DEN;     /* default denominator in the speedup factor    */
 extern const u_int16_t  DEFAULT_HISTORY;        /* default percentage of history in rates       */
-extern const u_char     DEFAULT_NO_RETRANSMIT;  /* the default client policy for re-tx's        */
+extern const u_char     DEFAULT_LOSSLESS;       /* default client policy for retransmit request */
+extern const u_int32_t  DEFAULT_LOSSWINDOW_MS;  /* default time window (msec) for semi-lossless */
 extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap dump to a file   */
+
+#define DEFAULT_SECRET             "kitten"     /* the default passphrase for servers */
 
 #define SCREEN_MODE                0            /* screen-based output mode                     */
 #define LINE_MODE                  1            /* line-based (vmstat-like) output mode         */
 
 #define MAX_COMMAND_WORDS          10           /* maximum number of words in any command       */
 #define MAX_RETRANSMISSION_BUFFER  2048         /* maximum number of requests to send at once   */
-#define MAX_BLOCKS_QUEUED          8192         /* maximum number of blocks in ring buffer      */
+#define MAX_BLOCKS_QUEUED          4096         /* maximum number of blocks in ring buffer      */
 #define UPDATE_PERIOD              350000LL     /* length of the update period in microseconds  */
 
 extern const int        MAX_COMMAND_LENGTH;     /* maximum length of a single command           */
 
-#define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now)           */
-#define START_VSIB_PACKET  14500                /* When to start output                         */
+#define RINGBUF_BLOCKS             1            /* Size of ring buffer (disabled now)           */
+#define START_VSIB_PACKET          14500        /* When to start output                         */
                                                 /* 2000 packets per second, now 8 second delay  */
 
 /*------------------------------------------------------------------------
@@ -127,8 +130,10 @@ typedef struct {
     u_int32_t           this_retransmits;         /* the number of retransmits in this interval  */
     u_int32_t           total_blocks;             /* the total number of blocks transmitted      */
     u_int32_t           total_retransmits;        /* the total number of retransmissions         */
-    u_int64_t           transmit_rate;            /* the smoothed transmission rate (bps)        */
-    u_int64_t           retransmit_rate;          /* the smoothed retransmisson rate (% x 1000)  */
+    double              this_transmit_rate;       /* the unfiltered transmission rate (bps)      */
+    double              transmit_rate;            /* the smoothed transmission rate (bps)        */
+    double              this_retransmit_rate;     /* the unfiltered retransmission rate (bps)    */
+    double              error_rate;               /* the smoothed error rate (% x 1000)          */
     u_int64_t           start_udp_errors;         /* the initial UDP error counter value of OS   */
     u_int64_t           this_udp_errors;          /* the current UDP error counter value of OS   */
 } statistics_t;
@@ -172,8 +177,10 @@ typedef struct {
     u_int16_t           faster_num;               /* the numerator of the decrease-IPD factor    */
     u_int16_t           faster_den;               /* the denominator of the decrease-IPD factor  */
     u_int16_t           history;                  /* percentage of history to keep in rates      */
-    u_char              no_retransmit;            /* 1 for no retransmissions, data rate priority*/
+    u_char              lossless;                 /* 1 for lossless, 0 for data rate priority    */
+    u_int32_t           losswindow_ms;            /* data rate priority: time window for re-tx's */
     u_char              blockdump;                /* 1 to write received block bitmap to a file  */
+    char                *passphrase;              /* the passphrase to use for authentication    */
     char                *ringbuf;                 /* Pointer to ring buffer start                */
 } ttp_parameter_t;    
 
@@ -269,20 +276,26 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
- * Revision 1.8  2007/01/11 15:15:49  jwagnerhki
- * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
+ * Revision 1.9  2007/07/10 08:18:06  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
- * Revision 1.7  2006/12/15 12:57:41  jwagnerhki
+ * Revision 1.9  2007/06/19 13:35:23  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
+ * Revision 1.8  2007/05/24 10:07:21  jwagnerhki
+ * client can 'set' passphrase to other than default
+ *
+ * Revision 1.7  2006/12/21 13:50:33  jwagnerhki
+ * added to client something that smells like a fix for non-working REQUEST_RESTART
+ *
+ * Revision 1.6  2006/12/15 12:57:41  jwagnerhki
  * added client 'blockdump' block bitmap dump to file feature
  *
- * Revision 1.6  2006/12/11 13:44:17  jwagnerhki
+ * Revision 1.5  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *
- * Revision 1.5  2006/12/05 15:24:50  jwagnerhki
+ * Revision 1.4  2006/12/05 15:24:49  jwagnerhki
  * now noretransmit code in client only, merged rt client code
- *
- * Revision 1.4  2006/10/28 17:08:42  jwagnerhki
- * fixed jr's nonworking rtclient
  *
  * Revision 1.3  2006/07/21 07:55:35  jwagnerhki
  * new UDP port define
@@ -290,10 +303,10 @@ void           xscript_open          (ttp_session_t *session);
  * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
  * header file merge
  *
- * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
  * reimport
  *
- * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
- * added to trunk
+ * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
+ * deleted unnecessary files
  *
  */

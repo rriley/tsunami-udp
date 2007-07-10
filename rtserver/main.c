@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     /* now show version / build information */
     #ifdef VSIB_REALTIME
-    fprintf(stderr, "Tsunami Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
+    fprintf(stderr, "Tsunami Realtime Server for protocol rev %X\nRevision: %s\nCompiled: %s %s\n"
                     "   /dev/vsib VSIB accesses mode=%d, sample skip=%d, gigabit=%d, 1pps embed=%d\n"
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__,
@@ -312,7 +312,7 @@ void client_handler(ttp_session_t *session)
 	    ipd_time = get_usec_since(&delay);
 	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
             #ifdef VSIB_REALTIME
-            if (block_new != 1) { /* only throttle retransmissions, VSIB read already slows down new blocks */
+            if (block_new != 1) { /* delay/throttle only the retransmissions, keep VSIB read rate */
                 usleep_that_works(ipd_time);
             }
             #else
@@ -468,10 +468,10 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
     
     if (argc>optind) {
         int counter;
-        fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", argc-optind);
         parameter->file_names = argv+optind;
         parameter->file_name_size = 0;
-        parameter->total_File = argc-optind;    
+        parameter->total_files = argc-optind;
+        fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", parameter->total_files);
         for (counter=0; counter < argc-optind; counter++) {
             fprintf(stderr, "  %d) %s\n", counter+1, parameter->file_names[counter]);
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
@@ -508,6 +508,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.18  2007/07/10 08:18:06  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.17  2007/05/31 09:32:08  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

@@ -70,8 +70,8 @@
  *------------------------------------------------------------------------*/
 
 const u_int32_t  DEFAULT_BLOCK_SIZE    = 32768;     /* default size of a single file block     */
-const u_char    *DEFAULT_SECRET        = "kitten";  /* default shared secret                   */
-const u_int16_t  DEFAULT_TCP_PORT      = TS_TCP_PORT;/* default TCP port to listen on           */
+const u_char    *DEFAULT_SECRET        = (u_char*)"kitten";  /* default shared secret          */
+const u_int16_t  DEFAULT_TCP_PORT      = TS_TCP_PORT;/* default TCP port to listen on          */
 const u_int32_t  DEFAULT_UDP_BUFFER    = 20000000;  /* default size of the UDP transmit buffer */
 const u_char     DEFAULT_VERBOSE_YN    = 1;         /* the default verbosity setting           */
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;         /* the default transcript setting          */
@@ -100,6 +100,9 @@ void reset_server(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.5  2007/07/10 08:18:07  jwagnerhki
+ * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ *
  * Revision 1.4  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
