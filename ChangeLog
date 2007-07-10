@@ -1,4 +1,9 @@
 
+v1.1 CvsBuild 19:
+ - client, cleaned up the GET * code a lot, file list can contain up 
+   to 65530 files (although, as 'tsunamid' currently gets * files as 
+   command line arguments, the maximum argument length is the current limit)
+
 V1.1 CvsBuild 18:
  - client, replaced 'set noretransmit' option with 'lossless' (yes/no) and 
    'losswindow' (milliseconds) options to allow for near-time lossless transmissions 
