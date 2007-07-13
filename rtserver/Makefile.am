@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.4 2006/10/25 12:09:41 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.5 2007/07/13 07:04:29 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
@@ -29,3 +29,4 @@ rttsunamid_SOURCES	= \
 			server.h
 rttsunamid_LDADD	= $(common_lib)
 rttsunamid_DEPENDENCIES	= $(common_lib)
+AM_CFLAGS		= -DVSIB_REALTIME
