@@ -1,4 +1,10 @@
 
+v1.1 CvsBuild 20:
+ - added lossless, losswindow, blockdump settings to client transcript printouts
+ - fixed rtserver/Makefile.am, rtclient/Makefile.am to define -DVSIB_REALTIME
+ - server prints client IP before auth takes place
+ - added client transcript file to Octave plot generator script, under ./util/
+
 v1.1 CvsBuild 19:
  - client, cleaned up the GET * code a lot, file list can contain up 
    to 65530 files (although, as 'tsunamid' currently gets * files as 

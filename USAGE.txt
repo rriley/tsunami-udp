@@ -156,12 +156,16 @@ tsunami> set
    slowdown = 25/24        -- how fast to start throttling the rate
    speedup = 5/6           -- how fast to recover and move up towards target rate again
    history = 25%           -- weighting of past error rates in the throttling algorithm
-   noretransmit = no       -- 'yes' to disable retransmission of unreceived packets
+   lossless = yes          -- change to 'no' to allow data loss e.g. rate priority transfers
+   losswindow = 1000 msec  -- used if lossless='no', sets how old missing data should still be 
+                              requested again. If too old, data is considered lost.
    blockdump = no          -- 'yes' to write a block bitmap dump to a file, shows
                               packets that were not received as bit value 0,
                               file format is 4 bytes (long) contains number of blocks (bits),
                               followed by number of block count of bits, and two extra bytes
                               that may be ignored
+   passphrase = default    -- specify a different non-default passphrase for login to the server
+
 
  4. Getting Help
  ============
@@ -349,6 +353,9 @@ tsunami> set
  and typing in something into pc2 and hitting <enter> should
  then appear on the pc1 as netcat output, unless there are
  firewall problems.
+
+ Firewall settings, server side: TCP 46224 incoming allowed
+ Firewall settings, client side: UDP 46224 incoming allowed
 
  * Another possibility is MTU mismatch and no path MTU discovery.
  Tsunami uses a default block size of 32768 bytes. In the 
