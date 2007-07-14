@@ -139,6 +139,8 @@ int main(int argc, char *argv[])
         if (client_fd < 0) {
             warn("Could not accept client connection");
             continue;
+        } else {
+            fprintf(stderr, "New client connecting from %s...\n", inet_ntoa(remote_address.sin_addr));
         }
     
         /* and fork a new child process to handle it */
@@ -205,7 +207,7 @@ void client_handler(ttp_session_t *session)
         error("Client authentication failure");
     
     if (1==param->verbose_yn) {
-        fprintf(stderr,"New client connection, authenticated. Server params are:\n");
+        fprintf(stderr,"Client authenticated. Negotiated parameters are:\n");
         fprintf(stderr,"Block size: %d\n", param->block_size);
         fprintf(stderr,"Buffer size: %d\n", param->udp_buffer); 
         fprintf(stderr,"Port: %d\n", param->tcp_port);    
@@ -508,6 +510,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.19  2007/07/14 17:06:25  jwagnerhki
+ * show client IP prior to auth
+ *
  * Revision 1.18  2007/07/10 08:18:06  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *

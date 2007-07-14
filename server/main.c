@@ -72,6 +72,7 @@
 #include <string.h>      /* for memset(), sprintf(), etc.         */
 #include <sys/types.h>   /* for standard system data types        */
 #include <sys/socket.h>  /* for the BSD sockets library           */
+#include <arpa/inet.h>   /* for inet_ntoa()                       */
 #include <sys/wait.h>    /* for waitpid()                         */
 #include <unistd.h>      /* for Unix system calls                 */
 
@@ -139,6 +140,8 @@ int main(int argc, char *argv[])
        if (client_fd < 0) {
            warn("Could not accept client connection");
            continue;
+       } else {
+           fprintf(stderr, "New client connecting from %s...\n", inet_ntoa(remote_address.sin_addr));
        }
    
        /* and fork a new child process to handle it */
@@ -204,10 +207,10 @@ void client_handler(ttp_session_t *session)
     /* have the client try to authenticate to us */
     status = ttp_authenticate(session, session->parameter->secret);
     if (status < 0)
-        error("Client authentication failure");
+        error("Client authentication failed");
 
     if (1==param->verbose_yn) {
-        fprintf(stderr,"New client connection, authenticated. Server params are:\n");
+        fprintf(stderr,"Client authenticated. Negotiated parameters are:\n");
         fprintf(stderr,"Block size: %d\n", param->block_size);
         fprintf(stderr,"Buffer size: %d\n", param->udp_buffer); 
         fprintf(stderr,"Port: %d\n", param->tcp_port);    
@@ -511,6 +514,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.18  2007/07/14 17:06:24  jwagnerhki
+ * show client IP prior to auth
+ *
  * Revision 1.17  2007/07/10 08:18:07  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
