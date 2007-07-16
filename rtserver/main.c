@@ -72,6 +72,7 @@
 #include <string.h>      /* for memset(), sprintf(), etc.         */
 #include <sys/types.h>   /* for standard system data types        */
 #include <sys/socket.h>  /* for the BSD sockets library           */
+#include <arpa/inet.h>   /* for inet_ntoa()                       */
 #include <sys/wait.h>    /* for waitpid()                         */
 #include <unistd.h>      /* for Unix system calls                 */
 
@@ -510,6 +511,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.20  2007/07/16 07:29:51  jwagnerhki
+ * include arpa/inet.h
+ *
  * Revision 1.19  2007/07/14 17:06:25  jwagnerhki
  * show client IP prior to auth
  *
