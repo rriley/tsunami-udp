@@ -222,7 +222,7 @@ int create_udp_socket(ttp_parameter_t *parameter)
             status = bind(socket_fd, info->ai_addr, info->ai_addrlen);
             if (status == 0) {
                 parameter->client_port = ntohs(((struct sockaddr_in*)info->ai_addr)->sin_port);
-                printf("Receiving data on UDP port %d\n", parameter->client_port);
+                fprintf(stderr, "Receiving data on UDP port %d\n", parameter->client_port);
                 break;
             }
    
@@ -248,6 +248,9 @@ int create_udp_socket(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network.c,v $
+ * Revision 1.7  2007/07/16 09:09:45  jwagnerhki
+ * printf into fprintf stderr
+ *
  * Revision 1.6  2007/07/16 08:55:53  jwagnerhki
  * build 21, upped 16 to 256 clients, reduced end block blast speed, enabled RETX_REQBLOCK_SORTING compile flag
  *
