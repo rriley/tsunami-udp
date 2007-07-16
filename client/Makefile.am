@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.1 2006/07/20 09:21:18 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.2 2007/07/16 08:55:53 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
@@ -28,3 +28,4 @@ tsunami_SOURCES		= \
 			transcript.c
 tsunami_LDADD		= $(common_lib) -lpthread
 tsunami_DEPENDENCIES	= $(common_lib)
+AM_CFLAGS               = -DRETX_REQBLOCK_SORTING

@@ -197,7 +197,7 @@ void client_handler(ttp_session_t *session)
     ttp_transfer_t   *xfer  = &session->transfer;
     ttp_parameter_t  *param =  session->parameter;
     u_int64_t         delta;
-    u_char            block_new;
+    u_char            block_type;
 
     /* negotiate the connection parameters */
     status = ttp_negotiate(session);
@@ -255,7 +255,7 @@ void client_handler(ttp_session_t *session)
 	while (xfer->block <= param->block_count) {
 
             /* default: flag as retransmitted block */
-            block_new = 0;
+            block_type = TS_BLOCK_RETRANSMISSION;
 
 	    /* see if transmit requests are available */
 	    gettimeofday(&delay, NULL);
@@ -283,7 +283,8 @@ void client_handler(ttp_session_t *session)
 
 		/* build the block */
 		xfer->block = min(xfer->block + 1, param->block_count);
-		result = build_datagram(session, xfer->block, (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL, datagram);
+                block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
+                result = build_datagram(session, xfer->block, block_type, datagram);
 		if (result < 0) {
 		    sprintf(g_error, "Could not read block #%u", xfer->block);
 		    error(g_error);
@@ -296,7 +297,6 @@ void client_handler(ttp_session_t *session)
 		    warn(g_error);
 		    continue;
 		}
-                block_new = 1;
 
 	    /* if we have a partial retransmission message */
 	    } else if (result > 0) {
@@ -314,15 +314,14 @@ void client_handler(ttp_session_t *session)
 	    }
 
 	    /* delay for the next packet */
+            #ifdef VSIB_REALTIME
+            if (block_type == TS_BLOCK_ORIGINAL) {
+                continue; /* VSIB read() of new data already does the throttling */
+            }
+            #endif
 	    ipd_time = get_usec_since(&delay);
 	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
-            #ifdef VSIB_REALTIME
-            if (block_new != 1) { /* delay/throttle only the retransmissions, keep VSIB read rate */ 
-                usleep_that_works(ipd_time);
-            }
-            #else
             usleep_that_works(ipd_time);
-            #endif
 	}
 
 	/*---------------------------
@@ -514,6 +513,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.19  2007/07/16 08:55:54  jwagnerhki
+ * build 21, upped 16 to 256 clients, reduced end block blast speed, enabled RETX_REQBLOCK_SORTING compile flag
+ *
  * Revision 1.18  2007/07/14 17:06:24  jwagnerhki
  * show client IP prior to auth
  *

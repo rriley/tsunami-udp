@@ -1,3 +1,11 @@
+v1.1 CvsBuild 21:
+ - client, increased UDP port upping limit from 16 to 256 concurrent client 
+   download sessions, added a warning that shows current nr of reserved
+   client UDP ports
+ - client, enabled RETX_REQBLOCK_SORTING in Makefile.am
+ - server, changed block_new into block_type flag, and real-time server
+   skips throttling for TS_BLOCK_ORIGINAL only (VSIB does throttling) so
+   the final TS_BLOCK_TERMINATE block(s) are not blasted out at 1 Gbit/s
 
 v1.1 CvsBuild 20:
  - added lossless, losswindow, blockdump settings to client transcript printouts
