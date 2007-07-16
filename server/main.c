@@ -315,9 +315,11 @@ void client_handler(ttp_session_t *session)
 
 	    /* delay for the next packet */
             #ifdef VSIB_REALTIME
-            if (block_type == TS_BLOCK_ORIGINAL) {
-                continue; /* VSIB read() of new data already does the throttling */
-            }
+            //if (block_type == TS_BLOCK_ORIGINAL) {
+            //    continue; /* VSIB read() of new data already does the throttling */
+            // TODO: after a REQUEST_RESTART from client, old blocks are "new" but
+            //       then not throttled. Fix fix...
+            //}
             #endif
 	    ipd_time = get_usec_since(&delay);
 	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
@@ -513,6 +515,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.20  2007/07/16 09:51:10  jwagnerhki
+ * rt-server now ipd-throttled again
+ *
  * Revision 1.19  2007/07/16 08:55:54  jwagnerhki
  * build 21, upped 16 to 256 clients, reduced end block blast speed, enabled RETX_REQBLOCK_SORTING compile flag
  *

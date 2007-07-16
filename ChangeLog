@@ -1,3 +1,11 @@
+v1.1 CvsBuild 22:
+ - real-time server, disabled throttling by VSIB and instead use again 
+   normal IPD wait as in file server (after a REQUEST_RESTART old blocks 
+   are sent as TS_BLOCK_ORIGINAL, but a VSIB does not throttle these old
+   ones, so it blasts at 1 Gbit/s and bombs...)
+ - client, ttp_request_retransmit additional check at start so that 
+   already received blocks are not queued up for later retransmit batch-request
+
 v1.1 CvsBuild 21:
  - client, increased UDP port upping limit from 16 to 256 concurrent client 
    download sessions, added a warning that shows current nr of reserved
