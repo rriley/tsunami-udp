@@ -43,7 +43,8 @@ do
 done
 
 # create recexpt
-cat recexpt-tsunami.head > "recexptsunami_${EXPT}_${STATION}.sh"
+FOUT="recexptsunami_${EXPT}_${STATION}.sh"
+cat recexpt-tsunami.head > $FOUT
 cat merged | while read scan expt dur1 dur2 year day clock; do 
 
    if [ "${dur1}" -ne "${dur2}" ]; then
@@ -61,17 +62,17 @@ cat merged | while read scan expt dur1 dur2 year day clock; do
    # scan03_2006-12-19T11:15:00  300
    # debug
    echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"
-   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"  >> "recexptsunami_${EXPT}_${STATION}.sh"
+   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"  >> $FOUT
 done
-echo ")" >> "recexptsunami_${EXPT}_${STATION}.sh"
-echo "SID=${STATION}" >> "recexptsunami_${EXPT}_${STATION}.sh"
-echo "EXPT=${EXPT}" >> "recexptsunami_${EXPT}_${STATION}.sh"
+echo ")"                 >> $FOUT
+echo "SID=${STATION}"    >> $FOUT
+echo "EXPT=${EXPT}"      >> $FOUT
 
-cat recexpt-tsunami.tail >> "recexptsunami_${EXPT}_${STATION}.sh"
+cat recexpt-tsunami.tail >> $FOUT
 
-chmod ug+x "recexptsunami_${EXPT}_${STATION}.sh"
+chmod ug+x $FOUT
 
 echo
-echo "Script output written to: recexptsunami_${EXPT}_${STATION}.sh"
+echo "Script output written to: $FOUT "
 echo
 
