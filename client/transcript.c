@@ -87,6 +87,7 @@ void xscript_close(ttp_session_t *session, u_int64_t delta)
 void xscript_data_log(ttp_session_t *session, const char *logline)
 {
     fprintf(session->transfer.transcript, "%s", logline);
+    fflush(session->transfer.transcript);
 }
 
 
@@ -100,6 +101,7 @@ void xscript_data_log(ttp_session_t *session, const char *logline)
 void xscript_data_start(ttp_session_t *session, const struct timeval *epoch)
 {
     fprintf(session->transfer.transcript, "START %lu.%06lu\n", epoch->tv_sec, epoch->tv_usec);
+    fflush(session->transfer.transcript);
 }
 
 
@@ -113,6 +115,7 @@ void xscript_data_start(ttp_session_t *session, const struct timeval *epoch)
 void xscript_data_stop(ttp_session_t *session, const struct timeval *epoch)
 {
     fprintf(session->transfer.transcript, "STOP %lu.%06lu\n\n", epoch->tv_sec, epoch->tv_usec);
+    fflush(session->transfer.transcript);
 }
 
 
@@ -158,11 +161,15 @@ void xscript_open(ttp_session_t *session)
     fprintf(xfer->transcript, "version = 0x%x\n",       PROTOCOL_REVISION);
     fprintf(xfer->transcript, "ipv6 = %u\n",            param->ipv6_yn);
     fprintf(xfer->transcript, "\n");
+    fflush(session->transfer.transcript);
 }
 
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.3  2007/07/17 08:50:46  jwagnerhki
+ * added fflush()es
+ *
  * Revision 1.2  2007/07/13 18:43:56  jwagnerhki
  * added blockdump and lossless settings
  *
