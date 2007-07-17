@@ -7,8 +7,9 @@
 #----------------------------------------------------------
 #  !! Edit these before use: !! 
 
-# -- Remote real-time Tsunami server (IP or Hostname)
-TSUNAMISERVER="didius.mro.funet.fi"
+# -- Remote real-time Tsunami server (IP or Hostname) and password (default: kitten)
+TSUNAMISERVER="your.server.org"
+PASSPHRASE="kitten" 
 
 # -- Remote directory where to backup files to (blank: no backup)
 REMOTEDIR=
@@ -42,6 +43,13 @@ SECS=$2
 pushd $ROOTDIR > /dev/null
 RECLEN=$(( $SECS * $RATE / 8 ))
 FLEN="_flen="
-echo -e "\n$0: $TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.evn quit\n"
-$TSCLIPATH connect $TSUNAMISERVER set transcript yes get $REMOTEDIR$FILE$FLEN$RECLEN.evn quit
+TSCMD=" \
+  set passphrase $PASSPHRASE \
+  connect $TSUNAMISERVER \
+  set transcript yes \
+  get $REMOTEDIR$FILE$FLEN$RECLEN.evn \
+  close \
+  quit "
+echo -e "\n$0: $TSCLIPATH $TSCMD \n"
+$TSCLIPATH $TSCMD
 popd > /dev/null
