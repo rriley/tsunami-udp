@@ -7,7 +7,6 @@ RTRATE=200                                # server side Mbit/s (VSI rate)
 RTLEN=$((RTRATE * 1000000 * 60 * 3 / 8))  # 3 minutes of data
 RAIDROOT=/raid/s
 
-cd ${RAIDROOT}
 while true; do
 
   timestr=`date -u --date "now + 20 seconds" +"%Y%j%H%M%S"` # YYYYdddhhhmmss + 50s
@@ -15,6 +14,7 @@ while true; do
   dlfile=dummy${usc}mh${usc}scan01${usc}${timestr}${usc}dl=${RTLEN}.vsi
 
   echo $dlfile
+  pushd ${RAIDROOT}
   tsunami connect ${RTSERVER} \
    set rate 500m \
    set transcript yes \
@@ -23,8 +23,8 @@ while true; do
    get $dlfile \
    close \
    quit
-
   # rm $dlfile
+  popd
 
   sleep 10
 
