@@ -6,6 +6,7 @@ RTSERVER=didius.metsahovi.fi              # server with real-time Tsunami server
 RTRATE=200                                # server side Mbit/s (VSI rate)
 RTLEN=$((RTRATE * 1000000 * 60 * 3 / 8))  # 3 minutes of data
 RAIDROOT=/raid/s
+TSBIN=`which tsunami`
 
 while true; do
 
@@ -15,7 +16,7 @@ while true; do
 
   echo $dlfile
   pushd ${RAIDROOT}
-  tsunami connect ${RTSERVER} \
+  $TSBIN connect ${RTSERVER} \
    set rate 500m \
    set transcript yes \
    set lossless no \
