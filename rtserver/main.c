@@ -188,6 +188,8 @@ void client_handler(ttp_session_t *session)
     retransmission_t  retransmission;                /* the retransmission data object                 */
     struct timeval    start, stop;                   /* the start and stop times for the transfer      */
     struct timeval    delay;                         /* the interpacket delay value                    */
+    struct timeval    lastfeedback;                  /* the time since last client feedback            */
+    u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
     int               result;                        /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
     u_int64_t         ipd_time;                      /* the time to delay after this packet            */
@@ -247,6 +249,8 @@ void client_handler(ttp_session_t *session)
 	gettimeofday(&start, NULL);
 	if (param->transcript_yn)
 	    xscript_data_start(session, &start);
+        lastfeedback = start;
+        deadconnection_counter = 0;
 
 	/* start by blasting out every block */
 	xfer->block = 0;
@@ -263,6 +267,10 @@ void client_handler(ttp_session_t *session)
 
 	    /* if we have a retransmission */
 	    if (result == sizeof(retransmission_t)) {
+
+                /* store current time */
+                lastfeedback = delay;
+                deadconnection_counter = 0;
 
 		/* if it's a stop request, go back to waiting for a filename */
 		if (ntohs(retransmission.request_type) == REQUEST_STOP) {
@@ -322,6 +330,13 @@ void client_handler(ttp_session_t *session)
 	    ipd_time = get_usec_since(&delay);
 	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
             usleep_that_works(ipd_time);
+
+            if ((deadconnection_counter++) > 2048) {
+               if (get_usec_since(&lastfeedback) > 5000000) {
+                  fprintf(stderr, "No feedback from client during the last 5 seconds. Terminating transfer.\n");
+                  break;
+               }
+            }
 	}
 
 	/*---------------------------
@@ -512,6 +527,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.23  2007/08/10 09:05:08  jwagnerhki
+ * 5 second timeout on no client feedback
+ *
  * Revision 1.22  2007/07/16 09:51:09  jwagnerhki
  * rt-server now ipd-throttled again
  *
