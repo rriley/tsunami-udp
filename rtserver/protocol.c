@@ -384,7 +384,6 @@ int ttp_open_transfer(ttp_session_t *session)
        printf("Sent file list, client response: %s\n", message);
 
        status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
-       printf("file name requested: %s", filename);
 
        if (status < 0)
           error("Could not read filename from client");
@@ -559,6 +558,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.25  2007/08/10 16:37:17  jwagnerhki
+ * remove unnecessary printf
+ *
  * Revision 1.24  2007/08/10 13:39:00  jwagnerhki
  * send cleaner arrays (file_no, size)
  *
