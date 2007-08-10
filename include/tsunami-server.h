@@ -89,6 +89,7 @@ extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting     
 #define MAX_FILENAME_LENGTH  1024               /* maximum length of a requested filename  */
 #define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now) */
 #define FRAMES_IN_SLOT  40                      /* 0.02s timeslots for computers */
+#define CLIENT_FEEDBACK_TIMEOUT 15              /* 15s timeout to close connection if no client feedback */
 
 /*------------------------------------------------------------------------
  * Data structures.
@@ -194,6 +195,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.8  2007/08/10 09:19:35  jwagnerhki
+ * server closes connection if no client feedback in 15s
+ *
  * Revision 1.7  2007/07/10 08:18:05  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
