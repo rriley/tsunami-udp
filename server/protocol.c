@@ -345,9 +345,9 @@ int ttp_open_transfer(ttp_session_t *session)
     #endif
 
     char       size[10];
+    char       file_no[10];
     char       message[20];
     u_int16_t  i;
-    char       file_no[10];
     struct     timeval ping_s, ping_e;
 
     /* clear out the transfer data */
@@ -365,10 +365,12 @@ int ttp_open_transfer(ttp_session_t *session)
      */
     if(!strcmp(filename,"*"))
     {  
-       sprintf(size, "%u", param->file_name_size);
+       memset(size, 0, sizeof(size));
+       snprintf(size, sizeof(size), "%u", param->file_name_size);
        write(session->client_fd, size, 10);
 
-       sprintf(file_no, "%u", param->total_files);
+       memset(file_no, 0, sizeof(file_no));
+       snprintf(file_no, sizeof(file_no), "%u", param->total_files);
        write(session->client_fd, file_no, 10);
 
        printf("\nSent multi-GET filename count and array size to client\n");
@@ -557,6 +559,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.20  2007/08/10 13:39:01  jwagnerhki
+ * send cleaner arrays (file_no, size)
+ *
  * Revision 1.19  2007/07/10 08:18:07  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
