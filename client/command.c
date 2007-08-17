@@ -365,6 +365,7 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* we start by expecting block #1 */
     xfer->next_block = 1;
+    xfer->gapless_till_block = 0;
 
    /*---------------------------
    * START TIMING
@@ -437,7 +438,7 @@ int command_get(command_t *command, ttp_session_t *session)
                     u_int32_t earliest_block = this_block -
                        min(
                          1024 * 1024 * path_capability / (8 * session->parameter->block_size),  // # of blocks inside window
-                         (this_block - xfer->next_block)                                        // # of blocks missing
+                         (this_block - xfer->gapless_till_block)                                // # of blocks missing (tops)
                        );
                     for (block = earliest_block; block < this_block; ++block) {
                         if (ttp_request_retransmit(session, block) < 0) {
@@ -446,8 +447,9 @@ int command_get(command_t *command, ttp_session_t *session)
                         }
                     }
                     // hop over the missing section
-                    xfer->blocks_left -= (earliest_block - xfer->next_block);
+                    xfer->blocks_left -= (earliest_block - xfer->gapless_till_block);
                     xfer->next_block = earliest_block;
+                    xfer->gapless_till_block = earliest_block;
                 }
 
              /* lossless transfer mode, request all missing data to be resent */
@@ -459,6 +461,11 @@ int command_get(command_t *command, ttp_session_t *session)
                     }
                 }
              }
+          }
+
+          /* advance the index of the gapless section going from start block to highest block  */
+          while ( (xfer->received[(xfer->gapless_till_block + 1) / 8]) & (1 << (xfer->gapless_till_block + 1) % 8) ) {
+             xfer->gapless_till_block++;
           }
 
           /* if this is the last block */
@@ -857,6 +864,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.23  2007/08/17 10:56:31  jwagnerhki
+ * added gapless_till_block client side counter
+ *
  * Revision 1.22  2007/08/14 08:50:39  jwagnerhki
  * initialize server_address_length, do not have recvfrom overwrite server_address and server_address_length
  *
