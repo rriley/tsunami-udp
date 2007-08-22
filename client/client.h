@@ -227,6 +227,7 @@ int            command_get           (command_t *command, ttp_session_t *session
 int            command_help          (command_t *command, ttp_session_t *session);
 int            command_quit          (command_t *command, ttp_session_t *session);
 int            command_set           (command_t *command, ttp_parameter_t *parameter);
+int            command_dir           (command_t *command, ttp_session_t *session);
 
 /* config.c */
 void           reset_client          (ttp_parameter_t *parameter);
@@ -277,6 +278,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.11  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
  * Revision 1.10  2007/08/17 10:56:31  jwagnerhki
  * added gapless_till_block client side counter
  *

@@ -372,7 +372,7 @@ int ttp_open_transfer(ttp_session_t *session)
           write(session->client_fd, message, strlen(message)+1);
        }
        read(session->client_fd, message, 1);
-       return 0;
+       return warn("File list sent!");
 
     } else if(!strcmp(filename,"*")) {
 
@@ -421,9 +421,8 @@ int ttp_open_transfer(ttp_session_t *session)
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
     	/* signal failure to the client */
     	status = write(session->client_fd, "\x008", 1);
-    	if (status < 0) {
-		warn("Could not signal request failure to client");
-	}
+    	if (status < 0)
+            warn("Could not signal request failure to client");
         return warn(g_error);
     }
 
@@ -573,6 +572,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.23  2007/08/22 14:07:31  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
  * Revision 1.22  2007/08/22 13:22:09  jwagnerhki
  * build 26 adds server capability to list files and sizes, client implementation pending
  *

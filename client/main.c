@@ -130,7 +130,7 @@ int main(int argc, const char *argv[])
             // zero argument commands
             if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") 
                 || !strcasecmp(argv[argc_curr], "exit") || !strcasecmp(argv[argc_curr], "bye")
-                || !strcasecmp(argv[argc_curr], "help")) { 
+                || !strcasecmp(argv[argc_curr], "help") || !strcasecmp(argv[argc_curr], "dir")) { 
                strcpy(command_text, argv[argc_curr]);
                argc_curr += 1;
                break; 
@@ -192,6 +192,7 @@ int main(int argc, const char *argv[])
            if (!strcasecmp(command.text[0], "close"))             command_close  (&command, session);
       else if (!strcasecmp(command.text[0], "connect")) session = command_connect(&command, &parameter);
       else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
+      else if (!strcasecmp(command.text[0], "dir"))               command_dir    (&command, session);
       else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
       else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
       else if (!strcasecmp(command.text[0], "exit"))              command_quit   (&command, session);
@@ -241,6 +242,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.8  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
  * Revision 1.7  2007/05/31 09:32:03  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

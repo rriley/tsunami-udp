@@ -193,6 +193,53 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 
 
 /*------------------------------------------------------------------------
+ * int command_dir(command_t *command, ttp_session_t *session);
+ *
+ * Tries to request a list of server shared files and their sizes.
+ * Returns 0 on a successful transfer and nonzero on an error condition.
+ * Allocates and fills out session->fileslist struct, the caller needs to 
+ * free it after use.
+ *------------------------------------------------------------------------*/
+int command_dir(command_t *command, ttp_session_t *session)
+{
+    u_char    result;
+    char      read_str[2048];
+    u_int16_t num_files, i;
+    size_t    filelen;
+    u_int16_t status = 0;
+    
+    /* make sure that we have an open session */
+    if (session == NULL || session->server == NULL)
+	return warn("Not connected to a Tsunami server");
+
+    /* send request and parse the result */
+    fprintf(session->server, "%s\n", TS_DIRLIST_HACK_CMD);
+    
+    status = fread(&result, 1, 1, session->server);
+    if (status < 1)
+        return warn("Could not read response to directory request");
+    if (result == 16)
+        return warn("Server does no support listing of shared files");
+    
+    read_str[0] = result;  
+    fread_line(session->server, &read_str[1], sizeof(read_str)-2);
+    num_files = atoi(read_str);
+    
+    fprintf(stderr, "Remote file list:\n");
+    for (i=0; i<num_files; i++) {
+        fread_line(session->server, read_str, sizeof(read_str)-1);
+        fprintf(stderr, " %2d) %-64s", i+1, read_str);
+        fread_line(session->server, read_str, sizeof(read_str)-1);
+        filelen = atol(read_str);
+        fprintf(stderr, "%8d bytes\n", filelen);
+    } 
+    fprintf(stderr, "\n");
+    fwrite("\0", 1, 1, session->server);
+    return 0;
+}
+
+
+/*------------------------------------------------------------------------
  * int command_get(command_t *command, ttp_session_t *session);
  *
  * Tries to initiate a file transfer for the remote file given in the
@@ -634,7 +681,7 @@ int command_help(command_t *command, ttp_session_t *session)
     /* if no command was supplied */
     if (command->count < 2) {
 	printf("Help is available for the following commands:\n\n");
-	printf("    close    connect    get    help    quit    set\n\n");
+	printf("    close    connect    get    dir    help    quit    set\n\n");
 	printf("Use 'help <command>' for help on an individual command.\n\n");
 
     /* handle the CLOSE command */
@@ -661,6 +708,11 @@ int command_help(command_t *command, ttp_session_t *session)
 	printf("Tsunami file transfer protocol.  If the local filename is not\n");
 	printf("specified, the final part of the remote filename (after the last path\n");
 	printf("separator) will be used.\n\n");
+
+    /* handle the DIR command */
+    } else if (!strcasecmp(command->text[1], "dir")) {
+	printf("Usage: dir\n\n");
+	printf("Attempts to list the available remote files.\n\n");
 
     /* handle the HELP command */
     } else if (!strcasecmp(command->text[1], "help")) {
@@ -864,6 +916,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.24  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
  * Revision 1.23  2007/08/17 10:56:31  jwagnerhki
  * added gapless_till_block client side counter
  *
