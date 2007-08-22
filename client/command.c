@@ -218,7 +218,7 @@ int command_dir(command_t *command, ttp_session_t *session)
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
         return warn("Could not read response to directory request");
-    if (result == 16)
+    if (result == 8)
         return warn("Server does no support listing of shared files");
     
     read_str[0] = result;  
@@ -916,6 +916,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.25  2007/08/22 14:12:34  jwagnerhki
+ * fix command_dir wrong result val check for backwards compatibility with server
+ *
  * Revision 1.24  2007/08/22 14:07:30  jwagnerhki
  * build 27: first implementation of client dir command
  *
