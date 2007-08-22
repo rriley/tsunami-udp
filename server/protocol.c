@@ -359,12 +359,26 @@ int ttp_open_transfer(ttp_session_t *session)
         error("Could not read filename from client");
     filename[MAX_FILENAME_LENGTH - 1] = '\0';
 
-   /*
-     *if the client requesting for multiple file at a time
-     *sent the file names and then proceed to transfer
-     */
-    if(!strcmp(filename,"*"))
-    {  
+    if(!strcmp(filename, TS_DIRLIST_HACK_CMD)) {
+
+      /* The client requested listing of files and their sizes (dir command)
+       * Send strings:   NNN \0   name1 \0 len1 \0     nameN \0 lenN \0
+       */
+       snprintf(file_no, sizeof(file_no), "%u", param->total_files);
+       write(session->client_fd, file_no, strlen(file_no)+1);
+       for(i=0; i<param->total_files; i++) {
+          write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
+          snprintf(message, sizeof(message), "%d", param->file_sizes[i]);
+          write(session->client_fd, message, strlen(message)+1);
+       }
+       read(session->client_fd, message, 1);
+       return 0;
+
+    } else if(!strcmp(filename,"*")) {
+
+      /* A multiple file request - sent the file names first, 
+       * and next the client requests a download of each in turn (get * command)
+       */
        memset(size, 0, sizeof(size));
        snprintf(size, sizeof(size), "%u", param->file_name_size);
        write(session->client_fd, size, 10);
@@ -387,7 +401,8 @@ int ttp_open_transfer(ttp_session_t *session)
 
        if (status < 0)
           error("Could not read filename from client");
-    }/*end of multimode session*/
+
+    }
 
     /* store the filename in the transfer object */
     xfer->filename = strdup(filename);
@@ -558,6 +573,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.22  2007/08/22 13:22:09  jwagnerhki
+ * build 26 adds server capability to list files and sizes, client implementation pending
+ *
  * Revision 1.21  2007/08/10 16:37:17  jwagnerhki
  * remove unnecessary printf
  *

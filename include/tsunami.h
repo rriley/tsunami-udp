@@ -103,6 +103,8 @@ extern const u_int16_t REQUEST_ERROR_RATE;
 #define  TS_BLOCK_TERMINATE         'X'   /* blocktype "end transmission" */
 #define  TS_BLOCK_RETRANSMISSION    'R'   /* blocktype "retransmitted block" */
 
+#define  TS_DIRLIST_HACK_CMD        "!#DIR??" /* "file name" sent by the client to request a list of the shared files */
+
 /*------------------------------------------------------------------------
  * Data structures.
  *------------------------------------------------------------------------*/
