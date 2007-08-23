@@ -1,3 +1,24 @@
+The current Tsunami protocol version is: v1.1
+
+Improvements and protocol version compliant new features
+are added in the cvs builds.
+
+v1.1 CvsBuild 27:
+ - file server and file client support shared file listing 
+   via the "dir" command (client/command.c command_dir()).
+
+v1.1 CvsBuild 26:
+ - added gapless_till_block client side counter that is later
+   needed by the 'tsunamifs' FUSE filesystem
+
+v1.1 CvsBuild 24:
+ - fixed client crashing with nForce2 server in Wettzell by
+   having recvfrom() not fill out packet source infos, these
+   infos were not used anywhere in the first place.
+ - server closes client connection after 15s timeout if no
+   client side TCP feedback during a transfer, 350ms is the
+   required feedback interval from the client so 15s is plenty
+
 v1.1 CvsBuild 22:
  - real-time server, disabled throttling by VSIB and instead use again 
    normal IPD wait as in file server (after a REQUEST_RESTART old blocks 
