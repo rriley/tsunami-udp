@@ -72,6 +72,7 @@
 #include <string.h>      /* for memset(), sprintf(), etc.         */
 #include <sys/types.h>   /* for standard system data types        */
 #include <sys/socket.h>  /* for the BSD sockets library           */
+#include <sys/stat.h>
 #include <arpa/inet.h>   /* for inet_ntoa()                       */
 #include <sys/wait.h>    /* for waitpid()                         */
 #include <unistd.h>      /* for Unix system calls                 */
@@ -377,6 +378,7 @@ void client_handler(ttp_session_t *session)
     memset(xfer, 0, sizeof(*xfer));
 
     } //while(1)
+
 }
 
 
@@ -402,6 +404,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
                      { "vsibskip",   1, NULL, 10 },
                      #endif
 				     { NULL,         0, NULL, 0 } };
+    struct stat   filestat;
     int           which;
 
     /* for each option found */
@@ -490,10 +493,13 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
         parameter->file_names = argv+optind;
         parameter->file_name_size = 0;
         parameter->total_files = argc-optind;
+        parameter->file_sizes = (size_t*)malloc(sizeof(size_t) * parameter->total_files);
         fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", parameter->total_files);
         for (counter=0; counter < argc-optind; counter++) {
-            fprintf(stderr, "  %d) %s\n", counter+1, parameter->file_names[counter]);
+            stat(parameter->file_names[counter], &filestat);
+            parameter->file_sizes[counter] = filestat.st_size;
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
+            fprintf(stderr, " %3d)   %-20s  %d bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
@@ -527,6 +533,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.25  2007/08/24 06:45:14  jwagnerhki
+ * merged in dir listing support from file server code
+ *
  * Revision 1.24  2007/08/10 09:19:35  jwagnerhki
  * server closes connection if no client feedback in 15s
  *
