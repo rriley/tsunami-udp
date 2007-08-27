@@ -66,11 +66,25 @@
 #ifndef __MD5_H
 #define __MD5_H
 
+#include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 
 void md5_digest(u_char *buffer, size_t size, u_char *digest);
 void md5_fprint_digest(FILE *file, u_char *digest);
 void md5_sprint_digest(char *buffer, u_char *digest);
+
+/* below code included from Aladdin, ghostscript md5.h originally written L. Peter Deutsch */
+typedef u_char    md5_byte_t;
+typedef u_int32_t md5_word_t;
+typedef struct md5_state_s {
+      md5_word_t count[2];
+      md5_word_t abcd[4];
+      md5_byte_t buf[64];
+} md5_state_t;
+void md5_init(md5_state_t *pms);
+void md5_append(md5_state_t *pms, const md5_byte_t *data, int nbytes);
+void md5_finish(md5_state_t *pms, md5_byte_t digest[16]);
 
 #endif /* __MD5_H */
