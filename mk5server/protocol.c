@@ -361,7 +361,7 @@ int ttp_open_transfer(ttp_session_t *session)
        
        write(session->client_fd,size,10);       
        
-       sprintf(file_no,"%d",param->total_File);
+       sprintf(file_no,"%d",param->total_files);
        printf("\nServer side file no: %s\n", file_no);       
        
        write(session->client_fd,file_no,10);       
@@ -462,6 +462,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.4  2007/08/27 13:38:14  jwagnerhki
+ * total_Files renamed total_files
+ *
  * Revision 1.3  2007/05/31 12:50:26  jwagnerhki
  * now mk5server compiles with SSAPI
  *

@@ -415,7 +415,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
         fprintf(stderr, "\nThe specified %d files will be listed on GET *:\n", argc-optind);
         parameter->file_names = argv+optind;
         parameter->file_name_size = 0;
-        parameter->total_File = argc-optind;    
+        parameter->total_files = argc-optind;    
         for (counter=0; counter < argc-optind; counter++) {
             fprintf(stderr, "  %d) %s\n", counter+1, parameter->file_names[counter]);
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
@@ -452,6 +452,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.3  2007/08/27 13:38:14  jwagnerhki
+ * total_Files renamed total_files
+ *
  * Revision 1.2  2007/05/31 12:50:26  jwagnerhki
  * now mk5server compiles with SSAPI
  *
