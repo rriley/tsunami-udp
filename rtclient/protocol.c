@@ -169,6 +169,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
 {
     u_char           result;    /* the result byte from the server     */
     u_int32_t        temp;      /* used for transmitting 32-bit values */
+    u_int16_t        temp16;    /* used for transmitting 16-bit values */
     int              status;
     ttp_transfer_t  *xfer  = &session->transfer;
     ttp_parameter_t *param =  session->parameter;
@@ -195,10 +196,10 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     return warn("Could not flush control channel");
 
     /* submit the slower and faster factors */
-    temp = htons(param->slower_num);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit slowdown numerator");
-    temp = htons(param->slower_den);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit slowdown denominator");
-    temp = htons(param->faster_num);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit speedup numerator");
-    temp = htons(param->faster_den);  if (fwrite(&temp, 2, 1, session->server) < 1) return warn("Could not submit speedup denominator");
+    temp16 = htons(param->slower_num);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit slowdown numerator");
+    temp16 = htons(param->slower_den);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit slowdown denominator");
+    temp16 = htons(param->faster_num);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit speedup numerator");
+    temp16 = htons(param->faster_den);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit speedup denominator");
     if (fflush(session->server))
     return warn("Could not flush control channel");
 
@@ -641,6 +642,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.11  2007/08/27 15:12:30  jwagnerhki
+ * fixed 32-bit write as 16-bit endianness problem
+ *
  * Revision 1.10  2007/07/16 09:51:09  jwagnerhki
  * rt-server now ipd-throttled again
  *
