@@ -3,6 +3,10 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 29:
+ - fixed another Big Endian endiannes problem and now large transfers
+   work, too
+
 v1.1 CvsBuild 28:
  - added early support for Big Endian platforms e.g. Playstation3,
    to enable you have to edit ./common/Makefile.am before running 'configure' 
