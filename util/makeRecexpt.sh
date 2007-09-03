@@ -5,14 +5,17 @@
 #
 # Input:  SNAP file created with DRUDG from the schedule for your station
 #
-# Output: The 'recexpt_[stationID]' file for recording the experiment
-#         You may need to edit 'recpass' for correct VSIB and data rate settings.
+# Output: The 'recexpt_[stationID]' file for recording the experiment 
+#         via real-time Tsunami client
+#         You may need to edit 'recpass' for correct server name and 
+#         data rate settings.
 #
-# ---code could be improved a LOT.....----
+# ---code could probably be improved a LOT.....----
+
 
 if [ "$1" == "" ] || [ "$2" == "" ] || [ "$3" == "" ]; then
    echo "Syntax: ./makeRecexpt.sh snapfile.snp experiment stationID"
-   echo "        ./makeRecexpt.sh euro85on.snp EURO85 On"
+   echo "        ./makeRecexpt.sh euro88mh.snp EURO88 Mh"
    exit
 fi
 
@@ -40,7 +43,8 @@ do
 done
 
 # create recexpt
-cat recexpt.head > "recexpt_${EXPT}_$STATION.sh"
+FOUT="recexpt_${EXPT}_${STATION}.sh"
+cat recexpt.head > $FOUT
 cat merged | while read scan expt dur1 dur2 year day clock; do 
 
    if [ "${dur1}" -ne "${dur2}" ]; then
@@ -52,20 +56,23 @@ cat merged | while read scan expt dur1 dur2 year day clock; do
    day=$(($day - 1))
    datestr=`date -d "01/01/${year} + ${day} days" +"%Y-%m-%d"`
    
-   # output line format:
-   #   ./dstart dateTtime; ./recpass euro85_mh_No0113_date 220
    # debug:
    #   echo "scan:${scan} expt:${expt} duration:${dur1}s/${dur2}s year:${year} day:${day} time:${clock}   -- ${datestr}T${clock}"
-
-   echo " ./dstart ${datestr}T${clock}; ./recpass ${EXPT}_${STATION}_${scan}_${datestr} ${dur1}"   
-   echo " ./dstart ${datestr}T${clock}; ./recpass ${EXPT}_${STATION}_${scan}_${datestr} ${dur1}" >> "recexpt_${EXPT}_$STATION.sh"
+   
+   # scan03_2006-12-19T11:15:00  300
+   # debug
+   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"
+   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"  >> $FOUT
 done
-cat recexpt.tail >> "recexpt_${EXPT}_$STATION.sh"
+echo ")"                 >> $FOUT
+echo "SID=${STATION}"    >> $FOUT
+echo "EXPT=${EXPT}"      >> $FOUT
 
-chmod ug+x "recexpt_${EXPT}_$STATION.sh"
-# rm merged
+cat recexpt.tail         >> $FOUT
+
+chmod ug+x $FOUT
 
 echo
-echo "Script written into file:  recexpt_${EXPT}_$STATION.sh"
+echo "Script output written to: $FOUT "
 echo
 
