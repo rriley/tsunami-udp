@@ -332,12 +332,16 @@ void client_handler(ttp_session_t *session)
 	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
             usleep_that_works(ipd_time);
 
+            #ifndef VSIB_REALTIME
             if ((deadconnection_counter++) > 2048) {
                if (get_usec_since(&lastfeedback) > CLIENT_FEEDBACK_TIMEOUT*1000000) {
                   fprintf(stderr, "No feedback from client during the last %d seconds. Terminating transfer.\n", CLIENT_FEEDBACK_TIMEOUT);
                   break;
                }
             }
+            #else
+            // TODO: exit after recording duration + CLIENT_FEEDBACK_TIMEOUT
+            #endif
 	}
 
 	/*---------------------------
@@ -533,6 +537,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.26  2007/09/04 15:39:24  jwagnerhki
+ * different timeout code for realtime
+ *
  * Revision 1.25  2007/08/24 06:45:14  jwagnerhki
  * merged in dir listing support from file server code
  *
