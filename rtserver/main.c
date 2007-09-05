@@ -503,7 +503,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
             stat(parameter->file_names[counter], &filestat);
             parameter->file_sizes[counter] = filestat.st_size;
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
-            fprintf(stderr, " %3d)   %-20s  %d bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
+            fprintf(stderr, " %3d)   %-20s  %llu bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
@@ -537,6 +537,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.27  2007/09/05 08:42:49  jwagnerhki
+ * printf filelen now unsigned, realtime server no 15s timeout
+ *
  * Revision 1.26  2007/09/04 15:39:24  jwagnerhki
  * different timeout code for realtime
  *
