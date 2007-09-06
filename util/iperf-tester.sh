@@ -17,7 +17,7 @@ TIME=15		# iperf checking time in seconds
 
 if [ "$1" == "" ]; then
 	echo "Running as server"
-	iperf -s -u -t $TIME -l 32768 -p 46224 -w 256k -d -t 15 -i 1 -m
+	iperf -s -u -t $TIME -l 32768 -p 46224 -w 256k -i 1 -m
 else
 	echo "Running as client, connecting to $1"
 	echo `date -u`
