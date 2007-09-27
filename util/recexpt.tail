@@ -30,6 +30,6 @@ do
      fi
   fi
 
-  ./recpass "${sfilename}" $scanDuration &
+  ./recpass "${sfilename}" $scanDuration
 
 done
