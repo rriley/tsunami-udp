@@ -250,8 +250,8 @@ void client_handler(ttp_session_t *session)
     gettimeofday(&start, NULL);
     if (param->transcript_yn)
         xscript_data_start(session, &start);
-        lastfeedback = start;
-        deadconnection_counter = 0;
+    lastfeedback = start;
+    deadconnection_counter = 0;
 
     /* start by blasting out every block */
     xfer->block = 0;
@@ -290,8 +290,8 @@ void client_handler(ttp_session_t *session)
 
         /* build the block */
         xfer->block = min(xfer->block + 1, param->block_count);
-                block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
-                result = build_datagram(session, xfer->block, block_type, datagram);
+        block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
+        result = build_datagram(session, xfer->block, block_type, datagram);
         if (result < 0) {
             sprintf(g_error, "Could not read block #%u", xfer->block);
             error(g_error);
@@ -313,9 +313,9 @@ void client_handler(ttp_session_t *session)
             while (sofar < sizeof(retransmission)) {
                 result = read(session->client_fd, &retransmission, sizeof(retransmission) - sofar);
                 if ((result < 0) && (errno != EAGAIN))
-                error("Split message recovery failed");
+                    error("Split message recovery failed");
                 else if (result > 0)
-                sofar += result;
+                    sofar += result;
             }
             continue;
         }
@@ -537,6 +537,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.29  2007/10/05 06:13:52  jwagnerhki
+ * tabs to spaces
+ *
  * Revision 1.28  2007/10/05 06:07:15  jwagnerhki
  * tabs to spaces
  *
