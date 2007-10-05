@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
                     "Waiting for clients to connect.\n",
             PROTOCOL_REVISION, TSUNAMI_CVS_BUILDNR, __DATE__ , __TIME__);
     #endif
-    
+
     /* while our little world keeps turning */
     while (1) {
 
@@ -144,33 +144,33 @@ int main(int argc, char *argv[])
         } else {
             fprintf(stderr, "New client connecting from %s...\n", inet_ntoa(remote_address.sin_addr));
         }
-    
+
         /* and fork a new child process to handle it */
         child_pid = fork();
         if (child_pid < 0) {
             warn("Could not create child process");
             continue;
         }
-       session.session_id++;
-    
+        session.session_id++;
+
         /* if we're the child */
         if (child_pid == 0) {
-    
+
             /* close the server socket */
             close(server_fd);
-    
+
             /* set up the session structure */
             session.client_fd = client_fd;
             session.parameter = &parameter;
             memset(&session.transfer, 0, sizeof(session.transfer));
-    
+
             /* and run the client handler */
             client_handler(&session);
             return 0;
-    
+
         /* if we're the parent */
         } else {
-    
+
             /* close the client socket */
             close(client_fd);
         }
@@ -209,7 +209,7 @@ void client_handler(ttp_session_t *session)
     status = ttp_authenticate(session, session->parameter->secret);
     if (status < 0)
         error("Client authentication failure");
-    
+
     if (1==param->verbose_yn) {
         fprintf(stderr,"Client authenticated. Negotiated parameters are:\n");
         fprintf(stderr,"Block size: %d\n", param->block_size);
@@ -220,149 +220,149 @@ void client_handler(ttp_session_t *session)
     /* while we haven't been told to stop */
     while (1) {
 
-	/* make the client descriptor blocking */
-	status = fcntl(session->client_fd, F_SETFL, 0);
-	if (status < 0)
-	    error("Could not make client socket blocking");
+    /* make the client descriptor blocking */
+    status = fcntl(session->client_fd, F_SETFL, 0);
+    if (status < 0)
+        error("Could not make client socket blocking");
 
-	/* negotiate another transfer */
-	status = ttp_open_transfer(session);
-	if (status < 0) {
-	    warn("Invalid file request");
-	    continue;
-	}
+    /* negotiate another transfer */
+    status = ttp_open_transfer(session);
+    if (status < 0) {
+        warn("Invalid file request");
+        continue;
+    }
 
-	/* negotiate a data transfer port */
-	status = ttp_open_port(session);
-	if (status < 0) {
-	    warn("UDP socket creation failed");
-	    continue;
-	}
+    /* negotiate a data transfer port */
+    status = ttp_open_port(session);
+    if (status < 0) {
+        warn("UDP socket creation failed");
+        continue;
+    }
 
-	/* make the client descriptor non-blocking again */
-	status = fcntl(session->client_fd, F_SETFL, O_NONBLOCK);
-	if (status < 0)
-	    error("Could not make client socket non-blocking");
+    /* make the client descriptor non-blocking again */
+    status = fcntl(session->client_fd, F_SETFL, O_NONBLOCK);
+    if (status < 0)
+        error("Could not make client socket non-blocking");
 
-	/*---------------------------
-	 * START TIMING
-	 *---------------------------*/
-	gettimeofday(&start, NULL);
-	if (param->transcript_yn)
-	    xscript_data_start(session, &start);
+    /*---------------------------
+     * START TIMING
+     *---------------------------*/
+    gettimeofday(&start, NULL);
+    if (param->transcript_yn)
+        xscript_data_start(session, &start);
         lastfeedback = start;
         deadconnection_counter = 0;
 
-	/* start by blasting out every block */
-	xfer->block = 0;
-	while (xfer->block <= param->block_count) {
+    /* start by blasting out every block */
+    xfer->block = 0;
+    while (xfer->block <= param->block_count) {
 
-            /* default: flag as retransmitted block */
-            block_type = TS_BLOCK_RETRANSMISSION;
+        /* default: flag as retransmitted block */
+        block_type = TS_BLOCK_RETRANSMISSION;
 
-	    /* see if transmit requests are available */
-	    gettimeofday(&delay, NULL);
-	    result = read(session->client_fd, &retransmission, sizeof(retransmission));
-	    if ((result <= 0) && (errno != EAGAIN))
-		error("Retransmission read failed");
+        /* see if transmit requests are available */
+        gettimeofday(&delay, NULL);
+        result = read(session->client_fd, &retransmission, sizeof(retransmission));
+        if ((result <= 0) && (errno != EAGAIN))
+        error("Retransmission read failed");
 
-	    /* if we have a retransmission */
-	    if (result == sizeof(retransmission_t)) {
+        /* if we have a retransmission */
+        if (result == sizeof(retransmission_t)) {
 
-                /* store current time */
-                lastfeedback = delay;
-                deadconnection_counter = 0;
+        /* store current time */
+        lastfeedback = delay;
+        deadconnection_counter = 0;
 
-		/* if it's a stop request, go back to waiting for a filename */
-		if (ntohs(retransmission.request_type) == REQUEST_STOP) {
-		    fprintf(stderr, "Transmission complete.\n");
-		    break;
-		}
+        /* if it's a stop request, go back to waiting for a filename */
+        if (ntohs(retransmission.request_type) == REQUEST_STOP) {
+            fprintf(stderr, "Transmission complete.\n");
+            break;
+        }
 
-		/* otherwise, handle the retransmission */
-		status = ttp_accept_retransmit(session, &retransmission, datagram);
-		if (status < 0)
-		    warn("Retransmission error");
-		usleep_that_works(75);
+        /* otherwise, handle the retransmission */
+        status = ttp_accept_retransmit(session, &retransmission, datagram);
+        if (status < 0)
+            warn("Retransmission error");
+        usleep_that_works(75);
 
-	    /* if we have no retransmission */
-	    } else if (result <= 0) {
+        /* if we have no retransmission */
+        } else if (result <= 0) {
 
-		/* build the block */
-		xfer->block = min(xfer->block + 1, param->block_count);
+        /* build the block */
+        xfer->block = min(xfer->block + 1, param->block_count);
                 block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
                 result = build_datagram(session, xfer->block, block_type, datagram);
-		if (result < 0) {
-		    sprintf(g_error, "Could not read block #%u", xfer->block);
-		    error(g_error);
-		}
+        if (result < 0) {
+            sprintf(g_error, "Could not read block #%u", xfer->block);
+            error(g_error);
+        }
 
-		/* transmit the block */
-		result = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
-		if (result < 0) {
-		    sprintf(g_error, "Could not transmit block #%u", xfer->block);
-		    warn(g_error);
-		    continue;
-		}
+        /* transmit the block */
+        result = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
+        if (result < 0) {
+            sprintf(g_error, "Could not transmit block #%u", xfer->block);
+            warn(g_error);
+            continue;
+        }
 
-	    /* if we have a partial retransmission message */
-	    } else if (result > 0) {
+        /* if we have a partial retransmission message */
+        } else if (result > 0) {
 
-		/* loop until we clear out the broken message */
-		int sofar = result;
-		while (sofar < sizeof(retransmission)) {
-		    result = read(session->client_fd, &retransmission, sizeof(retransmission) - sofar);
-		    if ((result < 0) && (errno != EAGAIN))
-			error("Split message recovery failed");
-		    else if (result > 0)
-			sofar += result;
-		}
-		continue;
-	    }
-
-            /* delay for the next packet */
-            #ifdef VSIB_REALTIME
-            //if (block_type == TS_BLOCK_ORIGINAL) {
-            //    continue; /* VSIB read() of new data already does the throttling */
-            // TODO: after a REQUEST_RESTART from client, old blocks are "new" but
-            //       then not throttled. Fix fix...
-            //}
-            #endif
-	    ipd_time = get_usec_since(&delay);
-	    ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
-            usleep_that_works(ipd_time);
-
-            #ifndef VSIB_REALTIME
-            if ((deadconnection_counter++) > 2048) {
-               if (get_usec_since(&lastfeedback) > CLIENT_FEEDBACK_TIMEOUT*1000000) {
-                  fprintf(stderr, "No feedback from client during the last %d seconds. Terminating transfer.\n", CLIENT_FEEDBACK_TIMEOUT);
-                  break;
-               }
+            /* loop until we clear out the broken message */
+            int sofar = result;
+            while (sofar < sizeof(retransmission)) {
+                result = read(session->client_fd, &retransmission, sizeof(retransmission) - sofar);
+                if ((result < 0) && (errno != EAGAIN))
+                error("Split message recovery failed");
+                else if (result > 0)
+                sofar += result;
             }
-            #else
-            // TODO: exit after recording duration + CLIENT_FEEDBACK_TIMEOUT
-            #endif
-	}
+            continue;
+        }
 
-	/*---------------------------
-	 * STOP TIMING
-	 *---------------------------*/
-	gettimeofday(&stop, NULL);
-	if (param->transcript_yn)
-	    xscript_data_stop(session, &stop);
-	delta = 1000000LL * (stop.tv_sec - start.tv_sec) + stop.tv_usec - start.tv_usec;
+        /* delay for the next packet */
+        #ifdef VSIB_REALTIME
+        //if (block_type == TS_BLOCK_ORIGINAL) {
+        //    continue; /* VSIB read() of new data already does the throttling */
+        // TODO: after a REQUEST_RESTART from client, old blocks are "new" but
+        //       then not throttled. Fix fix...
+        //}
+        #endif
+        ipd_time = get_usec_since(&delay);
+        ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
+        usleep_that_works(ipd_time);
 
-	/* report on the transfer */
-        if (param->verbose_yn)
-            fprintf(stderr, "Server %d transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n",
-                    session->session_id, param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
+        #ifndef VSIB_REALTIME
+        if ((deadconnection_counter++) > 2048) {
+            if (get_usec_since(&lastfeedback) > CLIENT_FEEDBACK_TIMEOUT*1000000) {
+                fprintf(stderr, "No feedback from client during the last %d seconds. Terminating transfer.\n", CLIENT_FEEDBACK_TIMEOUT);
+                break;
+            }
+        }
+        #else
+        // TODO: exit after recording duration + CLIENT_FEEDBACK_TIMEOUT
+        #endif
+    }
 
-	/* close the transcript */
-	if (param->transcript_yn)
-	    xscript_close(session, delta);
+    /*---------------------------
+     * STOP TIMING
+     *---------------------------*/
+    gettimeofday(&stop, NULL);
+    if (param->transcript_yn)
+        xscript_data_stop(session, &stop);
+    delta = 1000000LL * (stop.tv_sec - start.tv_sec) + stop.tv_usec - start.tv_usec;
+
+    /* report on the transfer */
+    if (param->verbose_yn)
+        fprintf(stderr, "Server %d transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n",
+                session->session_id, param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
+
+    /* close the transcript */
+    if (param->transcript_yn)
+        xscript_close(session, delta);
 
     #ifndef VSIB_REALTIME
-    
+
     /* close the file */
     fclose(xfer->file);
 
@@ -376,7 +376,7 @@ void client_handler(ttp_session_t *session)
     stop_vsib(session);
 
     #endif
-    
+
     /* close the UDP socket */
     close(xfer->udp_fd);
     memset(xfer, 0, sizeof(*xfer));
@@ -396,67 +396,67 @@ void client_handler(ttp_session_t *session)
 void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 {
     struct option long_options[] = { { "verbose",    0, NULL, 1 },
-				     { "transcript", 0, NULL, 2 },
-				     { "v6",         0, NULL, 3 },
-				     { "port",       1, NULL, 4 },
-				     { "secret",     1, NULL, 5 },
-				     { "datagram",   1, NULL, 6 },
-				     { "buffer",     1, NULL, 7 },
-				     { "v",          0, NULL, 8 },
+                     { "transcript", 0, NULL, 2 },
+                     { "v6",         0, NULL, 3 },
+                     { "port",       1, NULL, 4 },
+                     { "secret",     1, NULL, 5 },
+                     { "datagram",   1, NULL, 6 },
+                     { "buffer",     1, NULL, 7 },
+                     { "v",          0, NULL, 8 },
                      #ifdef VSIB_REALTIME
                      { "vsibmode",   1, NULL, 9 },
                      { "vsibskip",   1, NULL, 10 },
                      #endif
-				     { NULL,         0, NULL, 0 } };
+                     { NULL,         0, NULL, 0 } };
     struct stat   filestat;
     int           which;
 
     /* for each option found */
     while ((which = getopt_long(argc, argv, "+", long_options, NULL)) > 0) {
 
-	/* depending on which option we got */
-	switch (which) {
+    /* depending on which option we got */
+    switch (which) {
 
-	    /* --verbose    : enter verbose mode for debugging */
-	    case 8:
-	    case 1:  parameter->verbose_yn = 1;
-		     break;
+        /* --verbose    : enter verbose mode for debugging */
+        case 8:
+        case 1:  parameter->verbose_yn = 1;
+             break;
 
-	    /* --transcript : enter transcript mode for recording stats */
-	    case 2:  parameter->transcript_yn = 1;
-	             break;
+        /* --transcript : enter transcript mode for recording stats */
+        case 2:  parameter->transcript_yn = 1;
+                 break;
 
-	    /* --v6         : enter IPv6 mode */
-	    case 3:  parameter->ipv6_yn = 1;
-	             break;
+        /* --v6         : enter IPv6 mode */
+        case 3:  parameter->ipv6_yn = 1;
+                 break;
 
-	    /* --port=i     : port number for the server */
-	    case 4:  parameter->tcp_port   = atoi(optarg);
-		     break;
+        /* --port=i     : port number for the server */
+        case 4:  parameter->tcp_port   = atoi(optarg);
+             break;
 
-	    /* --secret=s   : shared secret for the client and server */
+        /* --secret=s   : shared secret for the client and server */
         case 5:  parameter->secret     = (unsigned char*)optarg;
-		     break;
+             break;
 
-	    /* --datagram=i : size of datagrams in bytes */
-	    case 6:  parameter->block_size = atoi(optarg);
-		     break;
+        /* --datagram=i : size of datagrams in bytes */
+        case 6:  parameter->block_size = atoi(optarg);
+             break;
 
-	    /* --buffer=i   : size of socket buffer */
-	    case 7:  parameter->udp_buffer = atoi(optarg);
-		     break;
+        /* --buffer=i   : size of socket buffer */
+        case 7:  parameter->udp_buffer = atoi(optarg);
+             break;
 
         #ifdef VSIB_REALTIME
         /* --vsibmode=i   : size of socket buffer */
         case 9:  vsib_mode = atoi(optarg);
-             break;        
-             
+             break;
+
         /* --vsibskip=i   : size of socket buffer */
         case 10:  vsib_mode_skip_samples = atoi(optarg);
-             break;                     
-        #endif             
-             
-	    /* otherwise    : display usage information */
+             break;
+        #endif
+
+        /* otherwise    : display usage information */
         default: 
              #ifdef VSIB_REALTIME
              fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n");
@@ -464,24 +464,24 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              #else
              fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n");
              #endif
-		     fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
-		     fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
-		     fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
-		     fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
-		     fprintf(stderr, "          datagram   = %d\n",   DEFAULT_BLOCK_SIZE);
+             fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
+             fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
+             fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
+             fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
+             fprintf(stderr, "          datagram   = %d\n",   DEFAULT_BLOCK_SIZE);
              fprintf(stderr, "          buffer     = %d\n",   DEFAULT_UDP_BUFFER);
              #ifdef VSIB_REALTIME
              fprintf(stderr, "          vsibmode   = %d\n",   0);
              fprintf(stderr, "          vsibskip   = %d\n",   0);
              #endif
              fprintf(stderr, "\n");
-		     fprintf(stderr, "verbose or v : turns on verbose output mode\n");
-		     fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
-		     fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
-		     fprintf(stderr, "port         : specifies which TCP port on which to listen to incoming connections\n");
-		     fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
-		     fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
-		     fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
+             fprintf(stderr, "verbose or v : turns on verbose output mode\n");
+             fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
+             fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
+             fprintf(stderr, "port         : specifies which TCP port on which to listen to incoming connections\n");
+             fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
+             fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
+             fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
              #ifdef VSIB_REALTIME
              fprintf(stderr, "vsibmode     : specifies the VSIB mode to use (see VSIB documentation for modes)\n");
              fprintf(stderr, "vsibskip     : a value N other than 0 will skip one sample after each N samples\n");
@@ -491,7 +491,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              exit(1);
     }
     }
-    
+
     if (argc>optind) {
         int counter;
         parameter->file_names = argv+optind;
@@ -503,7 +503,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
             stat(parameter->file_names[counter], &filestat);
             parameter->file_sizes[counter] = filestat.st_size;
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
-            fprintf(stderr, " %3d)   %-20s  %llu bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
+            fprintf(stderr, " %3d)   %-20s  %u bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
@@ -537,6 +537,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.28  2007/10/05 06:07:15  jwagnerhki
+ * tabs to spaces
+ *
  * Revision 1.27  2007/09/05 08:42:49  jwagnerhki
  * printf filelen now unsigned, realtime server no 15s timeout
  *
