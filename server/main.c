@@ -484,7 +484,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
              #ifdef VSIB_REALTIME
              fprintf(stderr, "vsibmode     : specifies the VSIB mode to use (see VSIB documentation for modes)\n");
-             fprintf(stderr, "vsibskip     : a value N other than 0 will skip one sample after each N samples\n");
+             fprintf(stderr, "vsibskip     : a value N other than 0 will skip N sample after ever 1 sample\n");
              #endif
              fprintf(stderr, "filenames    : list of files that can be downloaded with a 'get *'\n");
              fprintf(stderr, "\n");
@@ -537,6 +537,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.28  2007/10/26 08:00:08  jwagnerhki
+ * corrected help-text on vsibskip
+ *
  * Revision 1.27  2007/10/05 06:13:52  jwagnerhki
  * tabs to spaces
  *
