@@ -76,6 +76,7 @@ const u_int32_t  DEFAULT_UDP_BUFFER    = 20000000;  /* default size of the UDP t
 const u_char     DEFAULT_VERBOSE_YN    = 1;         /* the default verbosity setting           */
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;         /* the default transcript setting          */
 const u_char     DEFAULT_IPV6_YN       = 0;         /* the default IPv6 setting                */
+const u_int16_t  DEFAULT_HEARTBEAT_TIMEOUT = 15;    /* the timeout to disconnect after no client feedback */
 
 /*------------------------------------------------------------------------
  * void reset_server(ttp_parameter_t *parameter);
@@ -92,6 +93,7 @@ void reset_server(ttp_parameter_t *parameter)
     parameter->secret        = DEFAULT_SECRET;
     parameter->tcp_port      = DEFAULT_TCP_PORT;
     parameter->udp_buffer    = DEFAULT_UDP_BUFFER;
+    parameter->hb_timeout    = DEFAULT_HEARTBEAT_TIMEOUT;
     parameter->verbose_yn    = DEFAULT_VERBOSE_YN;
     parameter->transcript_yn = DEFAULT_TRANSCRIPT_YN;
     parameter->ipv6_yn       = DEFAULT_IPV6_YN;
@@ -100,6 +102,9 @@ void reset_server(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.6  2007/10/29 15:30:25  jwagnerhki
+ * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
+ *
  * Revision 1.5  2007/07/10 08:18:07  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *

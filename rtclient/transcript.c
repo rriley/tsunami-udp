@@ -158,7 +158,8 @@ void xscript_open(ttp_session_t *session)
     fprintf(xfer->transcript, "blockdump = %u\n",       param->blockdump);
     fprintf(xfer->transcript, "update_period = %llu\n", UPDATE_PERIOD);
     fprintf(xfer->transcript, "rexmit_period = %llu\n", UPDATE_PERIOD);
-    fprintf(xfer->transcript, "version = 0x%x\n",       PROTOCOL_REVISION);
+    fprintf(xfer->transcript, "protocol_version = 0x%x\n", PROTOCOL_REVISION);
+    fprintf(xfer->transcript, "software_version = %s\n",   TSUNAMI_CVS_BUILDNR);
     fprintf(xfer->transcript, "ipv6 = %u\n",            param->ipv6_yn);
     fprintf(xfer->transcript, "\n");
     fflush(session->transfer.transcript);
@@ -167,6 +168,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.4  2007/10/29 15:30:25  jwagnerhki
+ * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
+ *
  * Revision 1.3  2007/07/17 08:50:50  jwagnerhki
  * added fflush()es
  *

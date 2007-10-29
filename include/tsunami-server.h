@@ -70,26 +70,23 @@
 
 #include "tsunami.h"     /* for Tsunami function prototypes and the like */
 
-#ifdef MK5SERVER
-#include "mk5api.h"
-#endif
 
 /*------------------------------------------------------------------------
  * Global constants.
  *------------------------------------------------------------------------*/
 
-extern const u_int32_t  DEFAULT_BLOCK_SIZE;     /* default size of a single file block     */
-extern const u_char    *DEFAULT_SECRET;         /* default shared secret                   */
-extern const u_int16_t  DEFAULT_TCP_PORT;       /* default TCP port to listen on           */
-extern const u_int32_t  DEFAULT_UDP_BUFFER;     /* default size of the UDP transmit buffer */
-extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting           */
-extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting          */
-extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting                */
+extern const u_int32_t  DEFAULT_BLOCK_SIZE;         /* default size of a single file block     */
+extern const u_char    *DEFAULT_SECRET;             /* default shared secret                   */
+extern const u_int16_t  DEFAULT_TCP_PORT;           /* default TCP port to listen on           */
+extern const u_int32_t  DEFAULT_UDP_BUFFER;         /* default size of the UDP transmit buffer */
+extern const u_char     DEFAULT_VERBOSE_YN;         /* the default verbosity setting           */
+extern const u_char     DEFAULT_TRANSCRIPT_YN;      /* the default transcript setting          */
+extern const u_char     DEFAULT_IPV6_YN;            /* the default IPv6 setting                */
+extern const u_int16_t  DEFAULT_HEARTBEAT_TIMEOUT;  /* the default timeout after no client heartbeat */
 
 #define MAX_FILENAME_LENGTH  1024               /* maximum length of a requested filename  */
 #define RINGBUF_BLOCKS  1                       /* Size of ring buffer (disabled now) */
 #define FRAMES_IN_SLOT  40                      /* 0.02s timeslots for computers */
-#define CLIENT_FEEDBACK_TIMEOUT 15              /* 15s timeout to close connection if no client feedback */
 
 /*------------------------------------------------------------------------
  * Data structures.
@@ -103,6 +100,7 @@ typedef struct {
     u_char              ipv6_yn;        /* IPv6 mode (0=no, 1=yes)                    */
     u_int16_t           tcp_port;       /* TCP port number for listening on           */
     u_int32_t           udp_buffer;     /* size of the UDP send buffer in bytes       */
+    u_int16_t           hb_timeout;     /* the client heartbeat timeout               */
     const u_char       *secret;         /* the shared secret for users to prove       */
     u_int32_t           block_size;     /* the size of each block (in bytes)          */
     u_int64_t           file_size;      /* the total file size (in bytes)             */
@@ -130,11 +128,7 @@ typedef struct {
 typedef struct {
     ttp_parameter_t    *parameter;    /* the TTP protocol parameters                */
     char               *filename;     /* the path to the file                       */
-    #ifdef MK5SERVER
-    MK5FILE            *file;         /* the open Mark5 data that we're transmitting*/
-    #else
     FILE               *file;         /* the open file that we're transmitting      */
-    #endif
     FILE               *vsib;         /* the vsib file number                       */
     FILE               *transcript;   /* the open transcript file for statistics    */
     int                 udp_fd;       /* the file descriptor of our UDP socket      */
@@ -196,6 +190,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.10  2007/10/29 15:30:25  jwagnerhki
+ * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
+ *
  * Revision 1.9  2007/08/22 12:34:13  jwagnerhki
  * read in file length of commandline shared files
  *

@@ -3,6 +3,17 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 31:
+ - added proto_version and software_version into
+   transcripts of clients, servers
+ - servers disconnect on loss of client heartbeat
+   - added '--hbtimeout' server command line parameter, default 15s
+   - realtime server timeout behaviour: if local backup used, 
+     timeout termination not done earlier than at final 
+     TS_BLOCK_TERMINATE to insure local backup is complete
+   - file server timeout behaviour: as before, if no
+     reports from client in 15s then disconnect
+
 v1.1 CvsBuild 30:
  - cosmetic, printf() of 'dir' file lengths the proper unsigned int now
  - 15s timeout only for file server, realtime server TODO

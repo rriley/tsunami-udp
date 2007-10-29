@@ -269,41 +269,41 @@ void client_handler(ttp_session_t *session)
         /* if we have a retransmission */
         if (result == sizeof(retransmission_t)) {
 
-        /* store current time */
-        lastfeedback = delay;
-        deadconnection_counter = 0;
+            /* store current time */
+            lastfeedback = delay;
+            deadconnection_counter = 0;
 
-        /* if it's a stop request, go back to waiting for a filename */
-        if (ntohs(retransmission.request_type) == REQUEST_STOP) {
-            fprintf(stderr, "Transmission complete.\n");
-            break;
-        }
+            /* if it's a stop request, go back to waiting for a filename */
+            if (ntohs(retransmission.request_type) == REQUEST_STOP) {
+                fprintf(stderr, "Transmission complete.\n");
+                break;
+            }
 
-        /* otherwise, handle the retransmission */
-        status = ttp_accept_retransmit(session, &retransmission, datagram);
-        if (status < 0)
-            warn("Retransmission error");
-        usleep_that_works(75);
+            /* otherwise, handle the retransmission */
+            status = ttp_accept_retransmit(session, &retransmission, datagram);
+            if (status < 0)
+                warn("Retransmission error");
+            usleep_that_works(75);
 
         /* if we have no retransmission */
         } else if (result <= 0) {
 
-        /* build the block */
-        xfer->block = min(xfer->block + 1, param->block_count);
-        block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
-        result = build_datagram(session, xfer->block, block_type, datagram);
-        if (result < 0) {
-            sprintf(g_error, "Could not read block #%u", xfer->block);
-            error(g_error);
-        }
+            /* build the block */
+            xfer->block = min(xfer->block + 1, param->block_count);
+            block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
+            result = build_datagram(session, xfer->block, block_type, datagram);
+            if (result < 0) {
+                sprintf(g_error, "Could not read block #%u", xfer->block);
+                error(g_error);
+            }
 
-        /* transmit the block */
-        result = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
-        if (result < 0) {
-            sprintf(g_error, "Could not transmit block #%u", xfer->block);
-            warn(g_error);
-            continue;
-        }
+            /* transmit the block */
+            result = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
+            if (result < 0) {
+                sprintf(g_error, "Could not transmit block #%u", xfer->block);
+                warn(g_error);
+                continue;
+            }
 
         /* if we have a partial retransmission message */
         } else if (result > 0) {
@@ -321,27 +321,54 @@ void client_handler(ttp_session_t *session)
         }
 
         /* delay for the next packet */
-        #ifdef VSIB_REALTIME
-        //if (block_type == TS_BLOCK_ORIGINAL) {
-        //    continue; /* VSIB read() of new data already does the throttling */
-        // TODO: after a REQUEST_RESTART from client, old blocks are "new" but
-        //       then not throttled. Fix fix...
-        //}
-        #endif
         ipd_time = get_usec_since(&delay);
         ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
         usleep_that_works(ipd_time);
 
-        #ifndef VSIB_REALTIME
+        /* monitor client heartbeat and disconnect dead client */
         if ((deadconnection_counter++) > 2048) {
-            if (get_usec_since(&lastfeedback) > CLIENT_FEEDBACK_TIMEOUT*1000000) {
-                fprintf(stderr, "No feedback from client during the last %d seconds. Terminating transfer.\n", CLIENT_FEEDBACK_TIMEOUT);
+            char stats_line[160];
+
+            deadconnection_counter = 0;
+            delta = get_usec_since(&lastfeedback);
+
+            /* throttle IPD with fake 100% loss report */
+            #ifndef VSIB_REALTIME
+            retransmission.request_type = htons(REQUEST_ERROR_RATE);
+            retransmission.error_rate   = htonl(100000);
+            retransmission.block = 0;
+            ttp_accept_retransmit(session, &retransmission, datagram);
+            #endif
+
+            /* show an (additional) statistics line */
+            sprintf(stats_line, "   n/a     n/a     n/a %7u %6.2f%% %3u -- no heartbeat since %3.2fs\n",
+                                xfer->block, 100.0 * xfer->block / param->block_count, session->session_id,
+                                1e-6*delta);
+            if (param->transcript_yn)
+               xscript_data_log(session, stats_line);
+            fprintf(stderr, stats_line);
+
+            /* handle timeout for normal file transfers */
+            #ifndef VSIB_REALTIME
+            if ((1e-6 * delta) > param->hb_timeout) {
+                fprintf(stderr, "Heartbeat timeout of %d seconds reached, terminating transfer.\n", param->hb_timeout);
                 break;
             }
+            #else
+            /* handle timeout condition for : realtime with local backup, simple realtime */
+            if ((1e-6 * delta) > param->hb_timeout) {
+                if ((session->parameter->fileout) && (block_type == TS_BLOCK_TERMINATE)) {
+                    fprintf(stderr, "Reached the Terminate block and timed out, terminating transfer.\n");
+                    break;
+                } else if(!session->parameter->fileout) {
+                    fprintf(stderr, "Heartbeat timeout of %d seconds reached and not doing local backup, terminating transfer now.\n", param->hb_timeout);
+                    break;
+                } else {
+                    lastfeedback = delay;
+                }
+            }
+            #endif
         }
-        #else
-        // TODO: exit after recording duration + CLIENT_FEEDBACK_TIMEOUT
-        #endif
     }
 
     /*---------------------------
@@ -395,17 +422,18 @@ void client_handler(ttp_session_t *session)
  *------------------------------------------------------------------------*/
 void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 {
-    struct option long_options[] = { { "verbose",    0, NULL, 1 },
-                     { "transcript", 0, NULL, 2 },
-                     { "v6",         0, NULL, 3 },
-                     { "port",       1, NULL, 4 },
-                     { "secret",     1, NULL, 5 },
-                     { "datagram",   1, NULL, 6 },
-                     { "buffer",     1, NULL, 7 },
-                     { "v",          0, NULL, 8 },
+    struct option long_options[] = { { "verbose",    0, NULL, 'v' },
+                     { "transcript", 0, NULL, 't' },
+                     { "v6",         0, NULL, '6' },
+                     { "port",       1, NULL, 'p' },
+                     { "secret",     1, NULL, 's' },
+                     { "datagram",   1, NULL, 'd' },
+                     { "buffer",     1, NULL, 'b' },
+                     { "hbtimeout",  1, NULL, 'h' },
+                     { "v",          0, NULL, 'v' },
                      #ifdef VSIB_REALTIME
-                     { "vsibmode",   1, NULL, 9 },
-                     { "vsibskip",   1, NULL, 10 },
+                     { "vsibmode",   1, NULL, 'M' },
+                     { "vsibskip",   1, NULL, 'S' },
                      #endif
                      { NULL,         0, NULL, 0 } };
     struct stat   filestat;
@@ -418,63 +446,56 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
     switch (which) {
 
         /* --verbose    : enter verbose mode for debugging */
-        case 8:
-        case 1:  parameter->verbose_yn = 1;
+        case 'v':  parameter->verbose_yn = 1;
              break;
 
         /* --transcript : enter transcript mode for recording stats */
-        case 2:  parameter->transcript_yn = 1;
+        case 't':  parameter->transcript_yn = 1;
                  break;
 
         /* --v6         : enter IPv6 mode */
-        case 3:  parameter->ipv6_yn = 1;
+        case '6':  parameter->ipv6_yn = 1;
                  break;
 
         /* --port=i     : port number for the server */
-        case 4:  parameter->tcp_port   = atoi(optarg);
+        case 'p':  parameter->tcp_port   = atoi(optarg);
              break;
 
         /* --secret=s   : shared secret for the client and server */
-        case 5:  parameter->secret     = (unsigned char*)optarg;
+        case 's':  parameter->secret     = (unsigned char*)optarg;
              break;
 
         /* --datagram=i : size of datagrams in bytes */
-        case 6:  parameter->block_size = atoi(optarg);
+        case 'd':  parameter->block_size = atoi(optarg);
              break;
 
         /* --buffer=i   : size of socket buffer */
-        case 7:  parameter->udp_buffer = atoi(optarg);
+        case 'b':  parameter->udp_buffer = atoi(optarg);
              break;
+
+        /* --hbtimeout=i : client heartbeat timeout in seconds */
+        case 'h': parameter->hb_timeout = atoi(optarg);
+            break;
 
         #ifdef VSIB_REALTIME
         /* --vsibmode=i   : size of socket buffer */
-        case 9:  vsib_mode = atoi(optarg);
+        case 'M':  vsib_mode = atoi(optarg);
              break;
 
         /* --vsibskip=i   : size of socket buffer */
-        case 10:  vsib_mode_skip_samples = atoi(optarg);
+        case 'S':  vsib_mode_skip_samples = atoi(optarg);
              break;
         #endif
 
         /* otherwise    : display usage information */
         default: 
-             #ifdef VSIB_REALTIME
              fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n");
-             fprintf(stderr, "                [--vsibmode=mode] [--vsibskip=skip] [filename1 filename2 ...]\n\n");
-             #else
-             fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes] [filename1 filename2 ...]\n");
-             #endif
-             fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
-             fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
-             fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
-             fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
-             fprintf(stderr, "          datagram   = %d\n",   DEFAULT_BLOCK_SIZE);
-             fprintf(stderr, "          buffer     = %d\n",   DEFAULT_UDP_BUFFER);
+             fprintf(stderr, "                [--hbtimeout=seconds] ");
              #ifdef VSIB_REALTIME
-             fprintf(stderr, "          vsibmode   = %d\n",   0);
-             fprintf(stderr, "          vsibskip   = %d\n",   0);
+             fprintf(stderr, "[--vsibmode=mode] [--vsibskip=skip] [filename1 filename2 ...]\n\n");
+             #else
+             fprintf(stderr, "[filename1 filename2 ...]\n\n");
              #endif
-             fprintf(stderr, "\n");
              fprintf(stderr, "verbose or v : turns on verbose output mode\n");
              fprintf(stderr, "transcript   : turns on transcript mode for statistics recording\n");
              fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
@@ -482,11 +503,24 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
              fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
              fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
+             fprintf(stderr, "hbtimeout    : specifies the timeout in seconds for disconnect after client heartbeat lost\n");
              #ifdef VSIB_REALTIME
              fprintf(stderr, "vsibmode     : specifies the VSIB mode to use (see VSIB documentation for modes)\n");
-             fprintf(stderr, "vsibskip     : a value N other than 0 will skip N sample after ever 1 sample\n");
+             fprintf(stderr, "vsibskip     : a value N other than 0 will skip N samples after every 1 sample\n");
              #endif
-             fprintf(stderr, "filenames    : list of files that can be downloaded with a 'get *'\n");
+             fprintf(stderr, "filenames    : list of files to share for downloaded via a client 'GET *'\n");
+             fprintf(stderr, "\n");
+             fprintf(stderr, "Defaults: verbose    = %d\n",   DEFAULT_VERBOSE_YN);
+             fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
+             fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
+             fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
+             fprintf(stderr, "          datagram   = %d bytes\n",   DEFAULT_BLOCK_SIZE);
+             fprintf(stderr, "          buffer     = %d bytes\n",   DEFAULT_UDP_BUFFER);
+             fprintf(stderr, "          hbtimeout  = %d seconds\n",   DEFAULT_HEARTBEAT_TIMEOUT);
+             #ifdef VSIB_REALTIME
+             fprintf(stderr, "          vsibmode   = %d\n",   0);
+             fprintf(stderr, "          vsibskip   = %d\n",   0);
+             #endif
              fprintf(stderr, "\n");
              exit(1);
     }
@@ -537,6 +571,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.29  2007/10/29 15:30:25  jwagnerhki
+ * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
+ *
  * Revision 1.28  2007/10/26 08:00:08  jwagnerhki
  * corrected help-text on vsibskip
  *
