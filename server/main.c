@@ -263,8 +263,13 @@ void client_handler(ttp_session_t *session)
         /* see if transmit requests are available */
         gettimeofday(&delay, NULL);
         result = read(session->client_fd, &retransmission, sizeof(retransmission));
+        #ifndef VSIB_REALTIME
         if ((result <= 0) && (errno != EAGAIN))
-        error("Retransmission read failed");
+            error("Retransmission read failed");
+        #else
+        if ((result <= 0) && (errno != EAGAIN) && (!session->parameter->fileout))
+            error("Retransmission read failed and not writing local backup file");
+        #endif
 
         /* if we have a retransmission */
         if (result == sizeof(retransmission_t)) {
@@ -571,6 +576,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.30  2007/10/30 09:17:05  jwagnerhki
+ * backupping rtserver don't disconnect at tcp EOF yet
+ *
  * Revision 1.29  2007/10/29 15:30:25  jwagnerhki
  * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
  *

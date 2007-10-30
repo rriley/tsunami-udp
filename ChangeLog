@@ -13,6 +13,9 @@ v1.1 CvsBuild 31:
      TS_BLOCK_TERMINATE to insure local backup is complete
    - file server timeout behaviour: as before, if no
      reports from client in 15s then disconnect
+ - realtime server, if doing local backup, continues sending 
+   to the end even if client completely tcp-disconnected and
+   then eventually times out after last block sent/written
 
 v1.1 CvsBuild 30:
  - cosmetic, printf() of 'dir' file lengths the proper unsigned int now
