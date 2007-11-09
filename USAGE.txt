@@ -6,13 +6,17 @@
  1. Very Quick Guide
  2. Not So Quick Guide
  3. Settings in the Tsunami Client
- 4. Getting Help
- 5. Realtime Tsunami Notes
- 6. Troubleshooting
+ 4. Settings in the Tsunami Server
+ 5. Getting Help
+ 6. Realtime Tsunami Notes
+ 7. Special Compile Settings
+ 8. Troubleshooting
 
 -----------------------------------------------------------
 
  CHANGES
+ 09 Nov 2007:
+   - added description of heartbeat timeout feature
  31 Oct 2006:
    - some more troubleshooting help (check that no high CPU
      programs in background, disk is fast enough, etc)
@@ -131,14 +135,14 @@
  3. Settings in the Tsunami Client
  ============
 
-Settings available in the Tsunami Client, and a short description:
+ Settings available in the Tsunami Client, and a short description:
 
-$ tsunami
-Tsunami Client for protocol rev 20061025
-Revision: v1.1 devel cvsbuild 7
-Compiled: Dec 15 2006 14:57:59
+ $ tsunami
+ Tsunami Client for protocol rev 20061025
+ Revision: v1.1 devel cvsbuild 31
+ Compiled: Dec 15 2006 14:57:59
 
-tsunami> set
+ tsunami> set
    server = localhost      -- to which currently connected
    port = 46224            -- TCP control port on server
    udpport = 46224         -- UDP receiving port on client to use
@@ -167,7 +171,69 @@ tsunami> set
    passphrase = default    -- specify a different non-default passphrase for login to the server
 
 
- 4. Getting Help
+
+ 4. Settings in the Tsunami Server
+ ============
+
+ $ tsunamid --help
+   Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]
+                [--hbtimeout=seconds] [filename1 filename2 ...]
+
+   verbose or v : turns on verbose output mode
+   transcript   : turns on transcript mode for statistics recording
+   v6           : operates using IPv6 instead of (not in addition to!) IPv4
+   port         : specifies which TCP port on which to listen to incoming connections
+   secret       : specifies the shared secret for the client and server
+   datagram     : specifies the desired datagram size (in bytes)
+   buffer       : specifies the desired size for UDP socket send buffer (in bytes)
+   hbtimeout    : specifies the timeout in seconds for disconnect after client heartbeat lost
+   filenames    : list of files to share for downloaded via a client 'GET *'
+  
+   Defaults: ...
+
+ $ rttsunamid --help
+   Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]
+                [--hbtimeout=seconds] [--vsibmode=mode] [--vsibskip=skip] [filename1 filename2 ...]
+
+   [same as above 'tsunamid', plus these:]
+   vsibmode     : specifies the VSIB mode to use (see VSIB documentation for modes)
+   vsibskip     : a value N other than 0 will skip N samples after every 1 sample
+
+   Defaults: ...
+
+ The default 'hbtimeout' after the client heartbeat is lost is 15 seconds.
+
+ The heartbeat is the packetloss report that the client sends to the server 
+ in 350ms or shorter intervals.
+
+ The 'hbtimeout' behaviour after the first missing client packetloss report
+ is briefly as follows:
+
+   The server interrupts the transfer after 'hbtimeout' seconds of
+   no client activity. This can happen at any completion %.
+   A backupping realtime server waits until all requested data (100%) has 
+   been stored to disk, and then waits for 'hbtimeout'.
+
+ The same in more detail:
+
+   - The file server 'tsunamid', or a realtime 'rttsunamid' that has _not_ been 
+   instructed to write a local backup copy of VSIB data, will both continue 
+   sending new UDP-packetized data while waiting for the next heartbeat.
+   - If no heartbeat is received within the hbtimeout time, the connection is closed.
+   - If an EOF of the TCP connection is encountered, the connection is closed
+   immediately without timeout checks.
+   
+   - A realtime 'rttsunamid' that _has_ been instructed to write a local backup
+   copy of VSIB data will continue to send data, even if there is no feedback
+   from the client. 
+   - Even if an EOF is encountered, the connection is not closed.
+   - Only after the server has sent the last block of data (and thus the entire
+   requested VSIB data is complete on the disk), the hbtimeout setting
+   becomes effective.
+
+
+
+ 5. Getting Help
  ============
 
  Server application, to get a list of command line options use:
@@ -194,11 +260,11 @@ tsunami> set
 
 
 
- 5. Realtime Tsunami Notes
+ 6. Realtime Tsunami Notes
  ======================
  
  The realtime version of the tsunami applications uses the 
- Metsähovi VSIB card.
+ Metshovi VSIB card.
 
  This section refers mainly to the realtime versions of 
  the tsunami applications, namely, in the source code tree
@@ -249,7 +315,7 @@ tsunami> set
     
  Examples:
 
-    Metsähovi station, begin recording on 17th Oct 2006 at 12:25:30UTC
+    Metshovi station, begin recording on 17th Oct 2006 at 12:25:30UTC
   
        exp01_mh_scan01_2006-10-17T12:25:30.vsi
     
@@ -271,7 +337,7 @@ tsunami> set
    ./rtserver/vsibctl.c
    int vsib_mode = ...
  and the docs/modes.txt file found in the VSIB source code that
- is available separately from Metsähovi. The default settings 
+ is available separately from Metshovi. The default settings 
  work for nearly all cases (defaults are, for reference if you
  accidentally change the source code: mode 0, embed pps 0, 
  skip 0 or 1, gigabit mode 0).
@@ -303,7 +369,7 @@ tsunami> set
 
 
     
- 6. Special compile settings
+ 7. Special Compile Settings
  ========================
 
  For real-time server:
@@ -326,7 +392,7 @@ tsunami> set
        since more contiguous access on server side
        
     
- Troubleshooting
+ 8. Troubleshooting
  ===============
 
  * If transfers are really slow, and the error rate is high,
