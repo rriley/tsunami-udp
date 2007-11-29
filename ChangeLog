@@ -3,6 +3,12 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 32:
+ - 'heartbeat lost' messages now spaced in at most 350ms intervals
+   and not shorter
+ - realtime server vsibctl.c now uses fread() not read(), now seeking
+   and reading from the VSIB no longer has to be multiples of 4096 bytes
+
 v1.1 CvsBuild 31:
  - added proto_version and software_version into
    transcripts of clients, servers

@@ -119,7 +119,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     
     /* read enough data, over 4/3th of blocksize */ 
     fseeko64(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
-    read_vsib_block(packingbuffer,  2 * session->parameter->block_size + 4); // 2* vs. 4/3*        
+    read_vsib_block(session, packingbuffer,  2 * session->parameter->block_size + 4); // 2* vs. 4/3*        
     // if (status < 0) { /* Expired ? */ }
     
     /* copy, pack */
@@ -152,7 +152,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     //last_block = block_index; // reading the next block in line, no seek required
     
     /* try to read in the block */
-    read_vsib_block(datagram + 6, session->parameter->block_size);
+    read_vsib_block(session, datagram + 6, session->parameter->block_size);
     //if (status < 0) { /* Expired ? */
       /*      memset(datagram + 6, 0, session->parameter->block_size);  */
       /*      sprintf(g_error, "Could not read block #%u", block_index); */
@@ -194,6 +194,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.9  2007/11/29 10:58:46  jwagnerhki
+ * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
+ *
  * Revision 1.8  2007/05/31 09:32:08  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

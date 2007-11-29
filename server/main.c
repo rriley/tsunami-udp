@@ -190,6 +190,7 @@ void client_handler(ttp_session_t *session)
     struct timeval    start, stop;                   /* the start and stop times for the transfer      */
     struct timeval    delay;                         /* the interpacket delay value                    */
     struct timeval    lastfeedback;                  /* the time since last client feedback            */
+    struct timeval    lasthblostreport;              /* the time since last 'heartbeat lost' report    */
     u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
     int               result;                        /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
@@ -255,6 +256,7 @@ void client_handler(ttp_session_t *session)
 
     /* start by blasting out every block */
     xfer->block = 0;
+    gettimeofday(&lasthblostreport, NULL);
     while (xfer->block <= param->block_count) {
 
         /* default: flag as retransmitted block */
@@ -276,6 +278,7 @@ void client_handler(ttp_session_t *session)
 
             /* store current time */
             lastfeedback = delay;
+            lasthblostreport = delay;
             deadconnection_counter = 0;
 
             /* if it's a stop request, go back to waiting for a filename */
@@ -335,7 +338,10 @@ void client_handler(ttp_session_t *session)
             char stats_line[160];
 
             deadconnection_counter = 0;
-            delta = get_usec_since(&lastfeedback);
+
+            /* limit 'heartbeat lost' reports to 350ms intervals */
+            if (get_usec_since(&lasthblostreport) < 350000.0) continue; 
+            gettimeofday(&lasthblostreport, NULL);
 
             /* throttle IPD with fake 100% loss report */
             #ifndef VSIB_REALTIME
@@ -344,6 +350,8 @@ void client_handler(ttp_session_t *session)
             retransmission.block = 0;
             ttp_accept_retransmit(session, &retransmission, datagram);
             #endif
+
+            delta = get_usec_since(&lastfeedback);
 
             /* show an (additional) statistics line */
             sprintf(stats_line, "   n/a     n/a     n/a %7u %6.2f%% %3u -- no heartbeat since %3.2fs\n",
@@ -576,6 +584,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.31  2007/11/29 10:58:46  jwagnerhki
+ * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
+ *
  * Revision 1.30  2007/10/30 09:17:05  jwagnerhki
  * backupping rtserver don't disconnect at tcp EOF yet
  *

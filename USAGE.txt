@@ -332,16 +332,14 @@
  The default recording length is equal to the amount of bytes
  in 4 minutes of 512 Mbps.      
         
- The VSIB recording mode is currently hard-coded in the source code, 
- see 
-   ./rtserver/vsibctl.c
-   int vsib_mode = ...
- and the docs/modes.txt file found in the VSIB source code that
- is available separately from Metshovi. The default settings 
- work for nearly all cases (defaults are, for reference if you
- accidentally change the source code: mode 0, embed pps 0, 
- skip 0 or 1, gigabit mode 0).
+ The VSIB recording mode can be specified from the
+ command line options (--vsibmode=x, --vsibskip=x).
  
+ If you use a version older than v1.1 cvsbuild 32, you
+ are limited to
+    > set blocksize 4096  [or 8192, 16384, 32768]
+ as other settings cause skips in the data.
+
 
  --Realtime Client--
 
@@ -445,4 +443,6 @@
  * If problems persist, contact the developers or submit a bug report 
  at http://sourceforge.net/projects/tsunami-udp
 
-
+ * If you use a version older than v1.1 cvsbuild 32, you are limited to
+    > set blocksize 4096  [or 8192, 16384, 32768]
+ as other settings cause skips in the data.

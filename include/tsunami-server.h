@@ -161,7 +161,7 @@ int  build_datagram       (ttp_session_t *session, u_int32_t block_index, u_int1
 #ifdef VSIB_REALTIME
 void start_vsib (ttp_session_t *session);
 void stop_vsib (ttp_session_t *session);
-void read_vsib_block(unsigned char *memblk, size_t blksize);
+void read_vsib_block(ttp_session_t *session, unsigned char *memblk, size_t blksize);
 #endif
 
 /* log.c */
@@ -190,6 +190,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.11  2007/11/29 10:58:46  jwagnerhki
+ * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
+ *
  * Revision 1.10  2007/10/29 15:30:25  jwagnerhki
  * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
  *

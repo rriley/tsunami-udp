@@ -72,28 +72,19 @@ typedef struct sSh {
 int vsib_fileno;
 
 /* A protected (error-checking) ioctl() for VSIB driver. */
-static void
-vsib_ioctl(
-  unsigned int mode,
-  unsigned long arg
-) {
-  if (ioctl(vsib_fileno,
-            mode,
-            arg)
-  ) {
-    char err[255];
-    
-    snprintf(err, sizeof(err), "Fatal VSIB access error: ioctl(vsib_fileno=0x%04x, 0x%04x, %ld) failed", 
-        vsib_fileno, mode, arg);
-    perror(err);
-    exit(EXIT_FAILURE);
-  }
+static void vsib_ioctl(unsigned int mode, unsigned long arg) {
+    if (ioctl(vsib_fileno, mode, arg)) {
+       char err[255];
+       snprintf(err, sizeof(err), "Fatal VSIB access error: ioctl(vsib_fileno=0x%04x, 0x%04x, %ld) failed", 
+                vsib_fileno, mode, arg);
+       perror(err);
+       exit(EXIT_FAILURE);
+    }
 }  /* vsib_ioctl */
 
 
 
-double
-tim(void) {
+double tim(void) {
   struct timeval tv;
   double t = 0.0;
 
@@ -104,8 +95,7 @@ tim(void) {
   return t;
 }  /* tim */
 
-void
-start_vsib(ttp_session_t *session)
+void start_vsib(ttp_session_t *session)
 {
   ttp_transfer_t  *xfer  = &session->transfer;
  
@@ -135,28 +125,20 @@ start_vsib(ttp_session_t *session)
 }  /* start_VSIB */
 
 
-
-void read_vsib_block(unsigned char *memblk, size_t blksize)
+/* Read a block from VSIB; if one fread() does not return enough, sleep a little and try again. */
+void read_vsib_block(ttp_session_t* session, unsigned char *memblk, size_t blksize)
 {
   size_t nread;
   struct timespec ts;
   ts.tv_sec = 0;
   ts.tv_nsec = 1000000L;
-
-    /* Write (or read) one block. */
-    /* xxx: need to add '-1' error checks to VSIB read()/write() calls */
-
-      /* Read a block from VSIB; if not enough, sleep a little. */
-      nread = read (vsib_fileno, memblk, blksize);
-      while (nread < blksize) {
-        /* Not one full block in buffer, wait. */
-        // usleep(1000); usleep not with pthreads! /* a small amount, probably ends up to be 10--20msec */
-        nanosleep(&ts, NULL);
-	/*        usleeps++; */
-        nread += read (vsib_fileno, memblk+nread, blksize-nread);
-      }  /* while not at least one full block in VSIB DMA ring buffer */
-
-}  /* read_vsib_block */
+  nread = fread(memblk, 1, blksize, session->transfer.vsib);
+  while (nread < blksize) {
+     nanosleep(&ts, NULL);
+     // usleeps++;
+     nread += fread(memblk+nread, 1, blksize-nread, session->transfer.vsib);
+  } 
+}
 
 
 

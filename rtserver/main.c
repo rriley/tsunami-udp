@@ -190,6 +190,7 @@ void client_handler(ttp_session_t *session)
     struct timeval    start, stop;                   /* the start and stop times for the transfer      */
     struct timeval    delay;                         /* the interpacket delay value                    */
     struct timeval    lastfeedback;                  /* the time since last client feedback            */
+    struct timeval    lasthblostreport;              /* the time since last 'heartbeat lost' report    */
     u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
     int               result;                        /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
@@ -255,6 +256,7 @@ void client_handler(ttp_session_t *session)
 
     /* start by blasting out every block */
     xfer->block = 0;
+    gettimeofday(&lasthblostreport, NULL);
     while (xfer->block <= param->block_count) {
 
         /* default: flag as retransmitted block */
@@ -276,6 +278,7 @@ void client_handler(ttp_session_t *session)
 
             /* store current time */
             lastfeedback = delay;
+            lasthblostreport = delay;
             deadconnection_counter = 0;
 
             /* if it's a stop request, go back to waiting for a filename */
@@ -335,7 +338,10 @@ void client_handler(ttp_session_t *session)
             char stats_line[160];
 
             deadconnection_counter = 0;
-            delta = get_usec_since(&lastfeedback);
+
+            /* limit 'heartbeat lost' reports to 350ms intervals */
+            if (get_usec_since(&lasthblostreport) < 350000.0) continue; 
+            gettimeofday(&lasthblostreport, NULL);
 
             /* throttle IPD with fake 100% loss report */
             #ifndef VSIB_REALTIME
@@ -344,6 +350,8 @@ void client_handler(ttp_session_t *session)
             retransmission.block = 0;
             ttp_accept_retransmit(session, &retransmission, datagram);
             #endif
+
+            delta = get_usec_since(&lastfeedback);
 
             /* show an (additional) statistics line */
             sprintf(stats_line, "   n/a     n/a     n/a %7u %6.2f%% %3u -- no heartbeat since %3.2fs\n",
@@ -576,92 +584,92 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
- * Revision 1.32  2007/10/30 09:17:05  jwagnerhki
+ * Revision 1.33  2007/11/29 10:58:46  jwagnerhki
+ * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
+ *
+ * Revision 1.30  2007/10/30 09:17:05  jwagnerhki
  * backupping rtserver don't disconnect at tcp EOF yet
  *
- * Revision 1.31  2007/10/29 15:30:25  jwagnerhki
+ * Revision 1.29  2007/10/29 15:30:25  jwagnerhki
  * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
  *
- * Revision 1.30  2007/10/26 08:00:10  jwagnerhki
+ * Revision 1.28  2007/10/26 08:00:08  jwagnerhki
  * corrected help-text on vsibskip
  *
- * Revision 1.29  2007/10/05 06:13:52  jwagnerhki
+ * Revision 1.27  2007/10/05 06:13:52  jwagnerhki
  * tabs to spaces
  *
- * Revision 1.28  2007/10/05 06:07:15  jwagnerhki
+ * Revision 1.26  2007/10/05 06:07:16  jwagnerhki
  * tabs to spaces
  *
- * Revision 1.27  2007/09/05 08:42:49  jwagnerhki
+ * Revision 1.25  2007/09/05 08:42:49  jwagnerhki
  * printf filelen now unsigned, realtime server no 15s timeout
  *
- * Revision 1.26  2007/09/04 15:39:24  jwagnerhki
+ * Revision 1.24  2007/09/04 15:39:24  jwagnerhki
  * different timeout code for realtime
  *
- * Revision 1.25  2007/08/24 06:45:14  jwagnerhki
- * merged in dir listing support from file server code
+ * Revision 1.23  2007/08/22 12:34:12  jwagnerhki
+ * read in file length of commandline shared files
  *
- * Revision 1.24  2007/08/10 09:19:35  jwagnerhki
+ * Revision 1.22  2007/08/10 09:19:35  jwagnerhki
  * server closes connection if no client feedback in 15s
  *
- * Revision 1.23  2007/08/10 09:05:08  jwagnerhki
+ * Revision 1.21  2007/08/10 09:05:06  jwagnerhki
  * 5 second timeout on no client feedback
  *
- * Revision 1.22  2007/07/16 09:51:09  jwagnerhki
+ * Revision 1.20  2007/07/16 09:51:10  jwagnerhki
  * rt-server now ipd-throttled again
  *
- * Revision 1.21  2007/07/16 08:55:54  jwagnerhki
+ * Revision 1.19  2007/07/16 08:55:54  jwagnerhki
  * build 21, upped 16 to 256 clients, reduced end block blast speed, enabled RETX_REQBLOCK_SORTING compile flag
  *
- * Revision 1.20  2007/07/16 07:29:51  jwagnerhki
- * include arpa/inet.h
- *
- * Revision 1.19  2007/07/14 17:06:25  jwagnerhki
+ * Revision 1.18  2007/07/14 17:06:24  jwagnerhki
  * show client IP prior to auth
  *
- * Revision 1.18  2007/07/10 08:18:06  jwagnerhki
+ * Revision 1.17  2007/07/10 08:18:07  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
- * Revision 1.17  2007/05/31 09:32:08  jwagnerhki
- * removed some signedness warnings, added Mark5 server devel start code
+ * Revision 1.16  2007/05/31 09:16:12  jwagnerhki
+ * removed 2 compiler warnings
  *
- * Revision 1.16  2007/05/25 08:30:22  jwagnerhki
+ * Revision 1.15  2007/05/25 08:30:22  jwagnerhki
  * realtime server enabled no extra delay on new VSIB blocks
  *
- * Revision 1.15  2007/03/23 07:23:15  jwagnerhki
+ * Revision 1.14  2007/05/18 12:49:32  jwagnerhki
+ * added Realtime to printed name
+ *
+ * Revision 1.13  2007/03/23 07:23:15  jwagnerhki
  * added rttsunamid vsib mode and skip CLI options
  *
- * Revision 1.14  2006/12/05 15:24:50  jwagnerhki
+ * Revision 1.12  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
- * Revision 1.13  2006/12/05 13:38:20  jwagnerhki
+ * Revision 1.11  2006/12/05 13:38:20  jwagnerhki
  * identify concurrent server transfers by an own ID
  *
- * Revision 1.12  2006/12/04 14:45:34  jwagnerhki
+ * Revision 1.10  2006/12/04 14:45:34  jwagnerhki
  * added more proper TSUNAMI_CVS_BUILDNR, added exit and bye commands to client
  *
- * Revision 1.11  2006/11/08 11:05:30  jwagnerhki
+ * Revision 1.9  2006/11/08 11:45:04  jwagnerhki
  * vsib read without IPD throttling
  *
- * Revision 1.10  2006/10/30 08:46:58  jwagnerhki
+ * Revision 1.8  2006/10/30 08:46:58  jwagnerhki
  * removed memory leak unused ringbuf
  *
- * Revision 1.9  2006/10/28 17:00:12  jwagnerhki
+ * Revision 1.7  2006/10/28 17:00:12  jwagnerhki
  * block type defines
  *
- * Revision 1.8  2006/10/25 14:27:10  jwagnerhki
+ * Revision 1.6  2006/10/25 14:27:09  jwagnerhki
  * typo fix
  *
- * Revision 1.7  2006/10/25 13:32:07  jwagnerhki
+ * Revision 1.5  2006/10/25 13:32:08  jwagnerhki
  * build cmd line args filelist for 'get *'
  *
- * Revision 1.6  2006/10/24 19:47:33  jwagnerhki
- * use VSIB_REALTIME gcc define to select compile mode
+ * Revision 1.4  2006/10/24 19:41:12  jwagnerhki
+ * realtime and normal server.c now identical, define VSIB_REALTIME for mode
  *
- * Revision 1.4  2006/10/24 19:14:28  jwagnerhki
+ * Revision 1.3  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
- *
- * Revision 1.3  2006/10/19 07:44:26  jwagnerhki
- * show VSIB config at program start
  *
  * Revision 1.2  2006/10/19 07:19:40  jwagnerhki
  * show proto rev and build number, rttsunamid show startup settings like tsunamid
@@ -669,7 +677,7 @@ void reap(int signum)
  * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
  * reimport
  *
- * Revision 1.1  2006/07/10 12:37:21  jwagnerhki
+ * Revision 1.1  2006/07/10 12:39:52  jwagnerhki
  * added to trunk
  *
  */
