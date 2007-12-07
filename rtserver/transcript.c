@@ -142,7 +142,7 @@ void xscript_open(ttp_session_t *session)
 
     /* write out all the header information */
     fprintf(xfer->transcript, "filename = %s\n",    xfer->filename);
-    fprintf(xfer->transcript, "file_size = %llu\n", param->file_size);
+    fprintf(xfer->transcript, "file_size = %Lu\n",  (ull_t)param->file_size);
     fprintf(xfer->transcript, "block_count = %u\n", param->block_count);
     fprintf(xfer->transcript, "udp_buffer = %u\n",  param->udp_buffer);
     fprintf(xfer->transcript, "block_size = %u\n",  param->block_size);
@@ -164,6 +164,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.5  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.4  2007/10/29 15:30:25  jwagnerhki
  * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
  *

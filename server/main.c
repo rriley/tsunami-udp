@@ -4,7 +4,7 @@
  * This is the persistent process that sends out files upon request.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,10 +49,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -394,8 +394,8 @@ void client_handler(ttp_session_t *session)
 
     /* report on the transfer */
     if (param->verbose_yn)
-        fprintf(stderr, "Server %d transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n",
-                session->session_id, param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
+        fprintf(stderr, "Server %d transferred %Lu bytes in %0.2f seconds (%0.1f Mbps)\n",
+                session->session_id, (ull_t)param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
 
     /* close the transcript */
     if (param->transcript_yn)
@@ -550,7 +550,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
             stat(parameter->file_names[counter], &filestat);
             parameter->file_sizes[counter] = filestat.st_size;
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
-            fprintf(stderr, " %3d)   %-20s  %u bytes\n", counter+1, parameter->file_names[counter], parameter->file_sizes[counter]);
+            fprintf(stderr, " %3d)   %-20s  %Lu bytes\n", counter+1, parameter->file_names[counter], (ull_t)parameter->file_sizes[counter]);
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
@@ -584,6 +584,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.32  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.31  2007/11/29 10:58:46  jwagnerhki
  * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
  *

@@ -5,7 +5,7 @@
  * transfer server.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright  2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,7 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NOWARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
  * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
@@ -63,6 +63,7 @@
 
 #include <string.h>      /* for memset(), strdup(), etc.   */
 #include <sys/types.h>   /* for standard system data types */
+#include <inttypes.h>    /* for scanf/printf data types    */
 #include <sys/socket.h>  /* for the BSD sockets library    */
 #include <sys/time.h>    /* gettimeofday()                 */
 #include <time.h>        /* for time()                     */
@@ -368,7 +369,7 @@ int ttp_open_transfer(ttp_session_t *session)
        write(session->client_fd, file_no, strlen(file_no)+1);
        for(i=0; i<param->total_files; i++) {
           write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
-          snprintf(message, sizeof(message), "%d", param->file_sizes[i]);
+          snprintf(message, sizeof(message), "%Lu", (ull_t)(param->file_sizes[i]));
           write(session->client_fd, message, strlen(message)+1);
        }
        read(session->client_fd, message, 1);
@@ -488,7 +489,7 @@ int ttp_open_transfer(ttp_session_t *session)
 
         assert( gettimeofday(&d, NULL) == 0 );
         timedelta_usec = (unsigned long)((starttime - (double)d.tv_sec)* 1000000.0) - (double)d.tv_usec;
-        fprintf(stderr, "Sleeping until specified time (%s) for %lld usec...\n", ef->data_start_time_ascii, timedelta_usec);
+        fprintf(stderr, "Sleeping until specified time (%s) for %Lu usec...\n", ef->data_start_time_ascii, (ull_t)timedelta_usec);
         usleep_that_works(timedelta_usec);
     }
 
@@ -534,13 +535,13 @@ int ttp_open_transfer(ttp_session_t *session)
     #else
     /* get length of recording in bytes from filename */
     if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
-        sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
+        sscanf(get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo), "%" SCNu64, (u_int64_t*) &(param->file_size));
     } else if (get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo) != 0) {
-        sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%lld", (u_int64_t*) &(param->file_size));
+        sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%" SCNu64, (u_int64_t*) &(param->file_size));
     } else {
         param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
     }
-    fprintf(stderr, "Realtime file length in bytes: %lld\n", param->file_size);
+    fprintf(stderr, "Realtime file length in bytes: %Lu\n", (ull_t)param->file_size);
     #endif
 
     param->block_count = (param->file_size / param->block_size) + ((param->file_size % param->block_size) != 0);
@@ -572,6 +573,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.24  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.23  2007/08/22 14:07:31  jwagnerhki
  * build 27: first implementation of client dir command
  *

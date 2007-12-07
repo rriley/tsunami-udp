@@ -1,3 +1,4 @@
+#if INC_UNUSED
 /*========================================================================
  * client.h  --  Global header for Tsunami client.
  *
@@ -274,10 +275,13 @@ void           xscript_data_stop     (ttp_session_t *session, const struct timev
 void           xscript_open          (ttp_session_t *session);
 
 #endif /* __CLIENT_H */
-
+#endif
 
 /*========================================================================
  * $Log: client.h,v $
+ * Revision 1.12  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.11  2007/08/22 14:07:30  jwagnerhki
  * build 27: first implementation of client dir command
  *
@@ -315,3 +319,4 @@ void           xscript_open          (ttp_session_t *session);
  * deleted unnecessary files
  *
  */
+

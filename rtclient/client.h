@@ -1,3 +1,4 @@
+#if INC_UNUSED
 /*========================================================================
  * client.h  --  Global header for Tsunami client.
  *
@@ -196,6 +197,7 @@ typedef struct {
     u_int64_t           file_size;                /* the total file size (in bytes)              */
     u_int32_t           block_count;              /* the total number of blocks in the file      */
     u_int32_t           next_block;               /* the index of the next block we expect       */
+    u_int32_t           gapless_till_block;       /* the last block in the fully received range  */
     retransmit_t        retransmit;               /* the retransmission data for the transfer    */
     statistics_t        stats;                    /* the statistical data for the transfer       */
     ring_buffer_t      *ring_buffer;              /* the blocks waiting for a disk write         */
@@ -226,6 +228,7 @@ int            command_get           (command_t *command, ttp_session_t *session
 int            command_help          (command_t *command, ttp_session_t *session);
 int            command_quit          (command_t *command, ttp_session_t *session);
 int            command_set           (command_t *command, ttp_parameter_t *parameter);
+int            command_dir           (command_t *command, ttp_session_t *session);
 
 /* config.c */
 void           reset_client          (ttp_parameter_t *parameter);
@@ -272,12 +275,18 @@ void           xscript_data_stop     (ttp_session_t *session, const struct timev
 void           xscript_open          (ttp_session_t *session);
 
 #endif /* __CLIENT_H */
-
+#endif
 
 /*========================================================================
  * $Log: client.h,v $
- * Revision 1.9  2007/07/10 08:18:06  jwagnerhki
- * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ * Revision 1.10  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
+ * Revision 1.11  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
+ * Revision 1.10  2007/08/17 10:56:31  jwagnerhki
+ * added gapless_till_block client side counter
  *
  * Revision 1.9  2007/06/19 13:35:23  jwagnerhki
  * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries

@@ -70,7 +70,7 @@
 #include <sys/types.h>    /* for standard system data types */
 #include <unistd.h>       /* for standard Unix system calls */
 
-#include "client.h"
+#include <tsunami-client.h>
 
 
 /*------------------------------------------------------------------------
@@ -228,8 +228,11 @@ int create_udp_socket_v6(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network_v6.c,v $
- * Revision 1.1  2006/07/20 09:21:19  jwagnerhki
- * Initial revision
+ * Revision 1.2  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:35:11  jwagnerhki
  * added to trunk

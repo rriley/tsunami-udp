@@ -65,8 +65,8 @@
 #include <string.h>       /* for standard string routines          */
 #include <unistd.h>       /* for standard Unix system calls        */
 
-#include "tsunami.h"
-#include "client.h"
+#include <tsunami.h>
+#include <tsunami-client.h>
 #ifdef VSIB_REALTIME
 #include "vsibctl.h"
 #endif
@@ -241,6 +241,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.9  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.8  2007/05/31 09:32:07  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *

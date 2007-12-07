@@ -5,7 +5,7 @@
  * file transfer client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -68,7 +68,7 @@
 #include <time.h>         /* for time()                            */
 #include <unistd.h>       /* for standard Unix system calls        */
 
-#include "client.h"
+#include <tsunami-client.h>
 //#define DEBUG_RETX xxx // enable to show retransmit debug infos
 
 /*------------------------------------------------------------------------
@@ -266,7 +266,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
 int ttp_open_port(ttp_session_t *session)
 {
     struct sockaddr udp_address;
-    int             udp_length = sizeof(udp_address);
+    unsigned int    udp_length = sizeof(udp_address);
     int             status;
     u_int16_t      *port;
 
@@ -568,9 +568,9 @@ int ttp_update_stats(ttp_session_t *session)
 
     /* build the stats string */    
     #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8lld\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8Lu\n",
     #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8lld\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8Lu\n",
     #endif
         hours, minutes, seconds, milliseconds,
         stats->total_blocks - stats->this_blocks,
@@ -586,49 +586,49 @@ int ttp_update_stats(ttp_session_t *session)
         //delta_useful * 8.0 / delta,
         session->transfer.blocks_left, 
         stats->this_retransmits, // NOTE: stats->this_retransmits seems to be 0 always ??
-        stats->this_udp_errors - stats->start_udp_errors
+        (ull_t)(stats->this_udp_errors - stats->start_udp_errors)
         );
 
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
 
-	/* screen mode */
-	if (session->parameter->output_mode == SCREEN_MODE) {
-	    printf("\033[2J\033[H");
-	    printf("Current time:   %s\n", ctime(&now_epoch));
-	    printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
-	    printf("Last interval\n--------------------------------------------------\n");
-	    printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
-	    printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
-	    printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
-	    printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
-	    printf("Cumulative\n--------------------------------------------------\n");
-	    printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
-	    printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
-	    printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
-	    printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
-        printf("OS UDP rx errors: %lld\n",             stats->this_udp_errors - stats->start_udp_errors);
+        /* screen mode */
+        if (session->parameter->output_mode == SCREEN_MODE) {
+            printf("\033[2J\033[H");
+            printf("Current time:   %s\n", ctime(&now_epoch));
+            printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
+            printf("Last interval\n--------------------------------------------------\n");
+            printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
+            printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
+            printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
+            printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
+            printf("Cumulative\n--------------------------------------------------\n");
+            printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
+            printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
+            printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
+            printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
+            printf("OS UDP rx errors: %Lu\n",            (ull_t)(stats->this_udp_errors - stats->start_udp_errors));
 
-	/* line mode */
-	} else {
+        /* line mode */
+        } else {
 
-	    /* print a header if necessary */
-#ifndef STATS_NOHEADER
-	    if (!(iteration++ % 23)) {
-		printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
-		printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
-	    }
-#endif
-	    printf("%s", stats_line);
-	}
+            /* print a header if necessary */
+            #ifndef STATS_NOHEADER
+            if (!(iteration++ % 23)) {
+                printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
+                printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
+            }
+            #endif
+            printf("%s", stats_line);
+        }
 
-	/* and flush the output */
-	fflush(stdout);
+        /* and flush the output */
+        fflush(stdout);
     }
 
     /* print to the transcript if the user wants */
     if (session->parameter->transcript_yn)
-	xscript_data_log(session, stats_line);
+        xscript_data_log(session, stats_line);
 
     /* clear out the statistics again */
     stats->this_blocks      = stats->total_blocks;
@@ -642,6 +642,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.22  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.21  2007/08/27 15:12:30  jwagnerhki
  * fixed 32-bit write as 16-bit endianness problem
  *

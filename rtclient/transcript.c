@@ -5,7 +5,7 @@
  * available on the client to disk for later analysis.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -61,7 +61,7 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
-#include "client.h"
+#include <tsunami-client.h>
 
 
 /*------------------------------------------------------------------------
@@ -142,7 +142,7 @@ void xscript_open(ttp_session_t *session)
     /* write out all the header information */
     fprintf(xfer->transcript, "remote_filename = %s\n", xfer->remote_filename);
     fprintf(xfer->transcript, "local_filename = %s\n",  xfer->local_filename);
-    fprintf(xfer->transcript, "file_size = %llu\n",     xfer->file_size);
+    fprintf(xfer->transcript, "file_size = %Lu\n",      (ull_t)xfer->file_size);
     fprintf(xfer->transcript, "block_count = %u\n",     xfer->block_count);
     fprintf(xfer->transcript, "udp_buffer = %u\n",      param->udp_buffer);
     fprintf(xfer->transcript, "block_size = %u\n",      param->block_size);
@@ -168,19 +168,22 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.5  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.4  2007/10/29 15:30:25  jwagnerhki
  * timeout feature for rttsunamid too, added version info to transcripts, added --hbimeout srv cmd line param
  *
- * Revision 1.3  2007/07/17 08:50:50  jwagnerhki
+ * Revision 1.3  2007/07/17 08:50:46  jwagnerhki
  * added fflush()es
  *
  * Revision 1.2  2007/07/13 18:43:56  jwagnerhki
  * added blockdump and lossless settings
  *
- * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
  * reimport
  *
- * Revision 1.1  2006/07/10 12:35:12  jwagnerhki
- * added to trunk
+ * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
+ * deleted unnecessary files
  *
  */

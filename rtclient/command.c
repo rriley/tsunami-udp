@@ -70,7 +70,7 @@
 #include <unistd.h>       /* for standard Unix system calls        */
 #include <ctype.h>        /* for toupper() etc                     */
 
-#include "client.h"
+#include <tsunami-client.h>
 
 
 /*------------------------------------------------------------------------
@@ -92,13 +92,13 @@ int command_close(command_t *command, ttp_session_t *session)
 {
     /* make sure we have an open connection */
     if (session == NULL || session->server == NULL)
-    return warn("Tsunami session was not active");
+	return warn("Tsunami session was not active");
 
     /* otherwise, go ahead and close it */
     fclose(session->server);
     session->server = NULL;
     if (session->parameter->verbose_yn)
-    printf("Connection closed.\n\n");
+	printf("Connection closed.\n\n");
     return 0;
 }
 
@@ -123,48 +123,48 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 
     /* if we were given a new host, store that information */
     if (command->count > 1) {
-    if (parameter->server_name != NULL)
-        free(parameter->server_name);
-    parameter->server_name = strdup(command->text[1]);
-    if (parameter->server_name == NULL) {
-        warn("Could not update server name");
-        return NULL;
-    }
+	if (parameter->server_name != NULL)
+	    free(parameter->server_name);
+	parameter->server_name = strdup(command->text[1]);
+	if (parameter->server_name == NULL) {
+	    warn("Could not update server name");
+	    return NULL;
+	}
     }
 
     /* if we were given a port, store that information */
     if (command->count > 2)
-    parameter->server_port = atoi(command->text[2]);
+	parameter->server_port = atoi(command->text[2]);
 
     /* allocate a new session */
     session = (ttp_session_t *) calloc(1, sizeof(ttp_session_t));
     if (session == NULL)
-    error("Could not allocate session object");
+	error("Could not allocate session object");
     session->parameter = parameter;
 
     /* obtain our client socket */
     server_fd = create_tcp_socket(session, parameter->server_name, parameter->server_port);
     if (server_fd < 0) {
-    sprintf(g_error, "Could not connect to %s:%d.", parameter->server_name, parameter->server_port);
-    warn(g_error);
-    return NULL;
+	sprintf(g_error, "Could not connect to %s:%d.", parameter->server_name, parameter->server_port);
+	warn(g_error);
+	return NULL;
     }
 
     /* convert our server connection into a stream */
     session->server = fdopen(server_fd, "w+");
     if (session->server == NULL) {
-    warn("Could not convert control channel into a stream");
-    close(server_fd);
-    free(session);
-    return NULL;
+	warn("Could not convert control channel into a stream");
+	close(server_fd);
+	free(session);
+	return NULL;
     }
 
     /* negotiate the connection parameters */
     if (ttp_negotiate(session) < 0) {
-    warn("Protocol negotiation failed");
-    fclose(session->server);
-    free(session);
-    return NULL;
+	warn("Protocol negotiation failed");
+	fclose(session->server);
+	free(session);
+	return NULL;
     }
 
     /* get the shared secret from the user */
@@ -177,18 +177,65 @@ ttp_session_t *command_connect(command_t *command, ttp_parameter_t *parameter)
 
     /* authenticate to the server */
     if (ttp_authenticate(session, (u_char*)secret) < 0) {
-    warn("Authentication failed");
-    fclose(session->server);
-    free(secret);
-    free(session);
-    return NULL;
+	warn("Authentication failed");
+	fclose(session->server);
+	free(secret);
+	free(session);
+	return NULL;
     }
 
     /* we succeeded */
     if (session->parameter->verbose_yn)
-    printf("Connected.\n\n");
+	printf("Connected.\n\n");
     free(secret);
     return session;
+}
+
+
+/*------------------------------------------------------------------------
+ * int command_dir(command_t *command, ttp_session_t *session);
+ *
+ * Tries to request a list of server shared files and their sizes.
+ * Returns 0 on a successful transfer and nonzero on an error condition.
+ * Allocates and fills out session->fileslist struct, the caller needs to 
+ * free it after use.
+ *------------------------------------------------------------------------*/
+int command_dir(command_t *command, ttp_session_t *session)
+{
+    u_char    result;
+    char      read_str[2048];
+    u_int16_t num_files, i;
+    size_t    filelen;
+    u_int16_t status = 0;
+    
+    /* make sure that we have an open session */
+    if (session == NULL || session->server == NULL)
+	return warn("Not connected to a Tsunami server");
+
+    /* send request and parse the result */
+    fprintf(session->server, "%s\n", TS_DIRLIST_HACK_CMD);
+    
+    status = fread(&result, 1, 1, session->server);
+    if (status < 1)
+        return warn("Could not read response to directory request");
+    if (result == 8)
+        return warn("Server does no support listing of shared files");
+    
+    read_str[0] = result;  
+    fread_line(session->server, &read_str[1], sizeof(read_str)-2);
+    num_files = atoi(read_str);
+    
+    fprintf(stderr, "Remote file list:\n");
+    for (i=0; i<num_files; i++) {
+        fread_line(session->server, read_str, sizeof(read_str)-1);
+        fprintf(stderr, " %2d) %-64s", i+1, read_str);
+        fread_line(session->server, read_str, sizeof(read_str)-1);
+        filelen = atol(read_str);
+        fprintf(stderr, "%8Lu bytes\n", (ull_t)filelen);
+    } 
+    fprintf(stderr, "\n");
+    fwrite("\0", 1, 1, session->server);
+    return 0;
 }
 
 
@@ -230,11 +277,11 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* make sure that we have a remote file name */
     if (command->count < 2)
-    return warn("Invalid command syntax (use 'help get' for details)");
+	return warn("Invalid command syntax (use 'help get' for details)");
 
     /* make sure that we have an open session */
     if (session == NULL || session->server == NULL)
-    return warn("Not connected to a Tsunami server");
+	return warn("Not connected to a Tsunami server");
 
     /* reinitialize the transfer data */
     memset(xfer, 0, sizeof(*xfer));
@@ -330,21 +377,21 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* negotiate the file request with the server */
     if (ttp_open_transfer(session, xfer->remote_filename, xfer->local_filename) < 0)
-    return warn("File transfer request failed");
+	return warn("File transfer request failed");
 
     /* create the UDP data socket */
     if (ttp_open_port(session) < 0)
-    return warn("Creation of data socket failed");
+	return warn("Creation of data socket failed");
 
     /* allocate the retransmission table */
     rexmit->table = (u_int32_t *) calloc(DEFAULT_TABLE_SIZE, sizeof(u_int32_t));
     if (rexmit->table == NULL)
-    error("Could not allocate retransmission table");
+	error("Could not allocate retransmission table");
 
     /* allocate the received bitfield */
     xfer->received = (u_char *) calloc(xfer->block_count / 8 + 2, sizeof(u_char));
     if (xfer->received == NULL)
-    error("Could not allocate received-data bitfield");
+	error("Could not allocate received-data bitfield");
 
     /* allocate the ring buffer */
     xfer->ring_buffer = ring_create(session);
@@ -357,7 +404,7 @@ int command_get(command_t *command, ttp_session_t *session)
     /* start up the disk I/O thread */
     status = pthread_create(&disk_thread_id, NULL, disk_thread, session);
     if (status != 0)
-    error("Could not create I/O thread");
+	error("Could not create I/O thread");
 
     /* Finish initializing the retransmission object */
     rexmit->table_size = DEFAULT_TABLE_SIZE;
@@ -365,6 +412,7 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* we start by expecting block #1 */
     xfer->next_block = 1;
+    xfer->gapless_till_block = 0;
 
    /*---------------------------
    * START TIMING
@@ -437,7 +485,7 @@ int command_get(command_t *command, ttp_session_t *session)
                     u_int32_t earliest_block = this_block -
                        min(
                          1024 * 1024 * path_capability / (8 * session->parameter->block_size),  // # of blocks inside window
-                         (this_block - xfer->next_block)                                        // # of blocks missing
+                         (this_block - xfer->gapless_till_block)                                // # of blocks missing (tops)
                        );
                     for (block = earliest_block; block < this_block; ++block) {
                         if (ttp_request_retransmit(session, block) < 0) {
@@ -446,8 +494,9 @@ int command_get(command_t *command, ttp_session_t *session)
                         }
                     }
                     // hop over the missing section
-                    xfer->blocks_left -= (earliest_block - xfer->next_block);
+                    xfer->blocks_left -= (earliest_block - xfer->gapless_till_block);
                     xfer->next_block = earliest_block;
+                    xfer->gapless_till_block = earliest_block;
                 }
 
              /* lossless transfer mode, request all missing data to be resent */
@@ -459,6 +508,11 @@ int command_get(command_t *command, ttp_session_t *session)
                     }
                 }
              }
+          }
+
+          /* advance the index of the gapless section going from start block to highest block  */
+          while ( (xfer->received[(xfer->gapless_till_block + 1) / 8]) & (1 << (xfer->gapless_till_block + 1) % 8) ) {
+             xfer->gapless_till_block++;
           }
 
           /* if this is the last block */
@@ -510,11 +564,11 @@ int command_get(command_t *command, ttp_session_t *session)
     datagram = ring_reserve(xfer->ring_buffer);
     *((u_int32_t *) datagram) = 0;
     if (ring_confirm(xfer->ring_buffer) < 0)
-    warn("Error in terminating disk thread");
+	warn("Error in terminating disk thread");
 
     /* wait for the disk thread to die */
     if (pthread_join(disk_thread_id, NULL) < 0)
-    warn("Disk thread terminated with error");
+	warn("Disk thread terminated with error");
 
     /*---------------------------
      * STOP TIMING
@@ -522,8 +576,8 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* tell the server to quit transmitting */
     if (ttp_request_stop(session) < 0) {
-    warn("Could not request end of transfer");
-    goto abort;
+	warn("Could not request end of transfer");
+	goto abort;
     }
 
     /* count the truly lost blocks from the 'received' bitmap table */
@@ -537,7 +591,7 @@ int command_get(command_t *command, ttp_session_t *session)
     printf("Mbits of data transmitted : %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
     printf("Duration in seconds       : %0.2f\n", delta / 1000000.0);
     printf("THROUGHPUT (Mbps)         : %0.2f\n", xfer->file_size * 8.0 / delta);
-    printf("OS UDP packet rx errors   : delta %lld\n",  xfer->stats.this_udp_errors - xfer->stats.start_udp_errors);
+    printf("OS UDP packet rx errors   : delta %Lu\n",  (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
     printf("Transfer type             : ");    
     if (session->parameter->lossless) {
         printf("lossless\n");
@@ -547,8 +601,8 @@ int command_get(command_t *command, ttp_session_t *session)
         } else {
             printf("semi-lossy, time window %d ms\n", session->parameter->losswindow_ms);
         }
-        printf("Missing data blocks count : %lld (%.2f%% of data) per user-specified time window constraint\n",
-                  lostcount, ( 100.0 * lostcount ) / xfer->block_count );
+        printf("Missing data blocks count : %Lu (%.2f%% of data) per user-specified time window constraint\n",
+                  (ull_t)lostcount, ( 100.0 * lostcount ) / xfer->block_count );
     }
     printf("\n");
 
@@ -626,58 +680,63 @@ int command_help(command_t *command, ttp_session_t *session)
 {
     /* if no command was supplied */
     if (command->count < 2) {
-    printf("Help is available for the following commands:\n\n");
-    printf("    close    connect    get    help    quit    set\n\n");
-    printf("Use 'help <command>' for help on an individual command.\n\n");
+	printf("Help is available for the following commands:\n\n");
+	printf("    close    connect    get    dir    help    quit    set\n\n");
+	printf("Use 'help <command>' for help on an individual command.\n\n");
 
     /* handle the CLOSE command */
     } else if (!strcasecmp(command->text[1], "close")) {
-    printf("Usage: close\n\n");
-    printf("Closes the current connection to a remote Tsunami server.\n\n");
+	printf("Usage: close\n\n");
+	printf("Closes the current connection to a remote Tsunami server.\n\n");
 
     /* handle the CONNECT command */
     } else if (!strcasecmp(command->text[1], "connect")) {
-    printf("Usage: connect\n");
-    printf("       connect <remote-host>\n");
-    printf("       connect <remote-host> <remote-port>\n\n");
-    printf("Opens a connection to a remote Tsunami server.  If the host and port\n");
-    printf("are not specified, default values are used.  (Use the 'set' command to\n");
-    printf("modify these values.)\n\n");
-    printf("After connecting, you will be prompted to enter a shared secret for\n");
-    printf("authentication.\n\n");
+	printf("Usage: connect\n");
+	printf("       connect <remote-host>\n");
+	printf("       connect <remote-host> <remote-port>\n\n");
+	printf("Opens a connection to a remote Tsunami server.  If the host and port\n");
+	printf("are not specified, default values are used.  (Use the 'set' command to\n");
+	printf("modify these values.)\n\n");
+	printf("After connecting, you will be prompted to enter a shared secret for\n");
+	printf("authentication.\n\n");
 
     /* handle the GET command */
     } else if (!strcasecmp(command->text[1], "get")) {
-    printf("Usage: get <remote-file>\n");
-    printf("       get <remote-file> <local-file>\n\n");
-    printf("Attempts to retrieve the remote file with the given name using the\n");
-    printf("Tsunami file transfer protocol.  If the local filename is not\n");
-    printf("specified, the final part of the remote filename (after the last path\n");
-    printf("separator) will be used.\n\n");
+	printf("Usage: get <remote-file>\n");
+	printf("       get <remote-file> <local-file>\n\n");
+	printf("Attempts to retrieve the remote file with the given name using the\n");
+	printf("Tsunami file transfer protocol.  If the local filename is not\n");
+	printf("specified, the final part of the remote filename (after the last path\n");
+	printf("separator) will be used.\n\n");
+
+    /* handle the DIR command */
+    } else if (!strcasecmp(command->text[1], "dir")) {
+	printf("Usage: dir\n\n");
+	printf("Attempts to list the available remote files.\n\n");
 
     /* handle the HELP command */
     } else if (!strcasecmp(command->text[1], "help")) {
-    printf("Come on.  You know what that command does.\n\n");
+	printf("Come on.  You know what that command does.\n\n");
 
     /* handle the QUIT command */
     } else if (!strcasecmp(command->text[1], "quit")) {
-    printf("Usage: quit\n\n");
-    printf("Closes any open connection to a remote Tsunami server and exits the\n");
-    printf("Tsunami client.\n\n");
+	printf("Usage: quit\n\n");
+	printf("Closes any open connection to a remote Tsunami server and exits the\n");
+	printf("Tsunami client.\n\n");
 
     /* handle the SET command */
     } else if (!strcasecmp(command->text[1], "set")) {
-    printf("Usage: set\n");
-    printf("       set <field>\n");
-    printf("       set <field> <value>\n\n");
-    printf("Sets one of the defaults to the given value.  If the value is omitted,\n");
-    printf("the current value of the field is returned.  If the field is also\n");
-    printf("omitted, the current values of all defaults are returned.\n\n");
+	printf("Usage: set\n");
+	printf("       set <field>\n");
+	printf("       set <field> <value>\n\n");
+	printf("Sets one of the defaults to the given value.  If the value is omitted,\n");
+	printf("the current value of the field is returned.  If the field is also\n");
+	printf("omitted, the current values of all defaults are returned.\n\n");
 
     /* apologize for our ignorance */
     } else {
-    printf("'%s' is not a recognized command.\n", command->text[1]);
-    printf("Use 'help' for a list of commands.\n\n");
+	printf("'%s' is not a recognized command.\n", command->text[1]);
+	printf("Use 'help' for a list of commands.\n\n");
     }
 
     /* we succeeded */
@@ -696,7 +755,7 @@ int command_quit(command_t *command, ttp_session_t *session)
 {
     /* close the connection if there is one */
     if (session && (session->server != NULL))
-    fclose(session->server);
+	fclose(session->server);
 
     /* wave good-bye */
     printf("Thank you for using Tsunami.\n");
@@ -805,26 +864,26 @@ void *disk_thread(void *arg)
     /* while the world is turning */
     while (1) {
 
-    /* get another block */
-    datagram    = ring_peek(session->transfer.ring_buffer);
-    block_index = ntohl(*((u_int32_t *) datagram));
-    block_type  = ntohs(*((u_int16_t *) (datagram + 4)));
+	/* get another block */
+	datagram    = ring_peek(session->transfer.ring_buffer);
+	block_index = ntohl(*((u_int32_t *) datagram));
+	block_type  = ntohs(*((u_int16_t *) (datagram + 4)));
 
-    /* quit if we got the mythical 0 block */
-    if (block_index == 0) {
-        printf("!!!!\n");
-        return NULL;
-    }
+	/* quit if we got the mythical 0 block */
+	if (block_index == 0) {
+	    printf("!!!!\n");
+	    return NULL;
+	}
 
-    /* save it to disk */
-    status = accept_block(session, block_index, datagram + 6);
-    if (status < 0) {
-        warn("Block accept failed");
-        return NULL;
-    }
+	/* save it to disk */
+	status = accept_block(session, block_index, datagram + 6);
+	if (status < 0) {
+	    warn("Block accept failed");
+	    return NULL;
+	}
 
-    /* pop the block */
-    ring_pop(session->transfer.ring_buffer);
+	/* pop the block */
+	ring_pop(session->transfer.ring_buffer);
     }
 }
 
@@ -844,7 +903,7 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
     /* get the location of the '/' */
     slash = strchr(fraction, '/');
     if (slash == NULL)
-    return warn("Value is not a fraction");
+	return warn("Value is not a fraction");
 
     /* store the two parts of the value */
     *num = atoi(fraction);
@@ -857,32 +916,53 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
- * Revision 1.14  2007/08/14 08:50:40  jwagnerhki
+ * Revision 1.15  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
+ * Revision 1.25  2007/08/22 14:12:34  jwagnerhki
+ * fix command_dir wrong result val check for backwards compatibility with server
+ *
+ * Revision 1.24  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
+ *
+ * Revision 1.23  2007/08/17 10:56:31  jwagnerhki
+ * added gapless_till_block client side counter
+ *
+ * Revision 1.22  2007/08/14 08:50:39  jwagnerhki
  * initialize server_address_length, do not have recvfrom overwrite server_address and server_address_length
  *
- * Revision 1.13  2007/07/10 08:18:06  jwagnerhki
+ * Revision 1.21  2007/07/10 08:18:05  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *
- * Revision 1.12  2007/05/31 09:32:07  jwagnerhki
+ * Revision 1.20  2007/06/19 13:35:24  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
+ * Revision 1.19  2007/05/31 09:32:03  jwagnerhki
  * removed some signedness warnings, added Mark5 server devel start code
  *
- * Revision 1.11  2007/01/11 15:15:49  jwagnerhki
+ * Revision 1.18  2007/05/24 10:07:21  jwagnerhki
+ * client can 'set' passphrase to other than default
+ *
+ * Revision 1.17  2007/01/11 15:15:48  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *
- * Revision 1.10  2006/12/15 12:57:41  jwagnerhki
+ * Revision 1.16  2006/12/21 13:50:33  jwagnerhki
+ * added to client something that smells like a fix for non-working REQUEST_RESTART
+ *
+ * Revision 1.15  2006/12/15 12:57:41  jwagnerhki
  * added client 'blockdump' block bitmap dump to file feature
  *
- * Revision 1.9  2006/12/11 13:44:17  jwagnerhki
+ * Revision 1.14  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *
- * Revision 1.8  2006/12/11 11:11:56  jwagnerhki
+ * Revision 1.13  2006/12/11 11:11:55  jwagnerhki
  * show operating system UDP rx error stats in summary
  *
- * Revision 1.7  2006/12/05 15:24:50  jwagnerhki
+ * Revision 1.12  2006/12/05 15:24:49  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
- * Revision 1.6  2006/11/10 11:34:45  jwagnerhki
- * merge from normal client, indentation, transmit termination fix
+ * Revision 1.11  2006/12/01 15:25:29  jwagnerhki
+ * errormsg in mget if server offers no files
  *
  * Revision 1.10  2006/11/10 11:32:42  jwagnerhki
  * indentation, transmit termination fix

@@ -58,14 +58,14 @@ typedef struct sSh {
 } tSh, *ptSh;
 
 
-  int readMode = 0;
-  int vsib_started = 0;
-  int usleeps = 0;
+int readMode = 0;
+int vsib_started = 0;
+int usleeps = 0;
 
-  /* Shared memory unique identifier (key) and the returned reference id. */
-  key_t shKey;
-  int shId = -1;
-  ptSh sh;
+/* Shared memory unique identifier (key) and the returned reference id. */
+key_t shKey;
+int shId = -1;
+ptSh sh;
 
 
 /* Depending on readMode either standard input or output. */
@@ -80,20 +80,16 @@ static void vsib_ioctl(unsigned int mode, unsigned long arg) {
        perror(err);
        exit(EXIT_FAILURE);
     }
-}  /* vsib_ioctl */
-
-
+}
 
 double tim(void) {
-  struct timeval tv;
-  double t = 0.0;
-
-  //assert( gettimeofday(&tv, NULL) == 0 );
-  if (gettimeofday(&tv, NULL) == 0) {
-    t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
-  }
-  return t;
-}  /* tim */
+    struct timeval tv;
+    double t = 0.0;
+    if (gettimeofday(&tv, NULL) == 0) {
+       t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
+    }
+    return t;
+}
 
 void start_vsib(ttp_session_t *session)
 {
@@ -178,8 +174,6 @@ void stop_vsib(ttp_session_t *session)
           fprintf(stderr, "VSIB access error: shared memory data remove shmdt() returned non-0\n");
        }
     }
-  }  // if shared memory was allocated
-
-		    /*  return(); */
-}  /* stop_vsib */
+  }
+}
 

@@ -60,8 +60,7 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
-#include "client.h"
-#include <string.h>    /* for memcpy() */
+#include <tsunami-client.h>
 
 /*------------------------------------------------------------------------
  * int accept_block(ttp_session_t *session,
@@ -98,7 +97,7 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
         memcpy(session->parameter->ringbuf + ringbuf_pointer, block, write_size);
 
     /* check if we need to feed the VSIB */
-    write_vsib(block, write_size);                
+    write_vsib_block(session, block, write_size);                
     #endif
  
     #ifndef DEBUG_DISKLESS
@@ -130,6 +129,9 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.5  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.4  2007/01/11 15:15:49  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *

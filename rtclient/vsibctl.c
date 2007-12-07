@@ -39,7 +39,7 @@
 
 #include <sys/ioctl.h>
 #include "vsib_ioctl.h"
-#include "client.h"
+#include <tsunami-client.h>
 
 
 
@@ -71,24 +71,12 @@ typedef struct sSh {
 int vsib_fileno;
 
 /* A protected (error-checking) ioctl() for VSIB driver. */
-static void
-vsib_ioctl(
-  unsigned int mode,
-  unsigned long arg
-) {
-  if (ioctl(vsib_fileno,
-            mode,
-            arg)
-  ) {
+static void vsib_ioctl(unsigned int mode, unsigned long arg) 
+{
+  if (ioctl(vsib_fileno, mode, arg)) {
     char *which;
     char err[255];
     
-    /*    if (vsib_fileno == STDOUT_FILENO) {
-      which = "rd";
-    } else {
-      which = "wr";
-      } */
-
     which = "wr"; /* This is device contriol for wr only */
 
     snprintf(err, sizeof(err), "%s: ioctl(vsib_fileno, 0x%04x,...)", which, mode);
@@ -96,29 +84,26 @@ vsib_ioctl(
     fprintf(stderr, "%s: standard I/O is not an VSIB board\n", which);
     exit(EXIT_FAILURE);
   }
-}  /* vsib_ioctl */
+}
 
 
 
-double
-tim(void) {
+double tim(void) {
   struct timeval tv;
   double t;
 
   assert( gettimeofday(&tv, NULL) == 0 );
   t = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
   return t;
-}  /* tim */
+}
 
-void
-start_vsib(ttp_session_t *session)
+
+void start_vsib(ttp_session_t *session)
 {
   ttp_transfer_t  *xfer  = &session->transfer;
 
   /* Find out the file number */
-
   vsib_fileno = fileno(xfer->vsib);
-
 
   /* Create and initialize 'wr<-->control' shared memory. */
   shKey = fourCharLong('v','s','i','b');
@@ -133,31 +118,24 @@ start_vsib(ttp_session_t *session)
               | (vsib_mode_embed_1pps_markers ? VSIB_MODE_EMBED_1PPS_MARKERS : 0)
               | (vsib_mode_skip_samples & 0x0000ffff))
             );
-}  /* start_VSIB */
+}
 
 
 
-void write_vsib(unsigned char *memblk, int blksize)
+/* Write a block to VSIB */
+void write_vsib_block(ttp_session_t* session, unsigned char *memblk, size_t blksize)
 {
-   size_t nread;
-   struct timespec ts;
-   ts.tv_sec = 0;
-   ts.tv_nsec = 1000000L;
-
-   /* Write (or read) one block. */
-   /* xxx: need to add '-1' error checks to VSIB read()/write() calls */
-
-   /* Read a block from VSIB; if not enough, sleep a little. */
-   nread = read (vsib_fileno, memblk, blksize);
-   while (nread < blksize) {
-       /* Not one full block in buffer, wait. */
-       // usleep(1000);  usleep not in pthreads! /* a small amount, probably ends up to be 10--20msec */
-       nanosleep(&ts, NULL);
-       // usleeps++;
-       nread += read (vsib_fileno, memblk+nread, blksize-nread);
-   }  /* while not at least one full block in VSIB DMA ring buffer */
-
-}  /* write_vsib */
+  size_t nwritten;
+  struct timespec ts;
+  ts.tv_sec = 0;
+  ts.tv_nsec = 1000000L;
+  nwritten = fwrite(memblk, 1, blksize, session->transfer.vsib);
+  while (nwritten < blksize) {
+     nanosleep(&ts, NULL);
+     // usleeps++;
+     nwritten += fwrite(memblk+nwritten, 1, blksize-nwritten, session->transfer.vsib);
+  }
+}
 
 
 
@@ -219,7 +197,6 @@ void stop_vsib(ttp_session_t *session)
           fprintf(stderr, "Shared memory mark remove shmdt() returned non-0\n");
        }
     }
-  }  // if shared memory was allocated
+  }
 
-		    /*  return(); */
-}  /* stop_vsib */
+}

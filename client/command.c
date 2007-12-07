@@ -70,7 +70,7 @@
 #include <unistd.h>       /* for standard Unix system calls        */
 #include <ctype.h>        /* for toupper() etc                     */
 
-#include "client.h"
+#include <tsunami-client.h>
 
 
 /*------------------------------------------------------------------------
@@ -231,7 +231,7 @@ int command_dir(command_t *command, ttp_session_t *session)
         fprintf(stderr, " %2d) %-64s", i+1, read_str);
         fread_line(session->server, read_str, sizeof(read_str)-1);
         filelen = atol(read_str);
-        fprintf(stderr, "%8d bytes\n", filelen);
+        fprintf(stderr, "%8Lu bytes\n", (ull_t)filelen);
     } 
     fprintf(stderr, "\n");
     fwrite("\0", 1, 1, session->server);
@@ -591,7 +591,7 @@ int command_get(command_t *command, ttp_session_t *session)
     printf("Mbits of data transmitted : %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
     printf("Duration in seconds       : %0.2f\n", delta / 1000000.0);
     printf("THROUGHPUT (Mbps)         : %0.2f\n", xfer->file_size * 8.0 / delta);
-    printf("OS UDP packet rx errors   : delta %lld\n",  xfer->stats.this_udp_errors - xfer->stats.start_udp_errors);
+    printf("OS UDP packet rx errors   : delta %Lu\n",  (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
     printf("Transfer type             : ");    
     if (session->parameter->lossless) {
         printf("lossless\n");
@@ -601,8 +601,8 @@ int command_get(command_t *command, ttp_session_t *session)
         } else {
             printf("semi-lossy, time window %d ms\n", session->parameter->losswindow_ms);
         }
-        printf("Missing data blocks count : %lld (%.2f%% of data) per user-specified time window constraint\n",
-                  lostcount, ( 100.0 * lostcount ) / xfer->block_count );
+        printf("Missing data blocks count : %Lu (%.2f%% of data) per user-specified time window constraint\n",
+                  (ull_t)lostcount, ( 100.0 * lostcount ) / xfer->block_count );
     }
     printf("\n");
 
@@ -916,6 +916,9 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.26  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.25  2007/08/22 14:12:34  jwagnerhki
  * fix command_dir wrong result val check for backwards compatibility with server
  *

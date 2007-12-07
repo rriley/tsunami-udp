@@ -5,7 +5,7 @@
  * file transfer client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,10 +50,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS. INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -68,7 +68,7 @@
 #include <time.h>         /* for time()                            */
 #include <unistd.h>       /* for standard Unix system calls        */
 
-#include "client.h"
+#include <tsunami-client.h>
 //#define DEBUG_RETX xxx // enable to show retransmit debug infos
 
 /*------------------------------------------------------------------------
@@ -101,22 +101,22 @@ int ttp_authenticate(ttp_session_t *session, u_char *secret)
     /* read in the shared secret and the challenge */
     status = fread(random, 1, 64, session->server);
     if (status < 64)
-    return warn("Could not read authentication challenge from server");
+	return warn("Could not read authentication challenge from server");
 
     /* prepare the proof of the shared secret and destroy the password */
     prepare_proof(random, 64, secret, digest);
     while (*secret)
-    *(secret++) = '\0';
+	*(secret++) = '\0';
 
     /* send the response to the server */
     status = fwrite(digest, 1, 16, session->server);
     if ((status < 16) || fflush(session->server))
-    return warn("Could not send authentication response");
+	return warn("Could not send authentication response");
 
     /* read the results back from the server */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
-    return warn("Could not read authentication status");
+	return warn("Could not read authentication status");
 
     /* check the result byte */
     return (result == 0) ? 0 : -1;
@@ -142,12 +142,12 @@ int ttp_negotiate(ttp_session_t *session)
     /* send our protocol revision number to the server */
     status = fwrite(&client_revision, 4, 1, session->server);
     if ((status < 1) || fflush(session->server))
-    return warn("Could not send protocol revision number");
+	return warn("Could not send protocol revision number");
 
     /* read the protocol revision number from the server */
     status = fread(&server_revision, 4, 1, session->server);
     if (status < 1)
-    return warn("Could not read protocol revision number");
+	return warn("Could not read protocol revision number");
 
     /* compare the numbers */
     return (client_revision == server_revision) ? 0 : -1;
@@ -177,23 +177,23 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     /* submit the transfer request */
     status = fprintf(session->server, "%s\n", remote_filename);
     if ((status <= 0) || fflush(session->server))
-    return warn("Could not request file");
+	return warn("Could not request file");
 
     /* see if the request was successful */
     status = fread(&result, 1, 1, session->server);
     if (status < 1)
-    return warn("Could not read response to file request");
+	return warn("Could not read response to file request");
 
     /* make sure the result was a good one */
     if (result != 0)
-    return warn("Server: File does not exist or cannot be transmitted");
+	return warn("Server: File does not exist or cannot be transmitted");
 
     /* Submit the block size, target bitrate, and maximum error rate */
     temp = htonl(param->block_size);   if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit block size");
     temp = htonl(param->target_rate);  if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit target rate");
     temp = htonl(param->error_rate);   if (fwrite(&temp, 4, 1, session->server) < 1) return warn("Could not submit error rate");
     if (fflush(session->server))
-    return warn("Could not flush control channel");
+	return warn("Could not flush control channel");
 
     /* submit the slower and faster factors */
     temp16 = htons(param->slower_num);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit slowdown numerator");
@@ -201,7 +201,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     temp16 = htons(param->faster_num);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit speedup numerator");
     temp16 = htons(param->faster_den);  if (fwrite(&temp16, 2, 1, session->server) < 1) return warn("Could not submit speedup denominator");
     if (fflush(session->server))
-    return warn("Could not flush control channel");
+	return warn("Could not flush control channel");
 
     /* populate the fields of the transfer object */
     memset(xfer, 0, sizeof(*xfer));
@@ -249,7 +249,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     
     /* if we're doing a transcript */
     if (param->transcript_yn)
-    xscript_open(session);
+	xscript_open(session);
 
     /* indicate success */
     return 0;
@@ -266,14 +266,14 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
 int ttp_open_port(ttp_session_t *session)
 {
     struct sockaddr udp_address;
-    int             udp_length = sizeof(udp_address);
+    unsigned int    udp_length = sizeof(udp_address);
     int             status;
     u_int16_t      *port;
 
     /* open a new datagram socket */
     session->transfer.udp_fd = create_udp_socket(session->parameter);
     if (session->transfer.udp_fd < 0)
-    return warn("Could not create UDP socket");
+	return warn("Could not create UDP socket");
 
     /* find out the port number we're using */
     memset(&udp_address, 0, sizeof(udp_address));
@@ -285,8 +285,8 @@ int ttp_open_port(ttp_session_t *session)
     /* send that port number to the server */
     status = fwrite(port, 2, 1, session->server);
     if ((status < 1) || fflush(session->server)) {
-    close(session->transfer.udp_fd);
-    return warn("Could not send UDP port number");
+	close(session->transfer.udp_fd);
+	return warn("Could not send UDP port number");
     }
 
     /* we succeeded */
@@ -553,7 +553,7 @@ int ttp_update_stats(ttp_session_t *session)
        + (session->parameter->history * stats->transmit_rate) );
     // IIR filtered composite error and loss, some sort of knee function
     stats->error_rate = session->parameter->history * (0.01 * stats->error_rate) +
-         (100 - session->parameter->history)
+    	 (100 - session->parameter->history)
           * 0.50 * 1000 
           * ( (stats->this_retransmits / (1.0 + stats->this_retransmits + stats->total_blocks - stats->this_blocks)) 
                + session->transfer.ring_buffer->count_data / MAX_BLOCKS_QUEUED );
@@ -568,9 +568,9 @@ int ttp_update_stats(ttp_session_t *session)
 
     /* build the stats string */    
     #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8lld\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8Lu\n",
     #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8lld\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8Lu\n",
     #endif
         hours, minutes, seconds, milliseconds,
         stats->total_blocks - stats->this_blocks,
@@ -586,49 +586,49 @@ int ttp_update_stats(ttp_session_t *session)
         //delta_useful * 8.0 / delta,
         session->transfer.blocks_left, 
         stats->this_retransmits, // NOTE: stats->this_retransmits seems to be 0 always ??
-        stats->this_udp_errors - stats->start_udp_errors
+        (ull_t)(stats->this_udp_errors - stats->start_udp_errors)
         );
 
     /* give the user a show if they want it */
     if (session->parameter->verbose_yn) {
 
-    /* screen mode */
-    if (session->parameter->output_mode == SCREEN_MODE) {
-        printf("\033[2J\033[H");
-        printf("Current time:   %s\n", ctime(&now_epoch));
-        printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
-        printf("Last interval\n--------------------------------------------------\n");
-        printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
-        printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
-        printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
-        printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
-        printf("Cumulative\n--------------------------------------------------\n");
-        printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
-        printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
-        printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
-        printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
-        printf("OS UDP rx errors: %lld\n",             stats->this_udp_errors - stats->start_udp_errors);
+        /* screen mode */
+        if (session->parameter->output_mode == SCREEN_MODE) {
+            printf("\033[2J\033[H");
+            printf("Current time:   %s\n", ctime(&now_epoch));
+            printf("Elapsed time:   %02d:%02d:%02d.%03d\n\n", hours, minutes, seconds, milliseconds);
+            printf("Last interval\n--------------------------------------------------\n");
+            printf("Blocks count:     %u\n",             stats->total_blocks - stats->this_blocks);
+            printf("Data transferred: %0.2f GB\n",       data_last  / (1024.0 * 1024.0 * 1024.0));
+            printf("Transfer rate:    %0.2f Mbps\n",     (data_last  * 8.0 / delta));
+            printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->this_retransmits,  (100.0 * stats->this_retransmits / (stats->total_blocks - stats->this_blocks)));
+            printf("Cumulative\n--------------------------------------------------\n");
+            printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
+            printf("Data transferred: %0.2f GB\n",       data_total / (1024.0 * 1024.0 * 1024.0));
+            printf("Transfer rate:    %0.2f Mbps\n",     (data_total * 8.0 / delta_total));
+            printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, (100.0 * stats->total_retransmits / stats->total_blocks));
+            printf("OS UDP rx errors: %Lu\n",            (ull_t)(stats->this_udp_errors - stats->start_udp_errors));
 
-    /* line mode */
-    } else {
+        /* line mode */
+        } else {
 
-        /* print a header if necessary */
-#ifndef STATS_NOHEADER
-        if (!(iteration++ % 23)) {
-        printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
-        printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
+            /* print a header if necessary */
+            #ifndef STATS_NOHEADER
+            if (!(iteration++ % 23)) {
+                printf("             last_interval                   transfer_total                   buffers      transfer_remaining  OS UDP\n");
+                printf("time          blk    data       rate rexmit     blk    data       rate rexmit queue  ring     blk   rt_len      err \n");
+            }
+            #endif
+            printf("%s", stats_line);
         }
-#endif
-        printf("%s", stats_line);
-    }
 
-    /* and flush the output */
-    fflush(stdout);
+        /* and flush the output */
+        fflush(stdout);
     }
 
     /* print to the transcript if the user wants */
     if (session->parameter->transcript_yn)
-    xscript_data_log(session, stats_line);
+        xscript_data_log(session, stats_line);
 
     /* clear out the statistics again */
     stats->this_blocks      = stats->total_blocks;
@@ -642,43 +642,76 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
- * Revision 1.11  2007/08/27 15:12:30  jwagnerhki
+ * Revision 1.12  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
+ * Revision 1.21  2007/08/27 15:12:30  jwagnerhki
  * fixed 32-bit write as 16-bit endianness problem
  *
- * Revision 1.10  2007/07/16 09:51:09  jwagnerhki
+ * Revision 1.20  2007/07/16 09:51:09  jwagnerhki
  * rt-server now ipd-throttled again
  *
- * Revision 1.9  2007/07/10 08:18:06  jwagnerhki
- * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
+ * Revision 1.19  2007/06/19 13:35:24  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
  *
- * Revision 1.8  2007/01/11 15:15:49  jwagnerhki
+ * Revision 1.18  2007/05/23 11:58:33  jwagnerhki
+ * slightly better filename path trim
+ *
+ * Revision 1.17  2007/05/21 13:51:15  jwagnerhki
+ * client side path slash removal if dir not existing
+ *
+ * Revision 1.16  2007/01/11 15:15:48  jwagnerhki
  * rtclient merge, io.c now with VSIB_REALTIME, blocks_left not allowed negative fix, overwriting file check fixed, some memset()s to keep Valgrind warnings away
  *
- * Revision 1.7  2006/12/22 12:06:22  jwagnerhki
+ * Revision 1.15  2006/12/22 12:06:21  jwagnerhki
  * warn about file overwrite, truncate could take long time
  *
- * Revision 1.6  2006/12/19 12:12:41  jwagnerhki
+ * Revision 1.14  2006/12/21 13:50:33  jwagnerhki
+ * added to client something that smells like a fix for non-working REQUEST_RESTART
+ *
+ * Revision 1.13  2006/12/19 12:12:41  jwagnerhki
  * corrected bad reallocs
  *
- * Revision 1.5  2006/12/11 13:44:17  jwagnerhki
+ * Revision 1.12  2006/12/11 13:44:17  jwagnerhki
  * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
  *
- * Revision 1.4  2006/12/05 15:24:50  jwagnerhki
+ * Revision 1.11  2006/12/05 15:24:50  jwagnerhki
  * now noretransmit code in client only, merged rt client code
  *
- * Revision 1.3  2006/10/19 08:06:31  jwagnerhki
+ * Revision 1.10  2006/11/10 11:29:45  jwagnerhki
+ * updated stats display
+ *
+ * Revision 1.9  2006/10/28 19:29:15  jwagnerhki
+ * jamil GET* merge, insertionsort disabled by default again
+ *
+ * Revision 1.8  2006/10/27 20:12:36  jwagnerhki
+ * fix for very bad original retransmit req assembly
+ *
+ * Revision 1.7  2006/10/25 14:53:16  jwagnerhki
+ * removed superfluous ACK on GET*
+ *
+ * Revision 1.6  2006/10/25 14:20:31  jwagnerhki
+ * attempt to support multimode get already implemented in Jamil server
+ *
+ * Revision 1.5  2006/10/19 08:06:31  jwagnerhki
  * fix STATS_MATLABFORMAT ifndef to ifdef
+ *
+ * Revision 1.4  2006/10/17 12:39:50  jwagnerhki
+ * disabled retransmit debug infos on default
+ *
+ * Revision 1.3  2006/08/08 08:38:20  jwagnerhki
+ * added some debug output trying to catch file corruption issues
  *
  * Revision 1.2  2006/07/21 08:50:41  jwagnerhki
  * merged client and rtclient protocol.c
  *
- * Revision 1.1.1.1  2006/07/20 09:21:20  jwagnerhki
+ * Revision 1.1.1.1  2006/07/20 09:21:19  jwagnerhki
  * reimport
  *
- * Revision 1.2  2006/07/17 12:18:40  jwagnerhki
- * now /dev/vsib
+ * Revision 1.2  2006/07/11 07:38:32  jwagnerhki
+ * new debug defines
  *
- * Revision 1.1  2006/07/10 12:35:12  jwagnerhki
- * added to trunk
+ * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
+ * deleted unnecessary files
  *
  */

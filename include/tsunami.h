@@ -81,6 +81,7 @@
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
 
+typedef unsigned long long ull_t;
 
 /*------------------------------------------------------------------------
  * Global constants.

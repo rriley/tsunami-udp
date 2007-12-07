@@ -7,8 +7,6 @@
  * Copyright © 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
- * Pretty much rewritten by Jan Wagner (jwagner@wellidontwantspam)
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -68,8 +66,9 @@
 #include <netinet/in.h>  /* for struct sockaddr_in, etc.                 */
 #include <stdio.h>       /* for NULL, FILE *, etc.                       */
 #include <sys/types.h>   /* for various system data types                */
+#include <string.h>      /* for memcpy                                   */
 
-#include <tsunami.h>     /* for Tsunami function prototypes and the like */
+#include "tsunami.h"     /* for Tsunami function prototypes and the like */
 
 
 /*------------------------------------------------------------------------
@@ -87,7 +86,7 @@ extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting
 extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting               */
 extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting                     */
 extern const u_char     DEFAULT_OUTPUT_MODE;    /* the default output progress mode             */
-extern const u_int64_t  DEFAULT_TARGET_RATE;    /* the default target rate (in bps)             */
+extern const u_int32_t  DEFAULT_TARGET_RATE;    /* the default target rate (in bps)             */
 extern const u_int32_t  DEFAULT_ERROR_RATE;     /* the default threshhold error rate (% x 1000) */
 extern const u_int16_t  DEFAULT_SLOWER_NUM;     /* default numerator in the slowdown factor     */
 extern const u_int16_t  DEFAULT_SLOWER_DEN;     /* default denominator in the slowdown factor   */
@@ -110,11 +109,9 @@ extern const u_char     DEFAULT_BLOCKDUMP;      /* the default to write bitmap d
 
 extern const int        MAX_COMMAND_LENGTH;     /* maximum length of a single command           */
 
-#ifdef VSIB_REALTIME
-    #define RINGBUF_BLOCKS             1            /* Size of ring buffer (disabled now)           */
-    #define START_VSIB_PACKET          14500        /* When to start output                         */
-                                                    /* 2000 packets per second, now 8 second delay  */
-#endif
+#define RINGBUF_BLOCKS             1            /* Size of ring buffer (disabled now)           */
+#define START_VSIB_PACKET          14500        /* When to start output                         */
+                                                /* 2000 packets per second, now 8 second delay  */
 
 /*------------------------------------------------------------------------
  * Data structures.
@@ -130,9 +127,9 @@ typedef struct {
 typedef struct {
     struct timeval      start_time;               /* when we started timing the transfer         */
     struct timeval      this_time;                /* when we began this data collection period   */
-    u_int64_t           this_blocks;              /* the number of blocks in this interval       */
+    u_int32_t           this_blocks;              /* the number of blocks in this interval       */
     u_int32_t           this_retransmits;         /* the number of retransmits in this interval  */
-    u_int64_t           total_blocks;             /* the total number of blocks transmitted      */
+    u_int32_t           total_blocks;             /* the total number of blocks transmitted      */
     u_int32_t           total_retransmits;        /* the total number of retransmissions         */
     double              this_transmit_rate;       /* the unfiltered transmission rate (bps)      */
     double              transmit_rate;            /* the smoothed transmission rate (bps)        */
@@ -144,26 +141,26 @@ typedef struct {
 
 /* state of the retransmission table for a transfer */
 typedef struct {
-    u_int64_t          *table;                    /* the table of retransmission blocks          */
-    u_int64_t           table_size;               /* the size of the retransmission table        */
-    u_int64_t           index_max;                /* the maximum table index in active use       */
+    u_int32_t          *table;                    /* the table of retransmission blocks          */
+    u_int32_t           table_size;               /* the size of the retransmission table        */
+    u_int32_t           index_max;                /* the maximum table index in active use       */
 } retransmit_t;
 
 /* ring buffer for queuing blocks to be written to disk */
 typedef struct {
     u_char             *datagrams;                /* the collection of queued datagrams          */
-    u_int32_t           datagram_size;            /* the size of a single datagram               */
-    u_int32_t           base_data;                /* the index of the first slot with data       */
-    u_int32_t           count_data;               /* the number of slots in use for data         */
-    u_int32_t           count_reserved;           /* the number of slots reserved without data   */
+    int                 datagram_size;            /* the size of a single datagram               */
+    int                 base_data;                /* the index of the first slot with data       */
+    int                 count_data;               /* the number of slots in use for data         */
+    int                 count_reserved;           /* the number of slots reserved without data   */
     pthread_mutex_t     mutex;                    /* a mutex to guard the ring buffer            */
     pthread_cond_t      data_ready_cond;          /* condition variable to indicate data ready   */
-    u_int32_t           data_ready;               /* nonzero when data is ready, else 0          */
+    int                 data_ready;               /* nonzero when data is ready, else 0          */
     pthread_cond_t      space_ready_cond;         /* condition variable to indicate space ready  */
-    u_int32_t           space_ready;              /* nonzero when space is available, else 0     */
+    int                 space_ready;              /* nonzero when space is available, else 0     */
 } ring_buffer_t;
 
-/* Tsunami transfer protocol parameters, client */
+/* Tsunami transfer protocol parameters */
 typedef struct {
     char               *server_name;              /* the name of the host running tsunamid       */
     u_int16_t           server_port;              /* the TCP port on which the server listens    */
@@ -174,7 +171,7 @@ typedef struct {
     u_char              ipv6_yn;                  /* 1 for IPv6, 0 for IPv4                      */
     u_char              output_mode;              /* either SCREEN_MODE or LINE_MODE             */
     u_int32_t           block_size;               /* the size of each block (in bytes)           */
-    u_int64_t           target_rate;              /* the transfer rate that we're targetting     */
+    u_int32_t           target_rate;              /* the transfer rate that we're targetting     */
     u_int32_t           error_rate;               /* the threshhold error rate (in % x 1000)     */
     u_int16_t           slower_num;               /* the numerator of the increase-IPD factor    */
     u_int16_t           slower_den;               /* the denominator of the increase-IPD factor  */
@@ -185,7 +182,8 @@ typedef struct {
     u_int32_t           losswindow_ms;            /* data rate priority: time window for re-tx's */
     u_char              blockdump;                /* 1 to write received block bitmap to a file  */
     char                *passphrase;              /* the passphrase to use for authentication    */
-} ttp_parameter_t;
+    char                *ringbuf;                 /* Pointer to ring buffer start                */
+} ttp_parameter_t;    
 
 /* state of a TTP transfer */
 typedef struct {
@@ -197,16 +195,16 @@ typedef struct {
     FILE               *transcript;               /* the transcript file that we're writing to   */
     int                 udp_fd;                   /* the file descriptor of our UDP socket       */
     u_int64_t           file_size;                /* the total file size (in bytes)              */
-    u_int64_t           block_count;              /* the total number of blocks in the file      */
-    u_int64_t           next_block;               /* the index of the next block we expect       */
-    u_int64_t           gapless_till_block;       /* the last block in the fully received range  */
+    u_int32_t           block_count;              /* the total number of blocks in the file      */
+    u_int32_t           next_block;               /* the index of the next block we expect       */
+    u_int32_t           gapless_till_block;       /* the last block in the fully received range  */
     retransmit_t        retransmit;               /* the retransmission data for the transfer    */
     statistics_t        stats;                    /* the statistical data for the transfer       */
     ring_buffer_t      *ring_buffer;              /* the blocks waiting for a disk write         */
     u_char             *received;                 /* bitfield for the received blocks of data    */
-    u_int64_t           blocks_left;              /* the number of blocks left to receive        */
+    u_int32_t           blocks_left;              /* the number of blocks left to receive        */
     u_char              restart_pending;          /* 1 to ignore too new packets                 */
-    u_int64_t           restart_lastidx;          /* the last index in the restart list          */
+    u_int32_t           restart_lastidx;          /* the last index in the restart list          */
 } ttp_transfer_t;
 
 /* state of a Tsunami session as a whole */
@@ -236,7 +234,7 @@ int            command_dir           (command_t *command, ttp_session_t *session
 void           reset_client          (ttp_parameter_t *parameter);
 
 /* io.c */
-int            accept_block          (ttp_session_t *session, u_int64_t block_index, u_char *payload);
+int            accept_block          (ttp_session_t *session, u_int32_t block_index, u_char *block);
 
 /* network.c */
 int            create_tcp_socket     (ttp_session_t *session, const char *server_name, u_int16_t server_port);
@@ -248,7 +246,7 @@ int            ttp_negotiate         (ttp_session_t *session);
 int            ttp_open_port         (ttp_session_t *session);
 int            ttp_open_transfer     (ttp_session_t *session, const char *remote_filename, const char *local_filename);
 int            ttp_repeat_retransmit (ttp_session_t *session);
-int            ttp_request_retransmit(ttp_session_t *session, u_int64_t block);
+int            ttp_request_retransmit(ttp_session_t *session, u_int32_t block);
 int            ttp_request_stop      (ttp_session_t *session);
 int            ttp_update_stats      (ttp_session_t *session);
 
@@ -281,11 +279,43 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
- * Revision 1.2  2007/11/10 09:26:45  jwagnerhki
- * copied from branch to trunk
+ * Revision 1.3  2007/12/07 18:09:37  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
- * Revision 1.1.2.1  2007/11/10 09:20:23  jwagnerhki
- * proto v12
+ * Revision 1.11  2007/08/22 14:07:30  jwagnerhki
+ * build 27: first implementation of client dir command
  *
+ * Revision 1.10  2007/08/17 10:56:31  jwagnerhki
+ * added gapless_till_block client side counter
+ *
+ * Revision 1.9  2007/06/19 13:35:23  jwagnerhki
+ * replaced notretransmit option with better time-limited restransmission window, reduced ringbuffer from 8192 to 4096 entries
+ *
+ * Revision 1.8  2007/05/24 10:07:21  jwagnerhki
+ * client can 'set' passphrase to other than default
+ *
+ * Revision 1.7  2006/12/21 13:50:33  jwagnerhki
+ * added to client something that smells like a fix for non-working REQUEST_RESTART
+ *
+ * Revision 1.6  2006/12/15 12:57:41  jwagnerhki
+ * added client 'blockdump' block bitmap dump to file feature
+ *
+ * Revision 1.5  2006/12/11 13:44:17  jwagnerhki
+ * OS UDP err count now done in ttp_update_stats(), cleaned stats printout align, fixed CLOSE cmd segfault
+ *
+ * Revision 1.4  2006/12/05 15:24:49  jwagnerhki
+ * now noretransmit code in client only, merged rt client code
+ *
+ * Revision 1.3  2006/07/21 07:55:35  jwagnerhki
+ * new UDP port define
+ *
+ * Revision 1.2  2006/07/20 12:23:45  jwagnerhki
+ * header file merge
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:18  jwagnerhki
+ * reimport
+ *
+ * Revision 1.1  2006/07/10 12:26:51  jwagnerhki
+ * deleted unnecessary files
  *
  */

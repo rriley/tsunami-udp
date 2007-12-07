@@ -4,7 +4,7 @@
  * This is the main module for the Tsunami file transfer CLI client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -65,8 +65,8 @@
 #include <string.h>       /* for standard string routines          */
 #include <unistd.h>       /* for standard Unix system calls        */
 
-#include "tsunami.h"
-#include "client.h"
+#include <tsunami.h>
+#include <tsunami-client.h>
 #ifdef VSIB_REALTIME
 #include "vsibctl.h"
 #endif
@@ -242,6 +242,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.9  2007/12/07 18:10:28  jwagnerhki
+ * cleaned away 64-bit compile warnings, used tsunami-client.h
+ *
  * Revision 1.8  2007/08/22 14:07:30  jwagnerhki
  * build 27: first implementation of client dir command
  *
