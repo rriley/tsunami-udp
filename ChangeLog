@@ -3,6 +3,11 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 33:
+ - client code cleanup (client.h -> include/tsunami-client.h)
+ - rtclient write_vsib_block() now uses fwrite()
+ - cleaned out 64-bit compile warnings
+
 v1.1 CvsBuild 32:
  - 'heartbeat lost' messages now spaced in at most 350ms intervals
    and not shorter
