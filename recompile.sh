@@ -1,5 +1,10 @@
 #!/bin/sh
 
+rm -rf Makefile
+rm -rf Makefile.in
+rm -rf */Makefile
+rm -rf */Makefile.in
+
 echo "Running aclocal..."
 aclocal
 echo "Running automake..."
