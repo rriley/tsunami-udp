@@ -264,7 +264,7 @@ u_char        *ring_reserve          (ring_buffer_t *ring);
 /* vsibctl.c */ 
 void start_vsib (ttp_session_t *session); 
 void stop_vsib (ttp_session_t *session);
-void write_vsib(unsigned char *memblk, int blksize);
+void write_vsib_block (ttp_session_t* session, unsigned char *memblk, size_t blksize);
 #endif
 
 /* transcript.c */
@@ -279,6 +279,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.4  2007/12/12 10:25:10  jwagnerhki
+ * declared write_vsib_block()
+ *
  * Revision 1.3  2007/12/07 18:09:37  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
