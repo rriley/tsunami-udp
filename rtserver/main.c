@@ -291,7 +291,7 @@ void client_handler(ttp_session_t *session)
             status = ttp_accept_retransmit(session, &retransmission, datagram);
             if (status < 0)
                 warn("Retransmission error");
-            usleep_that_works(75);
+            // usleep_that_works(75);
 
         /* if we have no retransmission */
         } else if (result <= 0) {
@@ -329,9 +329,10 @@ void client_handler(ttp_session_t *session)
         }
 
         /* delay for the next packet */
-        ipd_time = get_usec_since(&delay);
-        ipd_time = ((ipd_time + 50) < xfer->ipd_current) ? ((u_int64_t) (xfer->ipd_current - ipd_time - 50)) : 0;
-        usleep_that_works(ipd_time);
+        ipd_time = get_usec_since(&delay) + 5;
+        if (ipd_time < xfer->ipd_current) {
+            usleep_that_works(xfer->ipd_current - ipd_time);
+        }
 
         /* monitor client heartbeat and disconnect dead client */
         if ((deadconnection_counter++) > 2048) {
@@ -584,6 +585,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.35  2008/01/11 08:35:21  jwagnerhki
+ * tighter IPD control like in v1.2 petabit Tsunami
+ *
  * Revision 1.34  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *

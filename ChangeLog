@@ -3,6 +3,10 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 34:
+ - server, rtserver main.c IPD delay call now uses tighter
+   delay adjust just like in the v1.2 petabit Tsunami version
+
 v1.1 CvsBuild 33:
  - client code cleanup (client.h -> include/tsunami-client.h)
  - rtclient write_vsib_block() now uses fwrite()
