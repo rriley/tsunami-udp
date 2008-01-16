@@ -441,7 +441,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
                      { "v6",         0, NULL, '6' },
                      { "port",       1, NULL, 'p' },
                      { "secret",     1, NULL, 's' },
-                     { "datagram",   1, NULL, 'd' },
                      { "buffer",     1, NULL, 'b' },
                      { "hbtimeout",  1, NULL, 'h' },
                      { "v",          0, NULL, 'v' },
@@ -479,10 +478,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
         case 's':  parameter->secret     = (unsigned char*)optarg;
              break;
 
-        /* --datagram=i : size of datagrams in bytes */
-        case 'd':  parameter->block_size = atoi(optarg);
-             break;
-
         /* --buffer=i   : size of socket buffer */
         case 'b':  parameter->udp_buffer = atoi(optarg);
              break;
@@ -503,7 +498,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
 
         /* otherwise    : display usage information */
         default: 
-             fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--datagram=bytes] [--buffer=bytes]\n");
+             fprintf(stderr, "Usage: tsunamid [--verbose] [--transcript] [--v6] [--port=n] [--buffer=bytes]\n");
              fprintf(stderr, "                [--hbtimeout=seconds] ");
              #ifdef VSIB_REALTIME
              fprintf(stderr, "[--vsibmode=mode] [--vsibskip=skip] [filename1 filename2 ...]\n\n");
@@ -515,7 +510,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              fprintf(stderr, "v6           : operates using IPv6 instead of (not in addition to!) IPv4\n");
              fprintf(stderr, "port         : specifies which TCP port on which to listen to incoming connections\n");
              fprintf(stderr, "secret       : specifies the shared secret for the client and server\n");
-             fprintf(stderr, "datagram     : specifies the desired datagram size (in bytes)\n");
              fprintf(stderr, "buffer       : specifies the desired size for UDP socket send buffer (in bytes)\n");
              fprintf(stderr, "hbtimeout    : specifies the timeout in seconds for disconnect after client heartbeat lost\n");
              #ifdef VSIB_REALTIME
@@ -528,7 +522,6 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
              fprintf(stderr, "          transcript = %d\n",   DEFAULT_TRANSCRIPT_YN);
              fprintf(stderr, "          v6         = %d\n",   DEFAULT_IPV6_YN);
              fprintf(stderr, "          port       = %d\n",   DEFAULT_TCP_PORT);
-             fprintf(stderr, "          datagram   = %d bytes\n",   DEFAULT_BLOCK_SIZE);
              fprintf(stderr, "          buffer     = %d bytes\n",   DEFAULT_UDP_BUFFER);
              fprintf(stderr, "          hbtimeout  = %d seconds\n",   DEFAULT_HEARTBEAT_TIMEOUT);
              #ifdef VSIB_REALTIME
@@ -585,6 +578,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.34  2008/01/16 11:14:25  jwagnerhki
+ * removed server --datagram option as this is client-side specified
+ *
  * Revision 1.33  2008/01/11 08:35:21  jwagnerhki
  * tighter IPD control like in v1.2 petabit Tsunami
  *
