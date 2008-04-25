@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
             session.client_fd = client_fd;
             session.parameter = &parameter;
             memset(&session.transfer, 0, sizeof(session.transfer));
+            session.transfer.ipd_current = 0.0;
 
             /* and run the client handler */
             client_handler(&session);
@@ -578,6 +579,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.37  2008/04/25 10:37:15  jwagnerhki
+ * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
+ *
  * Revision 1.36  2008/01/16 11:14:24  jwagnerhki
  * removed server --datagram option as this is client-side specified
  *

@@ -134,7 +134,7 @@ typedef struct {
     int                 udp_fd;       /* the file descriptor of our UDP socket      */
     struct sockaddr    *udp_address;  /* the destination for our file data          */
     socklen_t           udp_length;   /* the length of the UDP socket address       */
-    u_int32_t           ipd_current;  /* the inter-packet delay currently in usec   */
+    double              ipd_current;  /* the inter-packet delay currently in usec   */
     u_int32_t           block;        /* the current block that we're up to         */
 } ttp_transfer_t;
 
@@ -190,6 +190,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.13  2008/04/25 10:37:14  jwagnerhki
+ * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
+ *
  * Revision 1.12  2007/12/07 18:09:37  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
