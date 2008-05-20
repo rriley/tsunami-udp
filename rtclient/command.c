@@ -455,7 +455,7 @@ int command_get(command_t *command, ttp_session_t *session)
           }
       }
 
-      if (!(session->transfer.received[this_block / 8] & (1 << (this_block % 8))) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending) 
+      if (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending)
       {
 
           /* reserve a datagram slot */
@@ -914,8 +914,22 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
 }
 
 
+/*------------------------------------------------------------------------
+ * int got_block(ttp_session_t* session, u_int32_t blocknr)
+ *
+ * Returns non-0 if the block has already been received
+ *------------------------------------------------------------------------*/
+int got_block(ttp_session_t* session, u_int32_t blocknr)
+{
+    return (session->transfer.received[blocknr / 8] & (1 << (blocknr % 8)));
+}
+
+
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.16  2008/05/20 18:12:45  jwagnerhki
+ * got_block and tidying
+ *
  * Revision 1.15  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *

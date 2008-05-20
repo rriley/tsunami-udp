@@ -423,38 +423,48 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
    retransmit_t *rexmit = &(session->transfer.retransmit);
 
    /* double checking: if we already got the block, don't add it */
-   if (session->transfer.received[block / 8] & (1 << (block % 8)))
+   if (got_block(session, block)) 
       return 0;
 
    /* if we don't have space for the request */
    if (rexmit->index_max >= rexmit->table_size) {
 
-      /* try to reallocate the table */
-      ptr = (u_int32_t *) realloc(rexmit->table, 8 * rexmit->table_size);
+      /* try to reallocate the table twice the size*/
+      ptr = (u_int32_t *) realloc(rexmit->table, 2 * sizeof(u_int32_t)*rexmit->table_size);
       if (ptr == NULL)
          return warn("Could not grow retransmission table");
 
       /* prepare the new table space */
       rexmit->table = ptr;
-      memset(rexmit->table + rexmit->table_size, 0, 4 * rexmit->table_size);
+      memset(rexmit->table + rexmit->table_size, 0, sizeof(u_int32_t) * rexmit->table_size);
       rexmit->table_size *= 2;
    }
 
    #ifndef RETX_REQBLOCK_SORTING
    /* store the request */
-   rexmit->table[(rexmit->index_max)++] = block;
+   rexmit->table[rexmit->index_max] = block;
+   rexmit->index_max++;
    return 0;
    #else
-   /* Store the request via "insertion sort"
-      this maintains a sequentially sorted table and discards duplicate requests,
-      and does not flood the net with so many unnecessary retransmissions like old Tsunami did
-   */
-   while ((idx < rexmit->index_max) && (rexmit->table[idx] < block)) idx++; /* seek to insertion point or end */
-   if (idx == rexmit->index_max) { /* append at end */
-      rexmit->table[(rexmit->index_max)++] = block;
-   } else if (rexmit->table[idx] == block) { /* don't insert duplicates */
+   /* 
+    * Store the request via "insertion sort"
+    * this maintains a sequentially sorted table and discards duplicate requests,
+    * and does not flood the net with so many unnecessary retransmissions like old Tsunami did
+    */
+
+   /* seek to insertion point or end - could use binary search here... */
+   while ((idx < rexmit->index_max) && (rexmit->table[idx] < block)) {
+     idx++; 
+   }
+
+   /* insert the entry */
+   if (idx == rexmit->index_max) { 
+      rexmit->table[rexmit->index_max] = block;
+      rexmit->index_max++;
+   } else if (rexmit->table[idx] == block) { 
       // fprintf(stderr, "duplicate retransmit req for block %d discarded\n", block);
-   } else { /* insert and shift remaining table upwards */
+   } else { 
+      /* insert and shift remaining table upwards - linked list could be nice... */
       tmp32_ins = block;
       do {
          tmp32_up = rexmit->table[idx];
@@ -490,7 +500,7 @@ int ttp_request_stop(ttp_session_t *session)
     /* send out the request */
     status = fwrite(&retransmission, sizeof(retransmission), 1, session->server);
     if ((status <= 0) || fflush(session->server))
-    return warn("Could not request end of transmission");
+       return warn("Could not request end of transmission");
     
     #ifdef VSIB_REALTIME
     /* Wait until ring buffer is empty, then stop vsib and free buffer memory*/
@@ -642,6 +652,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.23  2008/05/20 18:12:45  jwagnerhki
+ * got_block and tidying
+ *
  * Revision 1.22  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
