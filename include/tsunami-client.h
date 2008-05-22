@@ -126,6 +126,7 @@ typedef struct {
 /* statistical data */
 typedef struct {
     struct timeval      start_time;               /* when we started timing the transfer         */
+    struct timeval      stop_time;                /* when we finished timing the transfer        */
     struct timeval      this_time;                /* when we began this data collection period   */
     u_int32_t           this_blocks;              /* the number of blocks in this interval       */
     u_int32_t           this_retransmits;         /* the number of retransmits in this interval  */
@@ -281,6 +282,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.6  2008/05/22 21:07:42  jwagnerhki
+ * added stop_time statistic
+ *
  * Revision 1.5  2008/05/20 18:12:45  jwagnerhki
  * got_block and tidying
  *
