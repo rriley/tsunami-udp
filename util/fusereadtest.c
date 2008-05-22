@@ -24,6 +24,10 @@ int main(int argc, char *argv[])
        return 0;
     }
 
+    if (sizeof(off_t) != 8) {
+       printf("Warning: Not compiled with 64-bit Large File Support, results can be unreliable\n");
+    }
+
     if (argc > 2) {
        readbytes = atoi(argv[2]);
     } else {
@@ -33,7 +37,7 @@ int main(int argc, char *argv[])
 
     gettimeofday(&t_start, NULL);
     srand(*((unsigned int*)&t_start));
-    file = fopen64(argv[1], "r");
+    file = fopen(argv[1], "r");
 
     totalread = 0; 
     tsleeps = 0.0;
@@ -55,9 +59,9 @@ int main(int argc, char *argv[])
     gettimeofday(&t_closed, NULL);
     tdelta = (t_closed.tv_sec - t_start.tv_sec) + 1e-6 * (t_closed.tv_usec - t_start.tv_usec);
 
-	printf("Start    = %lu.%06lu\n",  t_start.tv_sec, t_start.tv_usec);
-	printf("Opened   = %lu.%06lu\n",  t_isopen.tv_sec, t_isopen.tv_usec);
-	printf("Finished = %lu.%06lu\n",  t_closed.tv_sec, t_closed.tv_usec);
+	printf("Start    = %lu.%06lu\n",  (unsigned long)t_start.tv_sec, (unsigned long)t_start.tv_usec);
+	printf("Opened   = %lu.%06lu\n",  (unsigned long)t_isopen.tv_sec, (unsigned long)t_isopen.tv_usec);
+	printf("Finished = %lu.%06lu\n",  (unsigned long)t_closed.tv_sec, (unsigned long)t_closed.tv_usec);
 	printf("Delta    = %0.3lf sec\n", tdelta);
     printf("Sleeps   = %0.3lf sec\n", tsleeps);
 	printf("Speed    = %0.3lf Mbps\n",  totalread * 8.0 / (tdelta * 1024 * 1024));

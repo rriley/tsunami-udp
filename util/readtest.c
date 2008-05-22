@@ -72,16 +72,20 @@ int main(int argc, char *argv[])
     static u_char *block;
     u_int64_t file_size;
 
+    if (sizeof(off_t) != 8) {
+       printf("Warning: Not compiled with 64-bit Large File Support, results can be unreliable\n");
+    }
+
     block_size = (argc > 2) ? atoi(argv[2]) : 32678;
     block = (u_char *) malloc(block_size);
 
     gettimeofday(&start, NULL);
 
-    file = fopen64(argv[1], "r");
+    file = fopen(argv[1], "r");
 
-    fseeko64(file, 0, SEEK_END);
-    file_size = ftello64(file);
-    fseeko64(file, 0, SEEK_SET);
+    fseeko(file, 0, SEEK_END);
+    file_size = ftello(file);
+    fseeko(file, 0, SEEK_SET);
 
     while (fread(block, 1, block_size, file) > 0);
     fclose(file);
@@ -92,8 +96,8 @@ int main(int argc, char *argv[])
 	int64_t usec = 1000000LL * (stop.tv_sec - start.tv_sec) + (stop.tv_usec - start.tv_usec);
 	int64_t bits = file_size * 8;
 
-	printf("Start time = %lu.%06lu\n",   start.tv_sec, start.tv_usec);
-	printf("Stop time  = %lu.%06lu\n",   stop.tv_sec,  stop.tv_usec);
+	printf("Start time = %lu.%06lu\n",   (unsigned long)start.tv_sec, (unsigned long)start.tv_usec);
+	printf("Stop time  = %lu.%06lu\n",   (unsigned long)stop.tv_sec,  (unsigned long)stop.tv_usec);
 	printf("Interval   = %0.3lf sec\n",  usec / 1000000.0);
 	printf("Read speed = %0.3lf Mbps\n", bits * 1.0 / usec);
     }
@@ -104,8 +108,11 @@ int main(int argc, char *argv[])
 
 /*========================================================================
  * $Log: readtest.c,v $
- * Revision 1.1  2006/07/20 09:21:21  jwagnerhki
- * Initial revision
+ * Revision 1.2  2008/05/22 17:54:29  jwagnerhki
+ * LFS support replacing *64() file funcs, __darwin_suseconds_t format fix
+ *
+ * Revision 1.1.1.1  2006/07/20 09:21:21  jwagnerhki
+ * reimport
  *
  * Revision 1.1  2006/07/10 12:41:32  jwagnerhki
  * added to trunk
