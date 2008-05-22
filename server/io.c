@@ -98,7 +98,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
     /* move the file pointer to the appropriate location */
     if (block_index != (last_block + 1))
-	fseeko64(session->transfer.file, ((u_int64_t) session->parameter->block_size) * (block_index - 1), SEEK_SET);
+	fseeko(session->transfer.file, ((u_int64_t) session->parameter->block_size) * (block_index - 1), SEEK_SET);
 
     /* try to read in the block */
     status = fread(datagram + 6, 1, session->parameter->block_size, session->transfer.file);
@@ -120,6 +120,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.3  2008/05/22 18:30:44  jwagnerhki
+ * Darwin fix LFS support fopen() not fopen64() etc
+ *
  * Revision 1.2  2006/10/24 19:14:28  jwagnerhki
  * moved server.h into common tsunami-server.h
  *

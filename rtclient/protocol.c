@@ -220,7 +220,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     /* try to open the local file for writing */
     if (!access(xfer->local_filename, F_OK))
         printf("Warning: overwriting existing file '%s'\n", local_filename);     
-    xfer->file = fopen64(xfer->local_filename, "wb");
+    xfer->file = fopen(xfer->local_filename, "wb");
     if (xfer->file == NULL) {
         char * trimmed = rindex(xfer->local_filename, '/');
         if ((trimmed != NULL) && (strlen(trimmed)>1)) {
@@ -228,7 +228,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
            xfer->local_filename = trimmed + 1;
            if (!access(xfer->local_filename, F_OK))
               printf("Warning: overwriting existing file '%s'\n", xfer->local_filename);     
-           xfer->file = fopen64(xfer->local_filename, "wb");
+           xfer->file = fopen(xfer->local_filename, "wb");
         }
         if(xfer->file == NULL) {
            return warn("Could not open local file for writing");
@@ -237,7 +237,7 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
 
     #ifdef VSIB_REALTIME
     /* try to open the vsib for output */
-    xfer->vsib = fopen64("/dev/vsib", "wb");
+    xfer->vsib = fopen("/dev/vsib", "wb");
     if (xfer->vsib == NULL)
     return warn("VSIB board does not exist in /dev/vsib or it cannot be read");
     
@@ -652,6 +652,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.14  2008/05/22 18:30:44  jwagnerhki
+ * Darwin fix LFS support fopen() not fopen64() etc
+ *
  * Revision 1.13  2008/05/20 18:12:45  jwagnerhki
  * got_block and tidying
  *

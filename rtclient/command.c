@@ -622,7 +622,7 @@ int command_get(command_t *command, ttp_session_t *session)
        strcpy((char*)dump_file, xfer->local_filename);
        strcat((char*)dump_file, ".blockmap");
 
-       fbits = fopen64((char*)dump_file, "wb");
+       fbits = fopen((char*)dump_file, "wb");
        if (fbits != NULL) {
          fwrite(&xfer->block_count, sizeof(xfer->block_count), 1, fbits);
          fwrite(xfer->received, sizeof(u_char), xfer->block_count / 8 + 1, fbits);
@@ -927,6 +927,9 @@ int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.17  2008/05/22 18:30:44  jwagnerhki
+ * Darwin fix LFS support fopen() not fopen64() etc
+ *
  * Revision 1.16  2008/05/20 18:12:45  jwagnerhki
  * got_block and tidying
  *

@@ -118,7 +118,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     // fprintf(stderr, "io.c: block=%d vsib_byte_pos=%lld\n", block_index-1, vsib_byte_pos);
     
     /* read enough data, over 4/3th of blocksize */ 
-    fseeko64(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
+    fseeko(session->transfer.vsib, vsib_byte_pos, SEEK_SET);
     read_vsib_block(session, packingbuffer,  2 * session->parameter->block_size + 4); // 2* vs. 4/3*        
     // if (status < 0) { /* Expired ? */ }
     
@@ -145,7 +145,7 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
     #else
     
     if (block_index != (last_block + 1)) {
-        fseeko64(session->transfer.vsib, (
+        fseeko(session->transfer.vsib, (
             (u_int64_t) session->parameter->block_size) * (block_index - 1), 
             SEEK_SET);     
     }
@@ -194,6 +194,9 @@ int build_datagram(ttp_session_t *session, u_int32_t block_index,
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.10  2008/05/22 18:30:44  jwagnerhki
+ * Darwin fix LFS support fopen() not fopen64() etc
+ *
  * Revision 1.9  2007/11/29 10:58:46  jwagnerhki
  * data skip fixed with vsib fread() not read(), heartbeat lost messages now in at most 350ms intervals
  *

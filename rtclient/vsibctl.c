@@ -150,7 +150,7 @@ void stop_vsib(ttp_session_t *session)
    ts.tv_sec = 0;
    ts.tv_nsec = 10000000L;
 
-   status = fseeko64(xfer->vsib, /* seek to end of buffer */ 
+   status = fseeko(xfer->vsib, /* seek to end of buffer */ 
                      xfer->file_size, SEEK_SET);
 
    vsib_ioctl(VSIB_GET_BYTES_IN_BIGBUF, (unsigned long)&b);

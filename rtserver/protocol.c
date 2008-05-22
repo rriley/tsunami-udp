@@ -61,6 +61,7 @@
  * INFORMATION GENERATED USING SOFTWARE.
  *========================================================================*/
 
+#include <stdlib.h>      /* for *alloc() and free()        */
 #include <string.h>      /* for memset(), strdup(), etc.   */
 #include <sys/types.h>   /* for standard system data types */
 #include <inttypes.h>    /* for scanf/printf data types    */
@@ -418,7 +419,7 @@ int ttp_open_transfer(ttp_session_t *session)
     #ifndef VSIB_REALTIME
 
     /* try to open the file for reading */
-    xfer->file = fopen64(filename, "r");
+    xfer->file = fopen(filename, "r");
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
         /* signal failure to the client */
@@ -460,7 +461,7 @@ int ttp_open_transfer(ttp_session_t *session)
       sscanf(get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo), "%d", &param->samplerate);
 
     /* try to open the vsib for reading */
-    xfer->vsib = fopen64("/dev/vsib", "r");
+    xfer->vsib = fopen("/dev/vsib", "r");
     if (xfer->vsib == NULL) {
         sprintf(g_error, "VSIB board does not exist in /dev/vsib or it cannot be read");
         status = write(session->client_fd, "\002", 1);
@@ -472,7 +473,7 @@ int ttp_open_transfer(ttp_session_t *session)
 
     /* try to open the local disk copy file for writing */
     if (param->fileout) {
-        xfer->file = fopen64(filename, "wb");
+        xfer->file = fopen(filename, "wb");
         if (xfer->file == NULL) {
             sprintf(g_error, "Could not open local file '%s' for writing", filename);
             status = write(session->client_fd, "\x010", 1);
@@ -531,9 +532,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #ifndef VSIB_REALTIME
     /* try to find the file statistics */
-    fseeko64(xfer->file, 0, SEEK_END);
-    param->file_size   = ftello64(xfer->file);
-    fseeko64(xfer->file, 0, SEEK_SET);
+    fseeko(xfer->file, 0, SEEK_END);
+    param->file_size   = ftello(xfer->file);
+    fseeko(xfer->file, 0, SEEK_SET);
     #else
     /* get length of recording in bytes from filename */
     if (get_aux_entry("flen", ef->auxinfo, ef->nr_auxinfo) != 0) {
@@ -575,6 +576,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.29  2008/05/22 18:30:44  jwagnerhki
+ * Darwin fix LFS support fopen() not fopen64() etc
+ *
  * Revision 1.28  2008/04/25 10:37:15  jwagnerhki
  * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
  *
