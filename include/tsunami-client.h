@@ -131,7 +131,11 @@ typedef struct {
     u_int32_t           this_blocks;              /* the number of blocks in this interval       */
     u_int32_t           this_retransmits;         /* the number of retransmits in this interval  */
     u_int32_t           total_blocks;             /* the total number of blocks transmitted      */
-    u_int32_t           total_retransmits;        /* the total number of retransmissions         */
+    u_int32_t           total_retransmits;        /* the total number of retransmission requests */
+    u_int32_t           total_recvd_retransmits;  /* the total number of received retransmits    */
+    u_int32_t           total_lost;               /* the final number of data blocks lost        */
+    u_int32_t           this_flow_originals;      /* the number of original blocks this interval */
+    u_int32_t           this_flow_retransmitteds; /* the number of re-tx'ed blocks this interval */
     double              this_transmit_rate;       /* the unfiltered transmission rate (bps)      */
     double              transmit_rate;            /* the smoothed transmission rate (bps)        */
     double              this_retransmit_rate;     /* the unfiltered retransmission rate (bps)    */
@@ -282,8 +286,8 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
- * Revision 1.6  2008/05/22 21:07:42  jwagnerhki
- * added stop_time statistic
+ * Revision 1.7  2008/05/22 23:33:21  jwagnerhki
+ * much improved statistics
  *
  * Revision 1.5  2008/05/20 18:12:45  jwagnerhki
  * got_block and tidying
