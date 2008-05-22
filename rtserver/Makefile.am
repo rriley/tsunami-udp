@@ -7,12 +7,12 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.5 2007/07/13 07:04:29 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.6 2008/05/22 17:48:37 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
 
-common_lib		= $(top_builddir)/common/libtsunami_common.a -lm
+common_lib		= $(top_builddir)/common/libtsunami_common.a
 
 bin_PROGRAMS		= rttsunamid
 
@@ -27,6 +27,6 @@ rttsunamid_SOURCES	= \
 			vsibctl.c \
 			parse_evn_filename.c \
 			server.h
-rttsunamid_LDADD	= $(common_lib)
+rttsunamid_LDADD	= $(common_lib) -lm
 rttsunamid_DEPENDENCIES	= $(common_lib)
 AM_CFLAGS		= -DVSIB_REALTIME
