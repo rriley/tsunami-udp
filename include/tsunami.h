@@ -64,6 +64,10 @@
 #ifndef _TSUNAMI_H
 #define _TSUNAMI_H
 
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64  // TODO: better 'getconf LFS_CFLAGS' in ./configure
+#endif
+
 #include <sys/types.h>  /* for u_char, u_int16_t, etc. */
 #include <sys/time.h>   /* for struct timeval          */
 #include <stdio.h>      /* for NULL, FILE *, etc.      */
