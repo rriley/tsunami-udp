@@ -66,7 +66,6 @@
 #include <netinet/in.h>  /* for struct sockaddr_in, etc.                 */
 #include <stdio.h>       /* for NULL, FILE *, etc.                       */
 #include <sys/types.h>   /* for various system data types                */
-#include <mcheck.h>
 
 #include "tsunami.h"     /* for Tsunami function prototypes and the like */
 
@@ -190,6 +189,9 @@ void xscript_open         (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-server.h,v $
+ * Revision 1.14  2008/05/22 18:28:56  jwagnerhki
+ * mcheck.h not on MacOSX or some others
+ *
  * Revision 1.13  2008/04/25 10:37:14  jwagnerhki
  * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
  *
