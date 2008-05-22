@@ -254,11 +254,12 @@ int command_get(command_t *command, ttp_session_t *session)
     struct timeval  repeat_time;                /* the time we last sent our retransmission list  */
     u_int32_t       this_block = 0;             /* the block number for the block just received   */
     u_int16_t       this_type = 0;              /* the block type for the block just received     */
-    u_char          complete_flag = 0;          /* set to 1 when it's time to stop                */
-    u_int32_t       iteration     = 0;          /* the number of iterations through the main loop */
     u_int64_t       delta = 0;                  /* generic holder of elapsed times                */
     u_int32_t       block = 0;                  /* generic holder of a block number               */
-    u_int64_t       lostcount = 0;              /* the entirely lost/ignored blocks count         */
+
+    double          mbit_thru, mbit_good;       /* helpers for final statistics                   */
+    double          time_secs;
+
     ttp_transfer_t *xfer          = &(session->transfer);
     retransmit_t   *rexmit        = &(session->transfer.retransmit);
     int             status = 0;
@@ -346,10 +347,6 @@ int command_get(command_t *command, ttp_session_t *session)
     do /*---loop for single and multi file request---*/
     {
 
-    /* reset some vars for current run */
-    complete_flag = 0;
-    iteration = 0;
-
     /* store the remote filename */
     if(!multimode)
        xfer->remote_filename = command->text[1];
@@ -428,10 +425,7 @@ int command_get(command_t *command, ttp_session_t *session)
       xscript_data_start(session, &(xfer->stats.start_time));
 
    /* until we break out of the transfer */
-   while (!complete_flag) {
-
-      /* we got here again */
-      ++iteration;
+   while (1) {
 
       /* try to receive a datagram */
       status = recvfrom(xfer->udp_fd, local_datagram, 6 + session->parameter->block_size, 0, NULL, 0);
@@ -445,28 +439,47 @@ int command_get(command_t *command, ttp_session_t *session)
       }
 
       /* retrieve the block number and block type */
-      this_block = ntohl(*((u_int32_t *) local_datagram));
+      this_block = ntohl(*((u_int32_t *) local_datagram));       // 1 .. xfer->block_count
       this_type  = ntohs(*((u_int16_t *) (local_datagram + 4)));
 
-      if (xfer->restart_pending) {
-          if (this_block > session->transfer.restart_lastidx) {
-              //printf("discard %u\n", this_block);
-              continue;
-          }
+      /* increment some counters for actually received block statistics */
+      xfer->stats.total_blocks++;
+      if (this_type != TS_BLOCK_RETRANSMISSION) {
+          xfer->stats.this_flow_originals++;
+      } else {
+          xfer->stats.this_flow_retransmitteds++;
+          xfer->stats.total_recvd_retransmits++;
       }
 
+      /* main transfer control logic */
       if (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending)
       {
-          /* reserve a datagram slot */
-          datagram = ring_reserve(xfer->ring_buffer);
 
-          /* copy data from local buffer into ring buffer */
-          memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
+          /* insert new blocks into disk write ringbuffer */
+          if (!got_block(session, this_block)) {
 
-          /* confirm our slot reservation */
-          if (ring_confirm(xfer->ring_buffer) < 0) {
-              warn("Error in accepting block");
-              goto abort;
+              /* reserve ring space, copy the data in, confirm the reservation */
+              datagram = ring_reserve(xfer->ring_buffer);
+              memcpy(datagram, local_datagram, 6 + session->parameter->block_size);
+              if (ring_confirm(xfer->ring_buffer) < 0) {
+                  warn("Error in accepting block");
+                  goto abort;
+              }
+
+              /* mark the block as received */
+              xfer->received[this_block / 8] |= (1 << (this_block % 8));
+              if (session->transfer.blocks_left > 0) {
+                  --(session->transfer.blocks_left);
+              } else {
+                  printf("Oops! Negative-going blocks_left count at block: type=%c this=%u final=%u left=%u\n", this_type, this_block, xfer->block_count, xfer->blocks_left);
+              }
+          }
+
+          /* transmit restart: avoid re-triggering on blocks still down the wire before server reacts */
+          if ((xfer->restart_pending) && (this_type != TS_BLOCK_TERMINATE)) {
+              if (this_block > session->transfer.restart_lastidx) {
+                  continue;
+              }
           }
 
           /* queue any retransmits we need */
@@ -494,7 +507,6 @@ int command_get(command_t *command, ttp_session_t *session)
                         }
                     }
                     // hop over the missing section
-                    xfer->blocks_left -= (earliest_block - xfer->gapless_till_block);
                     xfer->next_block = earliest_block;
                     xfer->gapless_till_block = earliest_block;
                 }
@@ -508,42 +520,51 @@ int command_get(command_t *command, ttp_session_t *session)
                     }
                 }
              }
-          }
+          }//if(missing blocks)
 
           /* advance the index of the gapless section going from start block to highest block  */
-          while ( (xfer->received[(xfer->gapless_till_block + 1) / 8]) & (1 << (xfer->gapless_till_block + 1) % 8) ) {
-             xfer->gapless_till_block++;
-          }
-
-          /* if this is the last block */
-          if ((this_block >= xfer->block_count) || (this_type == TS_BLOCK_TERMINATE)) {
-
-            /* prepare to stop if we're done */
-            if (xfer->blocks_left == 0 || !session->parameter->lossless) //rexmit->index_max == 0)
-              complete_flag = 1;
-            else
-              ttp_repeat_retransmit(session);
+          while (got_block(session, xfer->gapless_till_block + 1)) {
+              xfer->gapless_till_block++;
           }
 
           /* if this is an orignal, we expect to receive the successor to this block next */
+          /* transmit restart note: these resent blocks are labeled original as well      */
           if (this_type == TS_BLOCK_ORIGINAL) {
-              xfer->stats.total_blocks = this_block;
-              xfer->next_block         = this_block + 1;
+              xfer->next_block = this_block + 1;
           }
 
-          /* if a restart transmission request was going and last block met, reset flag */
-          if (xfer->restart_pending && xfer->next_block>=session->transfer.restart_lastidx) {
+          /* transmit restart: already got out of the missing blocks range? */
+          if (xfer->restart_pending && (xfer->next_block >= session->transfer.restart_lastidx)) {
               xfer->restart_pending = 0;
+          }
+
+          /* are we at the end of the transmission? */
+          if (this_type == TS_BLOCK_TERMINATE) {
+
+              /* got all blocks by now */
+              if (xfer->blocks_left == 0) {
+                  break;
+              }
+
+              /* lossy mode and no pending retransmissions/restarts (on-wire blocks: lossy mode anyway so ignore them) */
+              if (!(session->parameter->lossless) && (rexmit->index_max==0) && !(xfer->restart_pending)) {
+                 break;
+              }
+
+              // Debug:
+              // printf("End? type=%c this=%u final=%u left=%u\n", this_type, this_block, xfer->block_count, xfer->blocks_left);
+
+              ttp_repeat_retransmit(session);
           }
 
       }//if(not a duplicate block)
 
       /* repeat our requests if it's time */
-      if (!(iteration % 50)) {
+      if (!(xfer->stats.total_blocks % 50)) {
 
           /* if it's been at least a second */
-          /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into 50 iterations */
-          if ((get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) || (xfer->stats.total_blocks == 0)) {
+          /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into time of 50 packets */
+          if (get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) {
 
             /* repeat our retransmission requests */
             if (ttp_repeat_retransmit(session) < 0) {
@@ -558,7 +579,13 @@ int command_get(command_t *command, ttp_session_t *session)
          }
       }
 
-   } /* Transfer of the file completes here*/
+    } /* Transfer of the file completes here*/
+
+    printf("Transfer complete. Flushing to disk and signaling server to stop...\n");
+
+    /*---------------------------
+     * STOP TIMING
+     *---------------------------*/
 
     /* add a stop block to the ring buffer */
     datagram = ring_reserve(xfer->ring_buffer);
@@ -570,46 +597,62 @@ int command_get(command_t *command, ttp_session_t *session)
     if (pthread_join(disk_thread_id, NULL) < 0)
 	warn("Disk thread terminated with error");
 
-    /*---------------------------
-     * STOP TIMING
-     *---------------------------*/
-
     /* tell the server to quit transmitting */
     if (ttp_request_stop(session) < 0) {
 	warn("Could not request end of transfer");
 	goto abort;
     }
 
+    /*------------------------------------
+     * MORE TRUE POINT TO STOP TIMING ;-)
+     *-----------------------------------*/
+    // time here would contain the additional delays from the
+    // local disk flush and server xfer shutdown - include or omit?
+
+    /* get finishing time */
+    gettimeofday(&(xfer->stats.stop_time), NULL);
+    delta = get_usec_since(&(xfer->stats.start_time));
+
     /* count the truly lost blocks from the 'received' bitmap table */
-    lostcount = 0;
-    for (iteration=0; iteration<xfer->block_count; iteration++) {
-        if (0 == (xfer->received[iteration / 8] & (1 << (iteration % 8))) ) lostcount++;
+    xfer->stats.total_lost = 0;
+    for (block=1; block <= xfer->block_count; block++) {
+        if (!got_block(session, block)) xfer->stats.total_lost++;
     }
 
     /* display the final results */
-    delta = get_usec_since(&(xfer->stats.start_time));
-    printf("Mbits of data transmitted : %0.2f\n", xfer->file_size * 8.0 / (1024.0 * 1024.0));
-    printf("Duration in seconds       : %0.2f\n", delta / 1000000.0);
-    printf("THROUGHPUT (Mbps)         : %0.2f\n", xfer->file_size * 8.0 / delta);
-    printf("OS UDP packet rx errors   : delta %Lu\n",  (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
-    printf("Transfer type             : ");    
+    mbit_thru     = 8.0 * xfer->stats.total_blocks * session->parameter->block_size;
+    mbit_good     = mbit_thru - 8.0 * xfer->stats.total_recvd_retransmits * session->parameter->block_size;
+    mbit_thru    /= (1024.0*1024.0);
+    mbit_good    /= (1024.0*1024.0);
+    time_secs     = delta / 1e6;
+    printf("PC performance figure : %Lu packets dropped (if high this indicates receiving PC overload)\n", 
+                                         (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
+    printf("Transfer duration     : %0.2f seconds\n", time_secs);
+    printf("Total packet data     : %0.2f Mbit\n", mbit_thru);
+    printf("Goodput data          : %0.2f Mbit\n", mbit_good);
+    printf("Throughput            : %0.2f Mbps\n", mbit_thru / time_secs);
+    printf("GOODPUT               : %0.2f Mbps\n", mbit_good / time_secs);
+    printf("Transfer mode         : ");
     if (session->parameter->lossless) {
-        printf("lossless\n");
+        if (xfer->stats.total_lost == 0) {
+           printf("lossless\n");
+        } else {
+           printf("lossless mode - but lost count=%u > 0, please file a bug report!!\n", xfer->stats.total_lost);
+        }
     } else { 
         if (session->parameter->losswindow_ms == 0) {
             printf("lossy\n");
         } else {
             printf("semi-lossy, time window %d ms\n", session->parameter->losswindow_ms);
         }
-        printf("Missing data blocks count : %Lu (%.2f%% of data) per user-specified time window constraint\n",
-                  (ull_t)lostcount, ( 100.0 * lostcount ) / xfer->block_count );
+        printf("Data blocks lost      : %Lu (%.2f%% of data) per user-specified time window constraint\n",
+                  (ull_t)xfer->stats.total_lost, ( 100.0 * xfer->stats.total_lost ) / xfer->block_count );
     }
     printf("\n");
 
     /* update the transcript */
     if (session->parameter->transcript_yn) {
-        gettimeofday(&repeat_time, NULL);
-        xscript_data_stop(session, &repeat_time);
+        xscript_data_stop(session, &(xfer->stats.stop_time));
         xscript_close(session, delta);
     }
 
@@ -622,6 +665,7 @@ int command_get(command_t *command, ttp_session_t *session)
        strcpy((char*)dump_file, xfer->local_filename);
        strcat((char*)dump_file, ".blockmap");
 
+       /* write: [4 bytes block_count] [map byte 0] [map byte 1] ... [map (partial) byte N] */
        fbits = fopen((char*)dump_file, "wb");
        if (fbits != NULL) {
          fwrite(&xfer->block_count, sizeof(xfer->block_count), 1, fbits);
@@ -927,6 +971,9 @@ int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.29  2008/05/22 23:39:43  jwagnerhki
+ * fixed possible threading prob with I/O thread changing bitmap and blocks_left, revised command_get receive loop, update and use improved statistics, message before diskflush, fixed total_lost counting to start from block 1 not 0
+ *
  * Revision 1.28  2008/05/22 18:30:44  jwagnerhki
  * Darwin fix LFS support fopen() not fopen64() etc
  *

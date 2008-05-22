@@ -74,16 +74,11 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
     ttp_transfer_t  *transfer   = &session->transfer;
     u_int32_t        block_size = session->parameter->block_size;
     u_int32_t        write_size;
-    static u_int32_t last_block = 0;
     int              status;
     #ifdef VSIB_REALTIME
     u_int32_t       ringbuf_pointer;
     #endif
 
-    /* see if we need this block */
-    if (got_block(session, block_index))
-	return 0;
-    
     /* figure out how many bytes to write */
     if (block_index == transfer->block_count) {
         write_size = transfer->file_size % block_size;
@@ -94,7 +89,7 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
     }
 
     #ifdef VSIB_REALTIME
-    /*These were added for real-time eVLBI */
+    /* These were added for real-time eVLBI */
     ringbuf_pointer = ((block_index-1) % RINGBUF_BLOCKS) * session->parameter->block_size;
     
     if (session->parameter->ringbuf != NULL) /* If we have a ring buffer */
@@ -106,13 +101,11 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
  
     #ifndef DEBUG_DISKLESS
     /* seek to the proper location */
-    // if (block_index != (last_block + 1)) {
-        status = fseeko(transfer->file, ((u_int64_t) block_size) * (block_index - 1), SEEK_SET);
-        if (status < 0) {
-            sprintf(g_error, "Could not seek at block %d of file", block_index);
-            return warn(g_error);
-        }
-    // }
+    status = fseeko(transfer->file, ((u_int64_t) block_size) * (block_index - 1), SEEK_SET);
+    if (status < 0) {
+        sprintf(g_error, "Could not seek at block %d of file", block_index);
+        return warn(g_error);
+    }
 
     /* write the block to disk */
     status = fwrite(block, 1, write_size, transfer->file);
@@ -123,16 +116,15 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
     #endif
 
     /* we succeeded */
-    session->transfer.received[block_index / 8] |= (1 << (block_index % 8));
-    if (session->transfer.blocks_left > 0) // should not happen...
-       --(session->transfer.blocks_left);
-    last_block = block_index;
     return 0;
 }
 
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.6  2008/05/22 23:39:43  jwagnerhki
+ * fixed possible threading prob with I/O thread changing bitmap and blocks_left, revised command_get receive loop, update and use improved statistics, message before diskflush, fixed total_lost counting to start from block 1 not 0
+ *
  * Revision 1.5  2008/05/22 18:30:44  jwagnerhki
  * Darwin fix LFS support fopen() not fopen64() etc
  *
