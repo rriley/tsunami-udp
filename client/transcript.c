@@ -72,11 +72,20 @@
  *------------------------------------------------------------------------*/
 void xscript_close(ttp_session_t *session, u_int64_t delta)
 {
+    double mb_thru, mb_good, secs;
     ttp_transfer_t *xfer = &session->transfer;
 
-    fprintf(xfer->transcript, "mb_transmitted = %0.2f\n", xfer->file_size / (1024.0 * 1024.0));
-    fprintf(xfer->transcript, "duration = %0.2f\n", delta / 1000000.0);
-    fprintf(xfer->transcript, "throughput = %0.2f\n", xfer->file_size * 8.0 / delta);
+    mb_thru  = xfer->stats.total_blocks * session->parameter->block_size;
+    mb_good  = mb_thru - xfer->stats.total_recvd_retransmits * session->parameter->block_size;
+    mb_thru /= (1024.0*1024.0);
+    mb_good /= (1024.0*1024.0);
+    secs     = delta/1e6;
+
+    fprintf(xfer->transcript, "mb_transmitted = %0.2f\n", mb_thru);
+    fprintf(xfer->transcript, "mb_usable = %0.2f\n", mb_good);
+    fprintf(xfer->transcript, "duration = %0.2f\n", secs);
+    fprintf(xfer->transcript, "throughput = %0.2f\n", 8.0 * mb_thru / secs);
+    fprintf(xfer->transcript, "goodput = %0.2f\n", 8.0 * mb_good / secs);
     fclose(xfer->transcript);
 }
 
@@ -170,6 +179,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.7  2008/05/22 23:36:33  jwagnerhki
+ * much better statistics counters, cleaned up statistics math, restart-req doesnt change total_blocks and this_blocks
+ *
  * Revision 1.6  2008/05/22 17:58:51  jwagnerhki
  * __darwin_suseconds_t fix
  *
