@@ -21,15 +21,14 @@ Compiling
  If you want to build Tsunami for a big endian i.e. non-Intel platform,
  first edit ./common/Makefile.am and see instructions there.
 
- For compiling tsunami, go through the normal process of:
+ For compiling tsunami, simply use:
 
-   $ ./configure
    $ make
 
  From the configure output errors find all those missing packages that you 
- had never even heard of and install them, then try ./configure again.
+ had never even heard of and install them, then try a ./configure again.
 
- If there are ./configure Makefile.in complaints or similar, try 
+ If there are ./configure complaints about Makefile.in or similar, try:
 
    $ ./recompile.sh
 
