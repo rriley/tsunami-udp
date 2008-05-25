@@ -4,7 +4,7 @@
  * This contains disk I/O routines for the Tsunami file transfer client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -96,7 +96,7 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
         memcpy(session->parameter->ringbuf + ringbuf_pointer, block, write_size);
 
     /* check if we need to feed the VSIB */
-    write_vsib(block, write_size);                
+    write_vsib_block(session, block, write_size);
     #endif
  
     #ifndef DEBUG_DISKLESS
@@ -122,6 +122,9 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.7  2008/05/25 15:36:44  jwagnerhki
+ * write_vsib_block
+ *
  * Revision 1.6  2008/05/22 23:39:43  jwagnerhki
  * fixed possible threading prob with I/O thread changing bitmap and blocks_left, revised command_get receive loop, update and use improved statistics, message before diskflush, fixed total_lost counting to start from block 1 not 0
  *
