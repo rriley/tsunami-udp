@@ -4,7 +4,7 @@
  * This is the main module for the Tsunami file transfer CLI client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,10 +49,10 @@
  * otherwise.
  *
  * LICENSEE UNDERSTANDS THAT SOFTWARE IS PROVIDED "AS IS" FOR WHICH
- * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
+ * NO WARRANTIES AS TO CAPABILITIES OR ACCURACY ARE MADE. INDIANA
  * UNIVERSITY GIVES NO WARRANTIES AND MAKES NO REPRESENTATION THAT
  * SOFTWARE IS FREE OF INFRINGEMENT OF THIRD PARTY PATENT, COPYRIGHT,
- * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
+ * OR OTHER PROPRIETARY RIGHTS.  INDIANA UNIVERSITY MAKES NO
  * WARRANTIES THAT SOFTWARE IS FREE FROM "BUGS", "VIRUSES", "TROJAN
  * HORSES", "TRAP DOORS", "WORMS", OR OTHER HARMFUL CODE.  LICENSEE
  * ASSUMES THE ENTIRE RISK AS TO THE PERFORMANCE OF SOFTWARE AND/OR
@@ -130,7 +130,7 @@ int main(int argc, const char *argv[])
             // zero argument commands
             if (!strcasecmp(argv[argc_curr], "close") || !strcasecmp(argv[argc_curr], "quit") 
                 || !strcasecmp(argv[argc_curr], "exit") || !strcasecmp(argv[argc_curr], "bye")
-                || !strcasecmp(argv[argc_curr], "help")) { 
+                || !strcasecmp(argv[argc_curr], "help") || !strcasecmp(argv[argc_curr], "dir")) {
                strcpy(command_text, argv[argc_curr]);
                argc_curr += 1;
                break; 
@@ -192,6 +192,7 @@ int main(int argc, const char *argv[])
            if (!strcasecmp(command.text[0], "close"))             command_close  (&command, session);
       else if (!strcasecmp(command.text[0], "connect")) session = command_connect(&command, &parameter);
       else if (!strcasecmp(command.text[0], "get"))               command_get    (&command, session);
+      else if (!strcasecmp(command.text[0], "dir"))               command_dir    (&command, session);
       else if (!strcasecmp(command.text[0], "help"))              command_help   (&command, session);
       else if (!strcasecmp(command.text[0], "quit"))              command_quit   (&command, session);
       else if (!strcasecmp(command.text[0], "exit"))              command_quit   (&command, session);
@@ -241,6 +242,9 @@ void parse_command(command_t *command, char *buffer)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.10  2008/05/25 15:39:32  jwagnerhki
+ * file client merge
+ *
  * Revision 1.9  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *

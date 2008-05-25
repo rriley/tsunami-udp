@@ -4,7 +4,7 @@
  * This contains disk I/O routines for the Tsunami file transfer client.
  *
  * Written by Mark Meiss (mmeiss@indiana.edu).
- * Copyright © 2002 The Trustees of Indiana University.
+ * Copyright (C) 2002 The Trustees of Indiana University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -74,44 +74,37 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
     ttp_transfer_t  *transfer   = &session->transfer;
     u_int32_t        block_size = session->parameter->block_size;
     u_int32_t        write_size;
-    static u_int32_t last_block = 0;
     int              status;
     #ifdef VSIB_REALTIME
     u_int32_t       ringbuf_pointer;
     #endif
 
-    /* see if we need this block */
-    if (got_block(session, block_index))
-	return 0;
-    
     /* figure out how many bytes to write */
     if (block_index == transfer->block_count) {
         write_size = transfer->file_size % block_size;
-        if (write_size == 0)
+        if (write_size == 0) 
             write_size = block_size;
     } else {
         write_size = block_size;
     }
 
     #ifdef VSIB_REALTIME
-    /*These were added for real-time eVLBI */
+    /* These were added for real-time eVLBI */
     ringbuf_pointer = ((block_index-1) % RINGBUF_BLOCKS) * session->parameter->block_size;
     
     if (session->parameter->ringbuf != NULL) /* If we have a ring buffer */
         memcpy(session->parameter->ringbuf + ringbuf_pointer, block, write_size);
 
     /* check if we need to feed the VSIB */
-    write_vsib_block(session, block, write_size);                
+    write_vsib_block(session, block, write_size);
     #endif
  
     #ifndef DEBUG_DISKLESS
     /* seek to the proper location */
-    if (block_index != (last_block + 1)) {
-        status = fseeko(transfer->file, ((u_int64_t) block_size) * (block_index - 1), SEEK_SET);
-        if (status < 0) {
-            sprintf(g_error, "Could not seek at block %d of file", block_index);
-            return warn(g_error);
-        }
+    status = fseeko(transfer->file, ((u_int64_t) block_size) * (block_index - 1), SEEK_SET);
+    if (status < 0) {
+        sprintf(g_error, "Could not seek at block %d of file", block_index);
+        return warn(g_error);
     }
 
     /* write the block to disk */
@@ -123,16 +116,15 @@ int accept_block(ttp_session_t *session, u_int32_t block_index, u_char *block)
     #endif
 
     /* we succeeded */
-    session->transfer.received[block_index / 8] |= (1 << (block_index % 8));
-    if (session->transfer.blocks_left > 0) // should not happen...
-       --(session->transfer.blocks_left);
-    last_block = block_index;
     return 0;
 }
 
 
 /*========================================================================
  * $Log: io.c,v $
+ * Revision 1.8  2008/05/25 15:39:32  jwagnerhki
+ * file client merge
+ *
  * Revision 1.7  2008/05/22 18:30:44  jwagnerhki
  * Darwin fix LFS support fopen() not fopen64() etc
  *
