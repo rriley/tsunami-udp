@@ -3,6 +3,23 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 36:
+ - changes to client code:
+   - client core receive loop refactored: shorter, more readable and more robust
+   - pending transmission-restart: on-wire blocks stored and not discarded
+   - threading: remaining blocks count is decremented in receive loop not io.c
+                to fix a suspected threading issue
+   - client feedback: feedback to server is sent even when the ringbuffer is full,
+                client no longer disconnected due to very slow disk and hbtimeout
+   - transfer statistics are improved: 
+        show goodput vs throughput
+        separate counts for received original and retransmitted blocks
+   - Mac OX X support: small changes (typecasts) to allow compile on Mac OS X
+ - changes to server code:
+   - Mac OX X support: small changes (typecasts) to allow compile on Mac OS X
+   - removed unused #include <mcheck.h> which is not present on Mac OS X
+   - rtserver Makefile.am '-lm' moved to correct place i.e. to LDFLAGS 
+
 v1.1 CvsBuild 35:
  - server, rtserver now perform finer and more gradual rate
    adjustment in the speed-up and slow-down phases
