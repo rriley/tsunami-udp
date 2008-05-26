@@ -452,7 +452,8 @@ int command_get(command_t *command, ttp_session_t *session)
       }
 
       /* main transfer control logic */
-      if (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending)
+      if (xfer->ring_buffer->space_ready == 1 /* don't let disk-I/O freeze stop feedback of stats to server */
+          && (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending))
       {
 
           /* insert new blocks into disk write ringbuffer */
@@ -971,6 +972,9 @@ int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.30  2008/05/26 07:47:50  jwagnerhki
+ * no TCP feedback freeze during Ringbuffer reserved warnings
+ *
  * Revision 1.29  2008/05/22 23:39:43  jwagnerhki
  * fixed possible threading prob with I/O thread changing bitmap and blocks_left, revised command_get receive loop, update and use improved statistics, message before diskflush, fixed total_lost counting to start from block 1 not 0
  *
