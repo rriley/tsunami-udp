@@ -358,8 +358,13 @@ int ttp_open_transfer(ttp_session_t *session)
 
     /* read in the requested filename */
     status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
-    if (status < 0)
+    if (status < 0) {
+        #ifndef VSIB_REALTIME
         error("Could not read filename from client");
+        #else
+        return warn("Could not read filename from client");
+        #endif
+    }
     filename[MAX_FILENAME_LENGTH - 1] = '\0';
 
     if(!strcmp(filename, TS_DIRLIST_HACK_CMD)) {
@@ -402,9 +407,13 @@ int ttp_open_transfer(ttp_session_t *session)
 
        status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
 
-       if (status < 0)
+       if (status < 0) {
+          #ifndef VSIB_REALTIME
           error("Could not read filename from client");
-
+          #else
+          return warn("Could not read filename from client");
+          #endif
+       }
     }
 
     /* store the filename in the transfer object */
@@ -576,6 +585,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.31  2008/05/29 09:15:59  jwagnerhki
+ * single-user realtime, don't exit on client disconnect
+ *
  * Revision 1.30  2008/05/22 23:57:04  jwagnerhki
  * ipd time printout after high end limiting
  *

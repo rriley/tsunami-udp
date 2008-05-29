@@ -118,7 +118,9 @@ int main(int argc, char *argv[])
     }
 
     /* install a signal handler for our children */
+    #ifndef VSIB_REALTIME
     signal(SIGCHLD, reap);
+    #endif
 
     /* now show version / build information */
     #ifdef VSIB_REALTIME
@@ -250,7 +252,11 @@ void client_handler(ttp_session_t *session)
     status = ttp_open_transfer(session);
     if (status < 0) {
         warn("Invalid file request");
+        #ifndef VSIB_REALTIME
         continue;
+        #else
+        return;
+        #endif
     }
 
     /* negotiate a data transfer port */
@@ -598,6 +604,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.39  2008/05/29 09:15:59  jwagnerhki
+ * single-user realtime, don't exit on client disconnect
+ *
  * Revision 1.38  2008/05/29 07:07:22  jwagnerhki
  * first try at singleuser rtserver
  *
