@@ -145,13 +145,15 @@ int main(int argc, char *argv[])
             fprintf(stderr, "New client connecting from %s...\n", inet_ntoa(remote_address.sin_addr));
         }
 
-        /* and fork a new child process to handle it */
+        session.session_id++;
+
+        #ifndef VSIB_REALTIME
+        /* fork a new child process to handle the client */
         child_pid = fork();
         if (child_pid < 0) {
             warn("Could not create child process");
             continue;
         }
-        session.session_id++;
 
         /* if we're the child */
         if (child_pid == 0) {
@@ -175,6 +177,23 @@ int main(int argc, char *argv[])
             /* close the client socket */
             close(client_fd);
         }
+        #else
+
+        /* The VSIB supports only single user access:  *
+         * do not fork a client handler processes      */
+
+        /* set up the session structure */
+        session.client_fd = client_fd;
+        session.parameter = &parameter;
+        memset(&session.transfer, 0, sizeof(session.transfer));
+        session.transfer.ipd_current = 0.0;
+
+        /* run the client handler */
+        client_handler(&session);
+
+        /* close the client */
+        close(client_fd);
+        #endif
     }
 }
 
@@ -579,6 +598,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.38  2008/05/29 07:07:22  jwagnerhki
+ * first try at singleuser rtserver
+ *
  * Revision 1.37  2008/04/25 10:37:15  jwagnerhki
  * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
  *
