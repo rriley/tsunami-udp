@@ -439,8 +439,10 @@ void client_handler(ttp_session_t *session)
     if (param->fileout) {
         fclose(xfer->file);
     }
+
     /* stop the VSIB */
     stop_vsib(session);
+    fclose(xfer->vsib);
 
     #endif
 
@@ -604,6 +606,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.40  2008/07/10 11:17:37  jwagnerhki
+ * close VSIB after transfer
+ *
  * Revision 1.39  2008/05/29 09:15:59  jwagnerhki
  * single-user realtime, don't exit on client disconnect
  *
