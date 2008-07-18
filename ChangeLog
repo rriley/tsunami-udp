@@ -3,6 +3,14 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 37:
+ - changes to server code:
+   - progress printf: current IPD target is printed as floating point not integer
+   - UDP packet spacing: spacing of small <=4kB packets was not accurate (too fast)
+                         on some systems, changed the delay/spacing method to iperf-style,
+                         seems much more accurate now accross 1..32kB packet sizes
+   - heartbeat lost: interval 350ms increased to 500ms
+
 v1.1 CvsBuild 36:
  - changes to client code:
    - client core receive loop refactored: shorter, more readable and more robust

@@ -123,13 +123,13 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 	    xfer->ipd_current *= (double) param->faster_num / param->faster_den;
 	}
 
-	/* make sure the IPD is still in range, for later calculations */
-	xfer->ipd_current = max(min(xfer->ipd_current, 10000.0), param->ipd_time);
+    /* make sure the IPD is still in range, for later calculations */
+    xfer->ipd_current = max(min(xfer->ipd_current, 10000.0), param->ipd_time);
 
-	/* build the stats string */
-	sprintf(stats_line, "%6u %5uus %5uus %7u %6.2f%% %3u\n",
-		retransmission->error_rate, (u_int32_t)xfer->ipd_current, param->ipd_time, xfer->block,
-		100.0 * xfer->block / param->block_count, session->session_id);
+    /* build the stats string */
+    sprintf(stats_line, "%6u %3.2fus %5uus %7u %6.2f%% %3u\n",
+        retransmission->error_rate, (float)xfer->ipd_current, param->ipd_time, xfer->block,
+        100.0 * xfer->block / param->block_count, session->session_id);
 
 	/* print a status report */
 	if (!(iteration++ % 23))
@@ -575,6 +575,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.28  2008/07/18 06:27:07  jwagnerhki
+ * build 37 with iperf-style server send rate control
+ *
  * Revision 1.27  2008/05/22 23:57:04  jwagnerhki
  * ipd time printout after high end limiting
  *

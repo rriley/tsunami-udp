@@ -98,11 +98,11 @@ int get_random_data(u_char *buffer, size_t bytes)
     /* try to open /dev/urandom */
     /* note: for better randomness but very very slow generation use /dev/random */
     if ((random_fd = open("/dev/urandom", O_RDONLY)) < 0)
-	return -1;
+        return -1;
 
     /* obtain the appropriate amount of data */
     if (read(random_fd, buffer, bytes) < 0)
-	return -1;
+        return -1;
 
     /* close /dev/random and return */
     return (close(random_fd) < 0) ? -1 : 0;
@@ -125,8 +125,8 @@ u_int64_t get_usec_since(struct timeval *old_time)
 
     /* return the elapsed time */
     while (now.tv_sec > old_time->tv_sec) {
-	result += 1000000;
-	--now.tv_sec;
+        result += 1000000;
+        --now.tv_sec;
     }
     return result + (now.tv_usec - old_time->tv_usec);
 
@@ -151,13 +151,13 @@ u_int64_t htonll(u_int64_t value)
 
     /* if we don't know if this is necessary, find out */
     if (necessary == -1)
-	necessary = (5 != htons(5));
+        necessary = (5 != htons(5));
 
     /* perform the conversion if necessary */
     if (necessary)
-	return (((u_int64_t) htonl(value & 0x00000000ffffffffLL)) << 32) | ((u_int64_t) htonl(value >> 32));
+        return (((u_int64_t) htonl(value & 0x00000000ffffffffLL)) << 32) | ((u_int64_t) htonl(value >> 32));
     else
-	return value;
+        return value;
 }
 
 
@@ -178,8 +178,8 @@ char *make_transcript_filename(char *buffer, time_t epoch, const char *extension
 
     /* construct the filename */
     sprintf(buffer, "%04d-%02d-%02d-%02d-%02d-%02d.%s",
-	    gmt.tm_year + 1900, gmt.tm_mon + 1, gmt.tm_mday,
-	    gmt.tm_hour, gmt.tm_min, gmt.tm_sec, extension);
+        gmt.tm_year + 1900, gmt.tm_mon + 1, gmt.tm_mday,
+        gmt.tm_hour, gmt.tm_min, gmt.tm_sec, extension);
     return buffer;
 }
 
@@ -216,7 +216,7 @@ u_char *prepare_proof(u_char *buffer, size_t bytes, const u_char *secret, u_char
 
     /* prepare the buffer for the digest */
     for (offset = 0; offset < bytes; ++offset)
-	buffer[offset] ^= secret[offset % secret_length];
+        buffer[offset] ^= secret[offset % secret_length];
 
     /* run MD5 and return the results */
     md5_digest(buffer, bytes, digest);
@@ -289,10 +289,12 @@ void usleep_that_works(u_int64_t usec)
     /* get the current time */
     gettimeofday(&now, NULL);
 
-    /* do the basic sleep */
-    delay.tv_sec  = sleep_time / 1000000;
-    delay.tv_usec = sleep_time % 1000000;
-    select(0, NULL, NULL, NULL, &delay);
+    /* do the basic sleep, 10ms granularity */
+    if (sleep_time >= 10000) {
+        delay.tv_sec  = sleep_time / 1000000;
+        delay.tv_usec = sleep_time % 1000000;
+        select(0, NULL, NULL, NULL, &delay);
+    }
 
     /* and spin for the rest of the time */
     while (get_usec_since(&now) < usec);
@@ -310,14 +312,14 @@ u_int64_t get_udp_in_errors()
     u_int64_t errs = 0;
     char buf[512], *p;
     int len, i;
-    
+
     /* need to reopen /proc/net/snmp file each time, it won't update otherwise */
     f = fopen("/proc/net/snmp", "r");
     if (!f) {
         warn("could not open /proc/net/snmp");
         return 0;
     }
-    
+
     /* seek for header line currently with poor programming using poor /proc interface...  */
     while (!feof(f)) {
         fgets(buf, sizeof(buf)-1, f);
@@ -345,6 +347,9 @@ u_int64_t get_udp_in_errors()
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.8  2008/07/18 06:27:05  jwagnerhki
+ * build 37 with iperf-style server send rate control
+ *
  * Revision 1.7  2007/07/10 08:18:05  jwagnerhki
  * rtclient merge, multiget cleaned up and improved, allow 65530 files in multiget
  *

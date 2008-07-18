@@ -138,8 +138,8 @@ void xscript_open(ttp_session_t *session)
     make_transcript_filename(filename, param->epoch, "tsus");
     xfer->transcript = fopen(filename, "w");
     if (xfer->transcript == NULL) {
-	warn("Could not create transcript file");
-	return;
+        warn("Could not create transcript file");
+        return;
     }
 
     /* write out all the header information */
@@ -166,6 +166,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.9  2008/07/18 06:27:07  jwagnerhki
+ * build 37 with iperf-style server send rate control
+ *
  * Revision 1.8  2008/05/22 17:58:51  jwagnerhki
  * __darwin_suseconds_t fix
  *

@@ -189,13 +189,15 @@ void client_handler(ttp_session_t *session)
 {
     retransmission_t  retransmission;                /* the retransmission data object                 */
     struct timeval    start, stop;                   /* the start and stop times for the transfer      */
-    struct timeval    delay;                         /* the interpacket delay value                    */
+    struct timeval    prevpacketT;                   /* the send time of the previous packet           */
+    struct timeval    currpacketT;                   /* the interpacket delay value                    */
     struct timeval    lastfeedback;                  /* the time since last client feedback            */
     struct timeval    lasthblostreport;              /* the time since last 'heartbeat lost' report    */
     u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
     int               result;                        /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
-    u_int64_t         ipd_time;                      /* the time to delay after this packet            */
+    int64_t           ipd_time;                      /* the time to delay/sleep after packet, signed   */
+    int64_t           ipd_usleep_diff;               /* the time correction to ipd_time, signed        */
     int               status;
     ttp_transfer_t   *xfer  = &session->transfer;
     ttp_parameter_t  *param =  session->parameter;
@@ -252,19 +254,30 @@ void client_handler(ttp_session_t *session)
     gettimeofday(&start, NULL);
     if (param->transcript_yn)
         xscript_data_start(session, &start);
-    lastfeedback = start;
+
+    lasthblostreport       = start;
+    lastfeedback           = start;
+    prevpacketT            = start;
     deadconnection_counter = 0;
+    ipd_time               = 0;
+    ipd_usleep_diff        = 0;
 
     /* start by blasting out every block */
     xfer->block = 0;
-    gettimeofday(&lasthblostreport, NULL);
     while (xfer->block <= param->block_count) {
 
         /* default: flag as retransmitted block */
         block_type = TS_BLOCK_RETRANSMISSION;
 
+        /* precalculate time to wait after sending the next packet */
+        gettimeofday(&currpacketT, NULL);
+        ipd_usleep_diff = xfer->ipd_current + tv_diff_usec(prevpacketT, currpacketT);
+        prevpacketT = currpacketT;
+        if (ipd_usleep_diff > 0 || ipd_time > 0) {
+            ipd_time += ipd_usleep_diff;
+        }
+
         /* see if transmit requests are available */
-        gettimeofday(&delay, NULL);
         result = read(session->client_fd, &retransmission, sizeof(retransmission));
         #ifndef VSIB_REALTIME
         if ((result <= 0) && (errno != EAGAIN))
@@ -278,8 +291,8 @@ void client_handler(ttp_session_t *session)
         if (result == sizeof(retransmission_t)) {
 
             /* store current time */
-            lastfeedback = delay;
-            lasthblostreport = delay;
+            lastfeedback           = currpacketT;
+            lasthblostreport       = currpacketT;
             deadconnection_counter = 0;
 
             /* if it's a stop request, go back to waiting for a filename */
@@ -329,20 +342,14 @@ void client_handler(ttp_session_t *session)
             continue;
         }
 
-        /* delay for the next packet */
-        ipd_time = get_usec_since(&delay) + 5;
-        if (ipd_time < xfer->ipd_current) {
-            usleep_that_works(xfer->ipd_current - ipd_time);
-        }
-
         /* monitor client heartbeat and disconnect dead client */
         if ((deadconnection_counter++) > 2048) {
             char stats_line[160];
 
             deadconnection_counter = 0;
 
-            /* limit 'heartbeat lost' reports to 350ms intervals */
-            if (get_usec_since(&lasthblostreport) < 350000.0) continue; 
+            /* limit 'heartbeat lost' reports to 500ms intervals */
+            if (get_usec_since(&lasthblostreport) < 500000.0) continue;
             gettimeofday(&lasthblostreport, NULL);
 
             /* throttle IPD with fake 100% loss report */
@@ -379,11 +386,17 @@ void client_handler(ttp_session_t *session)
                     fprintf(stderr, "Heartbeat timeout of %d seconds reached and not doing local backup, terminating transfer now.\n", param->hb_timeout);
                     break;
                 } else {
-                    lastfeedback = delay;
+                    lastfeedback = currpacketT;
                 }
             }
             #endif
         }
+
+         /* wait before handling the next packet */
+         if (ipd_time > 0) {
+             usleep_that_works(ipd_time);
+         }
+
     }
 
     /*---------------------------
@@ -579,6 +592,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.36  2008/07/18 06:27:07  jwagnerhki
+ * build 37 with iperf-style server send rate control
+ *
  * Revision 1.35  2008/04/25 10:37:15  jwagnerhki
  * build35 changed 'ipd_current' from int32 to double for much smoother rate changes
  *

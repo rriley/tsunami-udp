@@ -85,6 +85,8 @@
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
 
+#define tv_diff_usec(newer,older) ((newer.tv_sec-older.tv_sec)*1e6 + (newer.tv_usec-older.tv_usec))
+
 typedef unsigned long long ull_t;
 
 /*------------------------------------------------------------------------
