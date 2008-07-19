@@ -963,7 +963,7 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
  *
  * Returns non-0 if the block has already been received
  *------------------------------------------------------------------------*/
-int got_block(ttp_session_t* session, u_int32_t blocknr)
+inline int got_block(ttp_session_t* session, u_int32_t blocknr)
 {
     return (session->transfer.received[blocknr / 8] & (1 << (blocknr % 8)));
 }
@@ -971,6 +971,9 @@ int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.19  2008/07/19 19:42:32  jwagnerhki
+ * inline got_block
+ *
  * Revision 1.18  2008/05/25 15:39:32  jwagnerhki
  * file client merge
  *

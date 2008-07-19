@@ -237,7 +237,7 @@ int            command_quit          (command_t *command, ttp_session_t *session
 int            command_set           (command_t *command, ttp_parameter_t *parameter);
 int            command_dir           (command_t *command, ttp_session_t *session);
 
-int            got_block             (ttp_session_t* session, u_int32_t blocknr);
+inline int     got_block             (ttp_session_t* session, u_int32_t blocknr);
 
 /* config.c */
 void           reset_client          (ttp_parameter_t *parameter);
@@ -288,6 +288,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.9  2008/07/19 19:42:32  jwagnerhki
+ * inline got_block
+ *
  * Revision 1.8  2008/07/19 14:59:53  jwagnerhki
  * added restart_wireclearidx variable
  *
