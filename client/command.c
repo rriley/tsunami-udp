@@ -469,8 +469,8 @@ int command_get(command_t *command, ttp_session_t *session)
 
               /* mark the block as received */
               xfer->received[this_block / 8] |= (1 << (this_block % 8));
-              if (session->transfer.blocks_left > 0) {
-                  --(session->transfer.blocks_left);
+              if (xfer->blocks_left > 0) {
+                  --(xfer->blocks_left);
               } else {
                   printf("Oops! Negative-going blocks_left count at block: type=%c this=%u final=%u left=%u\n", this_type, this_block, xfer->block_count, xfer->blocks_left);
               }
@@ -478,7 +478,7 @@ int command_get(command_t *command, ttp_session_t *session)
 
           /* transmit restart: avoid re-triggering on blocks still down the wire before server reacts */
           if ((xfer->restart_pending) && (this_type != TS_BLOCK_TERMINATE)) {
-              if (this_block > session->transfer.restart_lastidx) {
+              if ((this_block > xfer->restart_lastidx) && (this_block <= xfer->restart_wireclearidx)) {
                   continue;
               }
           }
@@ -535,7 +535,7 @@ int command_get(command_t *command, ttp_session_t *session)
           }
 
           /* transmit restart: already got out of the missing blocks range? */
-          if (xfer->restart_pending && (xfer->next_block >= session->transfer.restart_lastidx)) {
+          if (xfer->restart_pending && (xfer->next_block >= xfer->restart_lastidx)) {
               xfer->restart_pending = 0;
           }
 
@@ -983,6 +983,9 @@ inline int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.35  2008/07/19 20:59:15  jwagnerhki
+ * use xfer->restart_wireclearidx as upper limit to ignored blocks
+ *
  * Revision 1.34  2008/07/19 20:44:34  jwagnerhki
  * show Mbit File Data, transcript.c show mbyte_transmitted mbyte_usable mbyte_file
  *
