@@ -246,7 +246,11 @@ int ttp_open_transfer(ttp_session_t *session, const char *remote_filename, const
     if (param->ringbuf == NULL)
     return warn("Could not reserve space for ring buffer");
     #endif
-    
+
+    /* make crude estimate of blocks on the wire if RTT delay is 500ms */
+    xfer->on_wire_estimate = (u_int32_t)(0.5 * param->target_rate/(8*param->block_size));
+    xfer->on_wire_estimate = min(xfer->block_count, xfer->on_wire_estimate);
+
     /* if we're doing a transcript */
     if (param->transcript_yn)
 	xscript_open(session);
@@ -311,12 +315,7 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     int               block;
     int               count = 0;
     retransmit_t     *rexmit = &(session->transfer.retransmit);
-
-    /* report on the current status */
-    //if (session->parameter->verbose_yn) {
-    //    fprintf(stderr, "Repeating retransmission requests [%d].\n", rexmit->index_max);      
-    //    fprintf(stderr, "Current error rate = %u\n", ntohl(retransmission[0].error_rate));
-    //}
+    ttp_transfer_t   *xfer = &session->transfer;
 
     /* skip blanks (e.g. in semi-lossy, or completely lossess transfer) */
     if (rexmit->index_max == 0) return 0;
@@ -325,7 +324,7 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     memset(retransmission, 0, sizeof(retransmission));
 
     /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
-    if (rexmit->index_max > MAX_RETRANSMISSION_BUFFER) {
+    if (rexmit->index_max >= MAX_RETRANSMISSION_BUFFER) {
 
         /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
         retransmission[0].request_type = htons(REQUEST_RESTART);
@@ -337,18 +336,18 @@ int ttp_repeat_retransmit(ttp_session_t *session)
             return warn("Could not send restart-at request");
 
         /* remember the request was sent - we can then discard blocks that are still on the line */
-        session->transfer.restart_pending    = 1;
-        session->transfer.restart_lastidx    = rexmit->table[rexmit->index_max - 1];
-        // printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], session->transfer.restart_lastidx );
-
-        /* reset the retransmission table */
-        session->transfer.next_block             = rexmit->table[0];
-        session->transfer.stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
-        rexmit->index_max                        = 0;
+        xfer->restart_pending    = 1;
+        xfer->restart_lastidx    = rexmit->table[rexmit->index_max - 1];
+        xfer->restart_wireclearidx = min(xfer->block_count, xfer->restart_lastidx + xfer->on_wire_estimate);
 
         #ifdef DEBUG_RETX
-        warn("ttp_repeat_retransmit: REQUEST_RESTART sent and rexmit table cleared");
+        printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], xfer->restart_lastidx );
         #endif
+
+        /* reset the retransmission table */
+        xfer->next_block             = rexmit->table[0];
+        xfer->stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
+        rexmit->index_max            = 0;
 
         /* and return */
         return 0;
@@ -356,7 +355,7 @@ int ttp_repeat_retransmit(ttp_session_t *session)
 
    /* for each table entry, discard from the table those blocks we don't want, and */ 
    /* prepare a retransmit request */
-   session->transfer.stats.this_retransmits = 0;
+   xfer->stats.this_retransmits = 0;
    for (entry = 0; entry < rexmit->index_max; ++entry) {
 
       /* get the block number */
@@ -381,8 +380,8 @@ int ttp_repeat_retransmit(ttp_session_t *session)
    rexmit->index_max = count;
 
    /* update the statistics */
-   session->transfer.stats.this_retransmits   = count;
-   session->transfer.stats.total_retransmits += count;
+   xfer->stats.this_retransmits   = count;
+   xfer->stats.total_retransmits += count;
 
    /* send out the requests */
    if (count > 0) {
@@ -669,6 +668,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.16  2008/07/19 14:59:53  jwagnerhki
+ * added restart_wireclearidx variable
+ *
  * Revision 1.15  2008/05/25 15:39:32  jwagnerhki
  * file client merge
  *

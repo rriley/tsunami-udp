@@ -210,6 +210,8 @@ typedef struct {
     u_int32_t           blocks_left;              /* the number of blocks left to receive        */
     u_char              restart_pending;          /* 1 to ignore too new packets                 */
     u_int32_t           restart_lastidx;          /* the last index in the restart list          */
+    u_int32_t           restart_wireclearidx;     /* the max on-wire block number before react   */
+    u_int32_t           on_wire_estimate;         /* the max packets on wire if RTT is 500ms     */
 } ttp_transfer_t;
 
 /* state of a Tsunami session as a whole */
@@ -286,6 +288,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.8  2008/07/19 14:59:53  jwagnerhki
+ * added restart_wireclearidx variable
+ *
  * Revision 1.7  2008/05/22 23:33:21  jwagnerhki
  * much improved statistics
  *
