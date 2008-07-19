@@ -435,7 +435,8 @@ void client_handler(ttp_session_t *session)
     /* report on the transfer */
     if (param->verbose_yn)
         fprintf(stderr, "Server %d transferred %Lu bytes in %0.2f seconds (%0.1f Mbps)\n",
-                session->session_id, (ull_t)param->file_size, delta / 1000000.0, 8.0 * param->file_size / delta);
+                session->session_id, (ull_t)param->file_size, delta / 1000000.0,
+                8.0 * param->file_size / (delta * 1e-6 * 1024*1024) );
 
     /* close the transcript */
     if (param->transcript_yn)
@@ -619,6 +620,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.42  2008/07/19 14:29:35  jwagnerhki
+ * Mbps rate reported with 2-pow-20
+ *
  * Revision 1.41  2008/07/18 06:27:06  jwagnerhki
  * build 37 with iperf-style server send rate control
  *
