@@ -7,7 +7,7 @@
 # information, see the LICENSE file in the top level directory of the
 # Tsunami source distribution.
 #
-# $Id: Makefile.am,v 1.4 2007/07/16 08:55:54 jwagnerhki Exp $
+# $Id: Makefile.am,v 1.5 2008/07/19 19:47:08 jwagnerhki Exp $
 #
 
 INCLUDES		= -I$(top_srcdir)/include
@@ -29,4 +29,4 @@ rttsunami_SOURCES		= \
 			transcript.c
 rttsunami_LDADD		= $(common_lib) -lpthread
 rttsunami_DEPENDENCIES	= $(common_lib)
-AM_CFLAGS               = -DVSIB_REALTIME -DRETX_REQBLOCK_SORTING
+AM_CFLAGS               = -DVSIB_REALTIME # -DRETX_REQBLOCK_SORTING too slow
