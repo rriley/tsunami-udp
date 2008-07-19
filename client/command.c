@@ -72,6 +72,7 @@
 
 #include <tsunami-client.h>
 
+//#define DEBUG_RETX xxx // enable to show retransmit debug infos
 
 /*------------------------------------------------------------------------
  * Prototypes for module-scope routines.
@@ -251,13 +252,13 @@ int command_get(command_t *command, ttp_session_t *session)
 {
     u_char         *datagram = NULL;            /* the buffer (in ring) for incoming blocks       */
     u_char         *local_datagram = NULL;      /* the local temp space for incoming block        */
-    struct timeval  repeat_time;                /* the time we last sent our retransmission list  */
     u_int32_t       this_block = 0;             /* the block number for the block just received   */
     u_int16_t       this_type = 0;              /* the block type for the block just received     */
     u_int64_t       delta = 0;                  /* generic holder of elapsed times                */
     u_int32_t       block = 0;                  /* generic holder of a block number               */
 
     double          mbit_thru, mbit_good;       /* helpers for final statistics                   */
+    double          mbit_file;
     double          time_secs;
 
     ttp_transfer_t *xfer          = &(session->transfer);
@@ -418,7 +419,6 @@ int command_get(command_t *command, ttp_session_t *session)
    memset(&xfer->stats, 0, sizeof(xfer->stats));
    xfer->stats.start_udp_errors = get_udp_in_errors();
    xfer->stats.this_udp_errors = xfer->stats.start_udp_errors;
-   gettimeofday(&repeat_time,              NULL);
    gettimeofday(&(xfer->stats.start_time), NULL);
    gettimeofday(&(xfer->stats.this_time),  NULL);
    if (session->parameter->transcript_yn)
@@ -439,10 +439,10 @@ int command_get(command_t *command, ttp_session_t *session)
       }
 
       /* retrieve the block number and block type */
-      this_block = ntohl(*((u_int32_t *) local_datagram));       // 1 .. xfer->block_count
-      this_type  = ntohs(*((u_int16_t *) (local_datagram + 4)));
+      this_block = ntohl(*((u_int32_t *) local_datagram));       // in range of 1..xfer->block_count
+      this_type  = ntohs(*((u_int16_t *) (local_datagram + 4))); // TS_BLOCK_ORIGINAL etc
 
-      /* increment some counters for actually received block statistics */
+      /* keep statistics on received blocks */
       xfer->stats.total_blocks++;
       if (this_type != TS_BLOCK_RETRANSMISSION) {
           xfer->stats.this_flow_originals++;
@@ -542,29 +542,38 @@ int command_get(command_t *command, ttp_session_t *session)
           /* are we at the end of the transmission? */
           if (this_type == TS_BLOCK_TERMINATE) {
 
+              #if DEBUG_RETX
+              fprintf(stderr, "Got end block: blk %u, final blk %u, left blks %u, tail %u, head %u\n",
+                      this_block, xfer->block_count, xfer->blocks_left, xfer->gapless_to_block, xfer->next_block);
+              #endif
+
               /* got all blocks by now */
               if (xfer->blocks_left == 0) {
                   break;
+              } else if (!session->parameter->lossless) {
+                  if ((rexmit->index_max==0) && !(xfer->restart_pending)) {
+                      break;
+                  }
               }
 
-              /* lossy mode and no pending retransmissions/restarts (on-wire blocks: lossy mode anyway so ignore them) */
-              if (!(session->parameter->lossless) && (rexmit->index_max==0) && !(xfer->restart_pending)) {
-                 break;
+              /* add possible still missing blocks to retransmit list */
+              for (block = xfer->gapless_to_block+1; block < xfer->block_count; ++block) {
+                  if (ttp_request_retransmit(session, block) < 0) {
+                      warn("Retransmission request failed");
+                      goto abort;
+                  }
               }
 
-              // Debug:
-              // printf("End? type=%c this=%u final=%u left=%u\n", this_type, this_block, xfer->block_count, xfer->blocks_left);
-
+              /* send the retransmit request list again */
               ttp_repeat_retransmit(session);
           }
 
       }//if(not a duplicate block)
 
-      /* repeat our requests if it's time */
+      /* repeat our server feedback and requests if it's time */
       if (!(xfer->stats.total_blocks % 50)) {
 
-          /* if it's been at least a second */
-          /* TODO: ensure equal sample spacing! several UPDATE_PERIOD's may fit into time of 50 packets */
+          /* if it's been at least 350ms */
           if (get_usec_since(&(xfer->stats.this_time)) > UPDATE_PERIOD) {
 
             /* repeat our retransmission requests */
@@ -573,10 +582,8 @@ int command_get(command_t *command, ttp_session_t *session)
                 goto abort;
             }
 
-            /* show our current statistics */
+            /* send and show our current statistics */
             ttp_update_stats(session);
-
-            //gettimeofday(&repeat_time, NULL);
          }
       }
 
@@ -623,8 +630,10 @@ int command_get(command_t *command, ttp_session_t *session)
     /* display the final results */
     mbit_thru     = 8.0 * xfer->stats.total_blocks * session->parameter->block_size;
     mbit_good     = mbit_thru - 8.0 * xfer->stats.total_recvd_retransmits * session->parameter->block_size;
+    mbit_file     = 8.0 * xfer->file_size;
     mbit_thru    /= (1024.0*1024.0);
     mbit_good    /= (1024.0*1024.0);
+    mbit_file    /= (1024.0*1024.0);
     time_secs     = delta / 1e6;
     printf("PC performance figure : %Lu packets dropped (if high this indicates receiving PC overload)\n", 
                                          (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
@@ -632,7 +641,8 @@ int command_get(command_t *command, ttp_session_t *session)
     printf("Total packet data     : %0.2f Mbit\n", mbit_thru);
     printf("Goodput data          : %0.2f Mbit\n", mbit_good);
     printf("Throughput            : %0.2f Mbps\n", mbit_thru / time_secs);
-    printf("GOODPUT               : %0.2f Mbps\n", mbit_good / time_secs);
+    printf("Goodput w/ restarts   : %0.2f Mbps\n", mbit_good / time_secs);
+    printf("Final file rate       : %0.2f Mbps\n", mbit_file / time_secs);
     printf("Transfer mode         : ");
     if (session->parameter->lossless) {
         if (xfer->stats.total_lost == 0) {
@@ -972,6 +982,9 @@ inline int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.33  2008/07/19 20:30:50  jwagnerhki
+ * added DEBUG_RETX, rate with req restarts, actual file transfer rate, comment cleanup, endblock triggers re-queue of blocks missing from gapless to end
+ *
  * Revision 1.32  2008/07/19 20:01:25  jwagnerhki
  * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
  *
