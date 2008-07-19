@@ -202,7 +202,7 @@ typedef struct {
     u_int64_t           file_size;                /* the total file size (in bytes)              */
     u_int32_t           block_count;              /* the total number of blocks in the file      */
     u_int32_t           next_block;               /* the index of the next block we expect       */
-    u_int32_t           gapless_till_block;       /* the last block in the fully received range  */
+    u_int32_t           gapless_to_block;         /* the last block in the fully received range  */
     retransmit_t        retransmit;               /* the retransmission data for the transfer    */
     statistics_t        stats;                    /* the statistical data for the transfer       */
     ring_buffer_t      *ring_buffer;              /* the blocks waiting for a disk write         */
@@ -288,6 +288,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.10  2008/07/19 20:01:25  jwagnerhki
+ * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
+ *
  * Revision 1.9  2008/07/19 19:42:32  jwagnerhki
  * inline got_block
  *

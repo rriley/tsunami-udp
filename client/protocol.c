@@ -317,86 +317,98 @@ int ttp_repeat_retransmit(ttp_session_t *session)
     retransmit_t     *rexmit = &(session->transfer.retransmit);
     ttp_transfer_t   *xfer = &session->transfer;
 
-    /* skip blanks (e.g. in semi-lossy, or completely lossess transfer) */
-    if (rexmit->index_max == 0) return 0;
+    #ifdef DEBUG_RETX
+    fprintf(stderr, "ttp_repeat_retransmit: index_max=%u\n", rexmit->index_max);
+    #endif
 
-    /* to keep Valgrind happy */
+    /* reset */
     memset(retransmission, 0, sizeof(retransmission));
+    xfer->stats.this_retransmits = 0;
+    count = 0;
 
-    /* if the queue is huge (over MAX_RETRANSMISSION_BUFFER entries) */
-    if (rexmit->index_max >= MAX_RETRANSMISSION_BUFFER) {
+    /* discard received blocks from the list and prepare retransmit requests */
+    for (entry = 0; (entry<rexmit->index_max) && (count<MAX_RETRANSMISSION_BUFFER); ++entry) {
 
-        /* prepare a restart-at request, restart from first block (assumes rexmit->table is ordered) */
+        /* get the block number */
+        block = rexmit->table[entry];
+
+        /* if we want the block */
+        if (block && !got_block(session, block)) {
+
+            /* save it */
+            rexmit->table[count] = block;
+
+            /* insert retransmit request */
+            retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
+            retransmission[count].block        = htonl(block);
+            ++count;
+
+            #ifdef DEBUG_RETX
+            // printf("retx %lu\n", block);
+            #endif
+        }
+    }
+
+    /* if there are too many entries, restart transfer from earlier point */
+    if (count >= MAX_RETRANSMISSION_BUFFER) {
+
+        /* restart from first missing block */
+        block                          = min(xfer->block_count, xfer->gapless_to_block + 1);
         retransmission[0].request_type = htons(REQUEST_RESTART);
-        retransmission[0].block        = htonl(rexmit->table[0]);
+        retransmission[0].block        = htonl(block);
 
         /* send out the request */
         status = fwrite(&retransmission[0], sizeof(retransmission[0]), 1, session->server);
-        if ((status <= 0) || fflush(session->server))
+        if (status <= 0) {
             return warn("Could not send restart-at request");
+        }
 
-        /* remember the request was sent - we can then discard blocks that are still on the line */
-        xfer->restart_pending    = 1;
-        xfer->restart_lastidx    = rexmit->table[rexmit->index_max - 1];
-        xfer->restart_wireclearidx = min(xfer->block_count, xfer->restart_lastidx + xfer->on_wire_estimate);
+        /* remember the request so we can then ignore blocks that are still on the wire */
+        xfer->restart_pending        = 1;
+        xfer->restart_lastidx        = rexmit->table[rexmit->index_max - 1];
+        xfer->restart_wireclearidx   = min(xfer->block_count, xfer->restart_lastidx + xfer->on_wire_estimate);
 
         #ifdef DEBUG_RETX
-        printf("ttp_repeat_restransmit: restart_pending=1, start at %u, last index %u\n", rexmit->table[0], xfer->restart_lastidx );
+        printf("ttp_repeat_restransmit: restart_pending=1, range %u to %u, clear at %u, gapless to %u, old head %u\n",
+               block, xfer->restart_lastidx, xfer->restart_wireclearidx, xfer->gapless_to_block, xfer->next_block);
         #endif
 
-        /* reset the retransmission table */
-        xfer->next_block             = rexmit->table[0];
-        xfer->stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
-        rexmit->index_max            = 0;
+        /* reset the retransmission table and head block */
+        rexmit->index_max = 0;
+        xfer->next_block  = block;
 
-        /* and return */
-        return 0;
+       xfer->stats.this_retransmits = MAX_RETRANSMISSION_BUFFER;
+
+    /* queue is small enough */
+    } else {
+
+        /* update to shrunken size */
+        rexmit->index_max = count;
+
+        /* update the statistics */
+        xfer->stats.this_retransmits   = count;
+        xfer->stats.total_retransmits += count;
+
+        /* send out the requests */
+        if (count > 0) {
+            status = fwrite(retransmission, sizeof(retransmission_t), count, session->server);
+            if (status <= 0) {
+                return warn("Could not send retransmit requests");
+            }
+        }
+
+    }//if(num entries)
+
+    /* flush the server connection */
+    if (fflush(session->server)) {
+        return warn("Could not flush retransmit requests");
     }
 
-   /* for each table entry, discard from the table those blocks we don't want, and */ 
-   /* prepare a retransmit request */
-   xfer->stats.this_retransmits = 0;
-   for (entry = 0; entry < rexmit->index_max; ++entry) {
-
-      /* get the block number */
-      block = rexmit->table[entry];
-
-      /* if we want the block */
-      if (block && !got_block(session, block)) {
-
-         /* save it */
-         rexmit->table[count] = block;
-
-         /* prepare a retransmit request */
-         retransmission[count].request_type = htons(REQUEST_RETRANSMIT);
-         retransmission[count].block        = htonl(block);
-         ++count;
-
-         #ifdef DEBUG_RETX
-         printf("retx %lu\n", block);
-         #endif
-      }
-   }
-   rexmit->index_max = count;
-
-   /* update the statistics */
-   xfer->stats.this_retransmits   = count;
-   xfer->stats.total_retransmits += count;
-
-   /* send out the requests */
-   if (count > 0) {
-      status = fwrite(retransmission, sizeof(retransmission_t), count, session->server);
-      if (status <= 0) {
-         return warn("Could not send retransmit requests");
-      }
-   }
-
-   /* flush the server connection */
-   if (fflush(session->server))
-      return warn("Could not clear retransmission buffer");
-
-   /* we succeeded */
-   return 0;
+    /* we succeeded */
+    #ifdef DEBUG_RETX
+    fprintf(stderr, "ttp_repeat_retransmit: post-index_max=%u\n", rexmit->index_max);
+    #endif
+    return 0;
 }
 
 
@@ -412,12 +424,14 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
    u_int32_t     tmp32_ins = 0, tmp32_up;
    u_int32_t     idx = 0;
    #endif
+
    u_int32_t    *ptr;
    retransmit_t *rexmit = &(session->transfer.retransmit);
 
    /* double checking: if we already got the block, don't add it */
-   if (got_block(session, block)) 
+   if (got_block(session, block)) {
       return 0;
+   }
 
    /* if we don't have space for the request */
    if (rexmit->index_max >= rexmit->table_size) {
@@ -431,18 +445,26 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
       rexmit->table = ptr;
       memset(rexmit->table + rexmit->table_size, 0, sizeof(u_int32_t) * rexmit->table_size);
       rexmit->table_size *= 2;
+
+      #if DEBUG_RETX
+      fprintf(stderr, "ttp_request_retransmit: new table size is %u entries\n", rexmit->table_size);
+      #endif
    }
 
    #ifndef RETX_REQBLOCK_SORTING
+
    /* store the request */
    rexmit->table[rexmit->index_max] = block;
    rexmit->index_max++;
-   return 0;
+
    #else
+
    /* 
     * Store the request via "insertion sort"
     * this maintains a sequentially sorted table and discards duplicate requests,
     * and does not flood the net with so many unnecessary retransmissions like old Tsunami did
+    * -- however, this can be very slow on high loss transfers! with slow CPU this causes
+    *    even more loss : consider well if you want to enable the feature or not
     */
 
    /* seek to insertion point or end - could use binary search here... */
@@ -668,6 +690,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.27  2008/07/19 20:01:25  jwagnerhki
+ * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
+ *
  * Revision 1.26  2008/07/19 14:59:53  jwagnerhki
  * added restart_wireclearidx variable
  *

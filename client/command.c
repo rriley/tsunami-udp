@@ -409,7 +409,7 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* we start by expecting block #1 */
     xfer->next_block = 1;
-    xfer->gapless_till_block = 0;
+    xfer->gapless_to_block = 0;
 
    /*---------------------------
    * START TIMING
@@ -490,7 +490,7 @@ int command_get(command_t *command, ttp_session_t *session)
              if (!session->parameter->lossless) {
                 if (session->parameter->losswindow_ms == 0) {
                     /* lossy transfer, no retransmits */
-                    xfer->gapless_till_block = this_block;
+                    xfer->gapless_to_block = this_block;
                 } else {
                     /* semi-lossy transfer, purge data past specified approximate time window */
                     double path_capability;
@@ -499,7 +499,7 @@ int command_get(command_t *command, ttp_session_t *session)
                     u_int32_t earliest_block = this_block -
                        min(
                          1024 * 1024 * path_capability / (8 * session->parameter->block_size),  // # of blocks inside window
-                         (this_block - xfer->gapless_till_block)                                // # of blocks missing (tops)
+                         (this_block - xfer->gapless_to_block)                                  // # of blocks missing (tops)
                        );
                     for (block = earliest_block; block < this_block; ++block) {
                         if (ttp_request_retransmit(session, block) < 0) {
@@ -509,7 +509,7 @@ int command_get(command_t *command, ttp_session_t *session)
                     }
                     // hop over the missing section
                     xfer->next_block = earliest_block;
-                    xfer->gapless_till_block = earliest_block;
+                    xfer->gapless_to_block = earliest_block;
                 }
 
              /* lossless transfer mode, request all missing data to be resent */
@@ -524,8 +524,8 @@ int command_get(command_t *command, ttp_session_t *session)
           }//if(missing blocks)
 
           /* advance the index of the gapless section going from start block to highest block  */
-          while (got_block(session, xfer->gapless_till_block + 1)) {
-              xfer->gapless_till_block++;
+          while (got_block(session, xfer->gapless_to_block + 1)) {
+              xfer->gapless_to_block++;
           }
 
           /* if this is an orignal, we expect to receive the successor to this block next */
@@ -972,6 +972,9 @@ inline int got_block(ttp_session_t* session, u_int32_t blocknr)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.32  2008/07/19 20:01:25  jwagnerhki
+ * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
+ *
  * Revision 1.31  2008/07/19 19:42:32  jwagnerhki
  * inline got_block
  *
