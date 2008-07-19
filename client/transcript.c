@@ -83,8 +83,9 @@ void xscript_close(ttp_session_t *session, u_int64_t delta)
     mb_file /= (1024.0*1024.0);
     secs     = delta/1e6;
 
-    fprintf(xfer->transcript, "mb_transmitted = %0.2f\n", mb_thru);
-    fprintf(xfer->transcript, "mb_usable = %0.2f\n", mb_good);
+    fprintf(xfer->transcript, "mbyte_transmitted = %0.2f\n", mb_thru);
+    fprintf(xfer->transcript, "mbyte_usable = %0.2f\n", mb_good);
+    fprintf(xfer->transcript, "mbyte_file = %0.2f\n", mb_file);
     fprintf(xfer->transcript, "duration = %0.2f\n", secs);
     fprintf(xfer->transcript, "throughput = %0.2f\n", 8.0 * mb_thru / secs);
     fprintf(xfer->transcript, "goodput_with_restarts = %0.2f\n", 8.0 * mb_good / secs);
@@ -182,6 +183,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.9  2008/07/19 20:44:34  jwagnerhki
+ * show Mbit File Data, transcript.c show mbyte_transmitted mbyte_usable mbyte_file
+ *
  * Revision 1.8  2008/07/19 20:27:00  jwagnerhki
  * rate with restarts and actual effective rate
  *
