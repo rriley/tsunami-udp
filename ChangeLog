@@ -3,6 +3,18 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 38
+  ... 
+
+v1.1 CvsBuild 38dev (testing version!)
+ - changes to client code:
+   - make use of "xfer->restart_wireclearidx" variable as upper limit to ignored blocks
+     after a REQUEST_RESTART - now even on very high loss networks the transfer won't get stuck
+   - transcript.c to show "mbyte" (mbyte_transmitted)
+   - show Mbit amount of File Data and real final throughput
+     - in these figures, transmit restarts and their "new" data are not counted as "throughput"
+   -...
+
 v1.1 CvsBuild 37:
  - changes to server code:
    - progress printf: current IPD target is printed as floating point not integer
