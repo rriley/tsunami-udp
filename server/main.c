@@ -333,12 +333,13 @@ void client_handler(ttp_session_t *session)
             /* loop until we clear out the broken message */
             int sofar = result;
             while (sofar < sizeof(retransmission)) {
-                result = read(session->client_fd, &retransmission, sizeof(retransmission) - sofar);
+                result = read(session->client_fd, &retransmission + sofar, sizeof(retransmission) - sofar);
                 if ((result < 0) && (errno != EAGAIN))
                     error("Split message recovery failed");
                 else if (result > 0)
                     sofar += result;
             }
+            fprintf(stderr, "Recovered and discarded broken message (type %d).\n", retransmission.request_type);
             continue;
         }
 
@@ -595,6 +596,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.39  2008/11/07 08:58:14  jwagnerhki
+ * report broken message
+ *
  * Revision 1.38  2008/07/19 19:58:26  jwagnerhki
  * fclose(xfer->vsib)
  *
