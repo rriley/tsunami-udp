@@ -1,8 +1,5 @@
 #!/bin/sh
 
-drudgetoolsdir="/usr2/oper/tools"
-scriptoutdir="~"
-
 if [ "$1" == "" ]; then
   echo -e "Usage:  MhDrudge.sh experimentname"
   echo -e "   Calls drudg to create .snp and .prc"
@@ -11,9 +8,10 @@ if [ "$1" == "" ]; then
 fi
 
 # -- purge
-skdf="$1.skd"
-prcf="/usr2/proc/$1mh.prc"
-snpf="/usr2/sched/$1mh.snp"
+basef=${1%.skd}
+skdf="${basef}.skd"
+prcf="/usr2/proc/${basef}mh.prc"
+snpf="/usr2/sched/${basef}mh.snp"
 if [ -e $prcf ]; then
    echo -n "Proc $prcf exists (y to delete): "
    read action
@@ -33,8 +31,6 @@ if [ -e $snpf ]; then
    fi
 fi
 
-pushd $scriptoutdir >&1 /dev/null
-
 # -- drudg the files
 #  Mh\n
 #  11\n -- equipment type
@@ -45,13 +41,11 @@ pushd $scriptoutdir >&1 /dev/null
 #  0\n -- exit
 keystr="Mh\n11\n8 10 0 0\n12\n \n3\n0\n";
 echo -e $keystr | drudg $skdf
-sleep 2 # bad way to allow 'drudg' to finish before we continue
+sleep 2
 
 # -- create PC-EVN scripts
-$drudgetoolsdir/makeRecexpt.sh $snpf $1 Mh
-$drudgetoolsdir/makeRecexpt-tsunami.sh $snpf $1 Mh
-
-popd >&1 /dev/null
+./makeRecexpt.sh $snpf ${basef} Mh
+./makeRecexpt-tsunami.sh $snpf ${basef} Mh
 
   # TODO: add Gerhards samplerate detect for ./recpass
 
@@ -59,11 +53,11 @@ popd >&1 /dev/null
 echo
 echo "Done drudg'ing and created recexpt scripts"
 echo "Start experiment in fieldsystem with: "
-echo "> proc=$1mh"
+echo "> proc=${basef}mh"
 echo "> setupsx    (assuming geo-VLBI...)"
-echo "> schedule=$1mh"
+echo "> schedule=${basef}mh"
 echo "Start recexpt scripts on client PC."
 echo
 
-# scp "recexptsunami_$1*" jwagner@kurp:/home/jwagner/public_html/expscripts
+# scp "recexptsunami_${basef}*" jwagner@kurp:/home/jwagner/public_html/expscripts
 # http://www.metsahovi.fi/~jwagner/expscripts/
