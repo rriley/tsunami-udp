@@ -79,6 +79,7 @@
  *------------------------------------------------------------------------*/
 
 void *disk_thread   (void *arg);
+void  dump_blockmap (const char *postfix, const ttp_transfer_t *xfer);
 int   parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den);
 
 
@@ -256,6 +257,7 @@ int command_get(command_t *command, ttp_session_t *session)
     u_int16_t       this_type = 0;              /* the block type for the block just received     */
     u_int64_t       delta = 0;                  /* generic holder of elapsed times                */
     u_int32_t       block = 0;                  /* generic holder of a block number               */
+    u_int32_t       dumpcount = 0;
 
     double          mbit_thru, mbit_good;       /* helpers for final statistics                   */
     double          mbit_file;
@@ -584,6 +586,13 @@ int command_get(command_t *command, ttp_session_t *session)
 
             /* send and show our current statistics */
             ttp_update_stats(session);
+
+            /* progress blockmap (DEBUG) */
+            if (session->parameter->blockdump) {
+                char postfix[64];
+                snprintf(postfix, 63, ".bmap%u", dumpcount++);
+                dump_blockmap(postfix, xfer);
+            }
          }
       }
 
@@ -670,23 +679,7 @@ int command_get(command_t *command, ttp_session_t *session)
 
     /* dump the received packet bitfield to a file, with added filename prefix ".blockmap" */
     if (session->parameter->blockdump) {
-       FILE *fbits;
-       u_char *dump_file;
-
-       dump_file = calloc(strlen(xfer->local_filename) + 16, sizeof(u_char));
-       strcpy((char*)dump_file, xfer->local_filename);
-       strcat((char*)dump_file, ".blockmap");
-
-       /* write: [4 bytes block_count] [map byte 0] [map byte 1] ... [map (partial) byte N] */
-       fbits = fopen((char*)dump_file, "wb");
-       if (fbits != NULL) {
-         fwrite(&xfer->block_count, sizeof(xfer->block_count), 1, fbits);
-         fwrite(xfer->received, sizeof(u_char), xfer->block_count / 8 + 1, fbits);
-         fclose(fbits);
-       } else {
-         warn("Could not create a file for the blockmap dump");
-       }
-       free(dump_file);
+       dump_blockmap(".blockmap", xfer);
     }
 
     /* close our open files */
@@ -980,9 +973,40 @@ inline int got_block(ttp_session_t* session, u_int32_t blocknr)
     return (session->transfer.received[blocknr / 8] & (1 << (blocknr % 8)));
 }
 
+/*------------------------------------------------------------------------
+ * void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
+ *
+ * Writes the current bitmap of received block accounting into
+ * a file named like the transferred file but with an extra postfix.
+ *------------------------------------------------------------------------*/
+void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
+{
+    FILE *fbits;
+    char *fname;
+
+    /* append postfix */
+    fname = calloc(strlen(xfer->local_filename) + strlen(postfix) + 1, sizeof(u_char));
+    strcpy(fname, xfer->local_filename);
+    strcat(fname, postfix);
+
+    /* write: [4 bytes block_count] [map byte 0] [map byte 1] ... [map N (partial final byte)] */
+    fbits = fopen(fname, "wb");
+    if (fbits != NULL) {
+        fwrite(&xfer->block_count, sizeof(xfer->block_count), 1, fbits);
+        fwrite(xfer->received, sizeof(u_char), xfer->block_count / 8 + 1, fbits);
+        fclose(fbits);
+    } else {
+        fprintf(stderr, "Could not create a file for the blockmap dump");
+    }
+    free(fname);
+}
+
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.36  2009/03/18 11:49:04  jwagnerhki
+ * moved blockmap dump into separate function
+ *
  * Revision 1.35  2008/07/19 20:59:15  jwagnerhki
  * use xfer->restart_wireclearidx as upper limit to ignored blocks
  *
