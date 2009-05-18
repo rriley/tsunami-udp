@@ -192,7 +192,7 @@ int create_udp_socket(ttp_parameter_t *parameter)
         sprintf(buffer, "%d", parameter->client_port + higher_port_attempt);
         status = getaddrinfo(NULL, buffer, &hints, &info);
         if (status) {
-        return warn("Error in getting address information");
+            return warn("Error in getting address information");
         }
         
         /* for each address structure returned */
@@ -205,18 +205,10 @@ int create_udp_socket(ttp_parameter_t *parameter)
                 continue;
             }
             
-            /* make the socket reusable (but then only one client can run per machine...) */
-            //status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
-            //if (status < 0) {
-            //    close(socket_fd);
-            //    continue;
-            //}
-            
             /* set the receive buffer size */
             status = setsockopt(socket_fd, SOL_SOCKET, SO_RCVBUF, &parameter->udp_buffer, sizeof(parameter->udp_buffer));
             if (status < 0) {
-                close(socket_fd);
-                continue;
+                warn("Error in resizing UDP receive buffer");
             }
             
             /* and try to bind it */
@@ -249,6 +241,9 @@ int create_udp_socket(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: network.c,v $
+ * Revision 1.10  2009/05/18 07:51:31  jwagnerhki
+ * SO_RCVBUF failure non-fatal
+ *
  * Revision 1.9  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
