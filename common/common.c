@@ -316,7 +316,7 @@ u_int64_t get_udp_in_errors()
     /* need to reopen /proc/net/snmp file each time, it won't update otherwise */
     f = fopen("/proc/net/snmp", "r");
     if (!f) {
-        warn("could not open /proc/net/snmp");
+        // warn("could not open /proc/net/snmp");
         return 0;
     }
 
@@ -347,6 +347,9 @@ u_int64_t get_udp_in_errors()
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.9  2009/05/18 07:59:06  jwagnerhki
+ * skip warning about /proc/net/snmp that does not exist on non-Linux platforms
+ *
  * Revision 1.8  2008/07/18 06:27:05  jwagnerhki
  * build 37 with iperf-style server send rate control
  *
