@@ -127,7 +127,7 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
     xfer->ipd_current = max(min(xfer->ipd_current, 10000.0), param->ipd_time);
 
     /* build the stats string */
-    sprintf(stats_line, "%6u %3.2fus %5uus %7u %6.2f%% %3u\n",
+    sprintf(stats_line, "%6u %3.2fus %5uus %7u %6.2f %3u\n",
         retransmission->error_rate, (float)xfer->ipd_current, param->ipd_time, xfer->block,
         100.0 * xfer->block / param->block_count, session->session_id);
 
@@ -396,12 +396,14 @@ int ttp_open_transfer(ttp_session_t *session)
        write(session->client_fd, file_no, 10);
 
        printf("\nSent multi-GET filename count and array size to client\n");
+       memset(message, 0, sizeof(message));
        read(session->client_fd, message, 8);
        printf("Client response: %s\n", message);
 
        for(i=0; i<param->total_files; i++)
           write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
 
+       memset(message, 0, sizeof(message));
        read(session->client_fd, message, 8);
        printf("Sent file list, client response: %s\n", message);
 
@@ -585,6 +587,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.33  2009/05/18 09:46:14  jwagnerhki
+ * removed %% from stats line
+ *
  * Revision 1.32  2008/07/18 06:27:06  jwagnerhki
  * build 37 with iperf-style server send rate control
  *
