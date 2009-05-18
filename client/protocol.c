@@ -653,7 +653,7 @@ int ttp_update_stats(ttp_session_t *session)
             printf("Data transferred: %0.2f GB\n",       data_total / u_giga);
             printf("Transfer rate:    %0.2f Mbps\n",     data_total_rate);
             printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, 100.0*total_retransmits_fraction);
-            printf("OS UDP rx errors: %Lu\n",            (ull_t)(stats->this_udp_errors - stats->start_udp_errors));
+            printf("OS UDP rx errors: %llu\n",           (ull_t)(stats->this_udp_errors - stats->start_udp_errors));
 
         /* line mode */
         } else {
@@ -690,6 +690,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.28  2009/05/18 08:40:31  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.27  2008/07/19 20:01:25  jwagnerhki
  * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
  *

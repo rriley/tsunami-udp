@@ -144,7 +144,7 @@ void xscript_open(ttp_session_t *session)
 
     /* write out all the header information */
     fprintf(xfer->transcript, "filename = %s\n",    xfer->filename);
-    fprintf(xfer->transcript, "file_size = %Lu\n",  (ull_t)param->file_size);
+    fprintf(xfer->transcript, "file_size = %llu\n",  (ull_t)param->file_size);
     fprintf(xfer->transcript, "block_count = %u\n", param->block_count);
     fprintf(xfer->transcript, "udp_buffer = %u\n",  param->udp_buffer);
     fprintf(xfer->transcript, "block_size = %u\n",  param->block_size);
@@ -166,6 +166,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.10  2009/05/18 08:40:31  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.9  2008/07/19 14:29:35  jwagnerhki
  * Mbps rate reported with 2-pow-20
  *

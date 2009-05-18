@@ -644,7 +644,7 @@ int command_get(command_t *command, ttp_session_t *session)
     mbit_good    /= (1024.0*1024.0);
     mbit_file    /= (1024.0*1024.0);
     time_secs     = delta / 1e6;
-    printf("PC performance figure : %Lu packets dropped (if high this indicates receiving PC overload)\n", 
+    printf("PC performance figure : %llu packets dropped (if high this indicates receiving PC overload)\n", 
                                          (ull_t)(xfer->stats.this_udp_errors - xfer->stats.start_udp_errors));
     printf("Transfer duration     : %0.2f seconds\n", time_secs);
     printf("Total packet data     : %0.2f Mbit\n", mbit_thru);
@@ -666,7 +666,7 @@ int command_get(command_t *command, ttp_session_t *session)
         } else {
             printf("semi-lossy, time window %d ms\n", session->parameter->losswindow_ms);
         }
-        printf("Data blocks lost      : %Lu (%.2f%% of data) per user-specified time window constraint\n",
+        printf("Data blocks lost      : %llu (%.2f%% of data) per user-specified time window constraint\n",
                   (ull_t)xfer->stats.total_lost, ( 100.0 * xfer->stats.total_lost ) / xfer->block_count );
     }
     printf("\n");
@@ -1004,6 +1004,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.37  2009/05/18 08:40:31  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.36  2009/03/18 11:49:04  jwagnerhki
  * moved blockmap dump into separate function
  *

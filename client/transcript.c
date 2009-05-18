@@ -157,7 +157,7 @@ void xscript_open(ttp_session_t *session)
     /* write out all the header information */
     fprintf(xfer->transcript, "remote_filename = %s\n", xfer->remote_filename);
     fprintf(xfer->transcript, "local_filename = %s\n",  xfer->local_filename);
-    fprintf(xfer->transcript, "file_size = %Lu\n",      (ull_t)xfer->file_size);
+    fprintf(xfer->transcript, "file_size = %llu\n",     (ull_t)xfer->file_size);
     fprintf(xfer->transcript, "block_count = %u\n",     xfer->block_count);
     fprintf(xfer->transcript, "udp_buffer = %u\n",      param->udp_buffer);
     fprintf(xfer->transcript, "block_size = %u\n",      param->block_size);
@@ -183,6 +183,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.10  2009/05/18 08:40:31  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.9  2008/07/19 20:44:34  jwagnerhki
  * show Mbit File Data, transcript.c show mbyte_transmitted mbyte_usable mbyte_file
  *

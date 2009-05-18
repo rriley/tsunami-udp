@@ -410,7 +410,7 @@ void client_handler(ttp_session_t *session)
 
     /* report on the transfer */
     if (param->verbose_yn)
-        fprintf(stderr, "Server %d transferred %Lu bytes in %0.2f seconds (%0.1f Mbps)\n",
+        fprintf(stderr, "Server %d transferred %llu bytes in %0.2f seconds (%0.1f Mbps)\n",
                 session->session_id, (ull_t)param->file_size, delta / 1000000.0, 
                 8.0 * param->file_size / (delta * 1e-6 * 1024*1024) );
 
@@ -562,7 +562,7 @@ void process_options(int argc, char *argv[], ttp_parameter_t *parameter)
             stat(parameter->file_names[counter], &filestat);
             parameter->file_sizes[counter] = filestat.st_size;
             parameter->file_name_size += strlen(parameter->file_names[counter])+1;
-            fprintf(stderr, " %3d)   %-20s  %Lu bytes\n", counter+1, parameter->file_names[counter], (ull_t)parameter->file_sizes[counter]);
+            fprintf(stderr, " %3d)   %-20s  %llu bytes\n", counter+1, parameter->file_names[counter], (ull_t)parameter->file_sizes[counter]);
         }
         fprintf(stderr, "total characters %d\n", parameter->file_name_size);
     }
@@ -596,6 +596,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.40  2009/05/18 08:40:29  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.39  2008/11/07 08:58:14  jwagnerhki
  * report broken message
  *

@@ -143,22 +143,22 @@ void xscript_open(ttp_session_t *session)
     }
 
     /* write out all the header information */
-    fprintf(xfer->transcript, "filename = %s\n",    xfer->filename);
-    fprintf(xfer->transcript, "file_size = %Lu\n",  (ull_t)param->file_size);
-    fprintf(xfer->transcript, "block_count = %Lu\n",(ull_t)param->block_count);
-    fprintf(xfer->transcript, "udp_buffer = %u\n",  param->udp_buffer);
-    fprintf(xfer->transcript, "block_size = %u\n",  param->block_size);
-    fprintf(xfer->transcript, "target_rate = %Lu\n",(ull_t)param->target_rate);
-    fprintf(xfer->transcript, "error_rate = %u\n",  param->error_rate);
-    fprintf(xfer->transcript, "slower_num = %u\n",  param->slower_num);
-    fprintf(xfer->transcript, "slower_den = %u\n",  param->slower_den);
-    fprintf(xfer->transcript, "faster_num = %u\n",  param->faster_num);
-    fprintf(xfer->transcript, "faster_den = %u\n",  param->faster_den);
-    fprintf(xfer->transcript, "ipd_time = %u\n",    param->ipd_time);
-    fprintf(xfer->transcript, "ipd_current = %u\n", (u_int32_t)xfer->ipd_current);
+    fprintf(xfer->transcript, "filename = %s\n",      xfer->filename);
+    fprintf(xfer->transcript, "file_size = %llu\n",  (ull_t)param->file_size);
+    fprintf(xfer->transcript, "block_count = %llu\n",(ull_t)param->block_count);
+    fprintf(xfer->transcript, "udp_buffer = %u\n",    param->udp_buffer);
+    fprintf(xfer->transcript, "block_size = %u\n",    param->block_size);
+    fprintf(xfer->transcript, "target_rate = %llu\n",(ull_t)param->target_rate);
+    fprintf(xfer->transcript, "error_rate = %u\n",    param->error_rate);
+    fprintf(xfer->transcript, "slower_num = %u\n",    param->slower_num);
+    fprintf(xfer->transcript, "slower_den = %u\n",    param->slower_den);
+    fprintf(xfer->transcript, "faster_num = %u\n",    param->faster_num);
+    fprintf(xfer->transcript, "faster_den = %u\n",    param->faster_den);
+    fprintf(xfer->transcript, "ipd_time = %u\n",      param->ipd_time);
+    fprintf(xfer->transcript, "ipd_current = %u\n",   (u_int32_t)xfer->ipd_current);
     fprintf(xfer->transcript, "protocol_version = 0x%x\n", PROTOCOL_REVISION);
     fprintf(xfer->transcript, "software_version = %s\n",   TSUNAMI_CVS_BUILDNR);
-    fprintf(xfer->transcript, "ipv6 = %u\n",        param->ipv6_yn);
+    fprintf(xfer->transcript, "ipv6 = %u\n",          param->ipv6_yn);
     fprintf(xfer->transcript, "\n");
     fflush(session->transfer.transcript);
 }
@@ -166,6 +166,9 @@ void xscript_open(ttp_session_t *session)
 
 /*========================================================================
  * $Log: transcript.c,v $
+ * Revision 1.11  2009/05/18 08:40:29  jwagnerhki
+ * Lu formatting to llu
+ *
  * Revision 1.10  2008/07/19 14:29:35  jwagnerhki
  * Mbps rate reported with 2-pow-20
  *
