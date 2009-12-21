@@ -558,6 +558,7 @@ int ttp_update_stats(ttp_session_t *session)
     int               status;
     static u_int32_t  iteration = 0;
     static char       stats_line[128];
+    static char       stats_flags[8];
 
     double ff, fb;
 
@@ -614,10 +615,14 @@ int ttp_update_stats(ttp_session_t *session)
         return warn("Could not send error rate information");
 
     /* build the stats string */    
+    sprintf(stats_flags, "%c%c",
+               ((session->transfer.restart_pending) ? 'R' : '-'),
+               (!(session->transfer.ring_buffer->space_ready) ? 'F' : '-')
+    );
     #ifdef STATS_MATLABFORMAT
-    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8Lu\n",
+    sprintf(stats_line, "%02d\t%02d\t%02d\t%03d\t%4u\t%6.2f\t%6.1f\t%5.1f\t%7u\t%6.1f\t%6.1f\t%5.1f\t%5d\t%5d\t%7u\t%8u\t%8Lu\t%s\n",
     #else
-    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8Lu\n",
+    sprintf(stats_line, "%02d:%02d:%02d.%03d %4u %6.2fM %6.1fMbps %5.1f%% %7u %6.1fG %6.1fMbps %5.1f%% %5d %5d %7u %8u %8Lu %s\n",
     #endif
         hours, minutes, seconds, milliseconds,
         stats->total_blocks - stats->this_blocks,
@@ -632,7 +637,8 @@ int ttp_update_stats(ttp_session_t *session)
         session->transfer.ring_buffer->count_data,
         session->transfer.blocks_left, 
         stats->this_retransmits,
-        (ull_t)(stats->this_udp_errors - stats->start_udp_errors)
+        (ull_t)(stats->this_udp_errors - stats->start_udp_errors),
+        stats_flags
         );
 
     /* give the user a show if they want it */
@@ -652,7 +658,8 @@ int ttp_update_stats(ttp_session_t *session)
             printf("Blocks count:     %u\n",             session->transfer.stats.total_blocks);
             printf("Data transferred: %0.2f GB\n",       data_total / u_giga);
             printf("Transfer rate:    %0.2f Mbps\n",     data_total_rate);
-            printf("Retransmissions:  %u (%0.2f%%)\n\n", stats->total_retransmits, 100.0*total_retransmits_fraction);
+            printf("Retransmissions:  %u (%0.2f%%)\n",   stats->total_retransmits, 100.0*total_retransmits_fraction);
+            printf("Flags          :  %s\n\n",           stats_flags);
             printf("OS UDP rx errors: %llu\n",           (ull_t)(stats->this_udp_errors - stats->start_udp_errors));
 
         /* line mode */
@@ -690,6 +697,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.29  2009/12/21 17:09:08  jwagnerhki
+ * print flags
+ *
  * Revision 1.28  2009/05/18 08:40:31  jwagnerhki
  * Lu formatting to llu
  *
