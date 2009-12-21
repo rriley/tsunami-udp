@@ -212,12 +212,12 @@ int ttp_authenticate(ttp_session_t *session, const u_char *secret)
 	return warn("Access to random data is broken");
 
     /* send the random data to the client */
-    status = write(session->client_fd, random, 64);
+    status = full_write(session->client_fd, random, 64);
     if (status < 0)
 	return warn("Could not send authentication challenge to client");
 
     /* read the results back from the client */
-    status = read(session->client_fd, client_digest, 16);
+    status = full_read(session->client_fd, client_digest, 16);
     if (status < 0)
 	return warn("Could not read authentication response from client");
 
@@ -225,12 +225,12 @@ int ttp_authenticate(ttp_session_t *session, const u_char *secret)
     prepare_proof(random, 64, secret, server_digest);
     for (i = 0; i < 16; ++i)
 	if (client_digest[i] != server_digest[i]) {
-	    write(session->client_fd, "\001", 1);
+	    full_write(session->client_fd, "\001", 1);
 	    return warn("Authentication failed");
 	}
 
     /* try to tell the client it worked */
-    status = write(session->client_fd, "\000", 1);
+    status = full_write(session->client_fd, "\000", 1);
     if (status < 0)
 	return warn("Could not send authentication confirmation to client");
 
@@ -256,12 +256,12 @@ int ttp_negotiate(ttp_session_t *session)
     int       status;
 
     /* send our protocol revision number to the client */
-    status = write(session->client_fd, &server_revision, 4);
+    status = full_write(session->client_fd, &server_revision, 4);
     if (status < 0)
 	return warn("Could not send protocol revision number");
 
     /* read the protocol revision number from the client */
-    status = read(session->client_fd, &client_revision, 4);
+    status = full_read(session->client_fd, &client_revision, 4);
     if (status < 0)
 	return warn("Could not read protocol revision number");
 
@@ -294,7 +294,7 @@ int ttp_open_port(ttp_session_t *session)
     getpeername(session->client_fd, address, &(session->transfer.udp_length));
 
     /* read in the port number from the client */
-    status = read(session->client_fd, &port, 2);
+    status = full_read(session->client_fd, &port, 2);
     if (status < 0)
 	return warn("Could not read UDP port number");
     if (ipv6_yn)
@@ -368,13 +368,13 @@ int ttp_open_transfer(ttp_session_t *session)
        * Send strings:   NNN \0   name1 \0 len1 \0     nameN \0 lenN \0
        */
        snprintf(file_no, sizeof(file_no), "%u", param->total_files);
-       write(session->client_fd, file_no, strlen(file_no)+1);
+       full_write(session->client_fd, file_no, strlen(file_no)+1);
        for(i=0; i<param->total_files; i++) {
-          write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
+          full_write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
           snprintf(message, sizeof(message), "%Lu", (ull_t)(param->file_sizes[i]));
-          write(session->client_fd, message, strlen(message)+1);
+          full_write(session->client_fd, message, strlen(message)+1);
        }
-       read(session->client_fd, message, 1);
+       full_read(session->client_fd, message, 1);
        return warn("File list sent!");
 
     } else if(!strcmp(filename,"*")) {
@@ -384,22 +384,22 @@ int ttp_open_transfer(ttp_session_t *session)
        */
        memset(size, 0, sizeof(size));
        snprintf(size, sizeof(size), "%u", param->file_name_size);
-       write(session->client_fd, size, 10);
+       full_write(session->client_fd, size, 10);
 
        memset(file_no, 0, sizeof(file_no));
        snprintf(file_no, sizeof(file_no), "%u", param->total_files);
-       write(session->client_fd, file_no, 10);
+       full_write(session->client_fd, file_no, 10);
 
        printf("\nSent multi-GET filename count and array size to client\n");
        memset(message, 0, sizeof(message));
-       read(session->client_fd, message, 8);
+       full_read(session->client_fd, message, 8);
        printf("Client response: %s\n", message);
 
        for(i=0; i<param->total_files; i++)
-          write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
+          full_write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
 
        memset(message, 0, sizeof(message));
-       read(session->client_fd, message, 8);
+       full_read(session->client_fd, message, 8);
        printf("Sent file list, client response: %s\n", message);
 
        status = read_line(session->client_fd, filename, MAX_FILENAME_LENGTH);
@@ -425,7 +425,7 @@ int ttp_open_transfer(ttp_session_t *session)
     if (xfer->file == NULL) {
         sprintf(g_error, "File '%s' does not exist or cannot be read", filename);
     	/* signal failure to the client */
-    	status = write(session->client_fd, "\x008", 1);
+    	status = full_write(session->client_fd, "\x008", 1);
     	if (status < 0)
             warn("Could not signal request failure to client");
         return warn(g_error);
@@ -465,7 +465,7 @@ int ttp_open_transfer(ttp_session_t *session)
     xfer->vsib = fopen("/dev/vsib", "r");
     if (xfer->vsib == NULL) {
         sprintf(g_error, "VSIB board does not exist in /dev/vsib or it cannot be read");
-        status = write(session->client_fd, "\002", 1);
+        status = full_write(session->client_fd, "\002", 1);
         if (status < 0) {
             warn("Could not signal request failure to client");
         }
@@ -477,7 +477,7 @@ int ttp_open_transfer(ttp_session_t *session)
         xfer->file = fopen(filename, "wb");
         if (xfer->file == NULL) {
             sprintf(g_error, "Could not open local file '%s' for writing", filename);
-            status = write(session->client_fd, "\x010", 1);
+            status = full_write(session->client_fd, "\x010", 1);
             if (status < 0) {
                 warn("Could not signal request failure to client");
             }
@@ -513,23 +513,23 @@ int ttp_open_transfer(ttp_session_t *session)
     gettimeofday(&ping_s,NULL);
 
     /* try to signal success to the client */
-    status = write(session->client_fd, "\000", 1);
+    status = full_write(session->client_fd, "\000", 1);
     if (status < 0)
 	return warn("Could not signal request approval to client");
 
     /* read in the block size, target bitrate, and error rate */
-    if (read(session->client_fd, &param->block_size,  4) < 0) return warn("Could not read block size");            param->block_size  = ntohl(param->block_size);
-    if (read(session->client_fd, &param->target_rate, 4) < 0) return warn("Could not read target bitrate");        param->target_rate = ntohl(param->target_rate);
-    if (read(session->client_fd, &param->error_rate,  4) < 0) return warn("Could not read error rate");            param->error_rate  = ntohl(param->error_rate);
+    if (full_read(session->client_fd, &param->block_size,  4) < 0) return warn("Could not read block size");            param->block_size  = ntohl(param->block_size);
+    if (full_read(session->client_fd, &param->target_rate, 4) < 0) return warn("Could not read target bitrate");        param->target_rate = ntohl(param->target_rate);
+    if (full_read(session->client_fd, &param->error_rate,  4) < 0) return warn("Could not read error rate");            param->error_rate  = ntohl(param->error_rate);
 
     /* end round trip time estimation */
     gettimeofday(&ping_e,NULL);
 
     /* read in the slowdown and speedup factors */
-    if (read(session->client_fd, &param->slower_num,  2) < 0) return warn("Could not read slowdown numerator");    param->slower_num  = ntohs(param->slower_num);
-    if (read(session->client_fd, &param->slower_den,  2) < 0) return warn("Could not read slowdown denominator");  param->slower_den  = ntohs(param->slower_den);
-    if (read(session->client_fd, &param->faster_num,  2) < 0) return warn("Could not read speedup numerator");     param->faster_num  = ntohs(param->faster_num);
-    if (read(session->client_fd, &param->faster_den,  2) < 0) return warn("Could not read speedup denominator");   param->faster_den  = ntohs(param->faster_den);
+    if (full_read(session->client_fd, &param->slower_num,  2) < 0) return warn("Could not read slowdown numerator");    param->slower_num  = ntohs(param->slower_num);
+    if (full_read(session->client_fd, &param->slower_den,  2) < 0) return warn("Could not read slowdown denominator");  param->slower_den  = ntohs(param->slower_den);
+    if (full_read(session->client_fd, &param->faster_num,  2) < 0) return warn("Could not read speedup numerator");     param->faster_num  = ntohs(param->faster_num);
+    if (full_read(session->client_fd, &param->faster_den,  2) < 0) return warn("Could not read speedup denominator");   param->faster_den  = ntohs(param->faster_den);
 
     #ifndef VSIB_REALTIME
     /* try to find the file statistics */
@@ -552,10 +552,10 @@ int ttp_open_transfer(ttp_session_t *session)
     param->epoch       = time(NULL);
 
     /* reply with the length, block size, number of blocks, and run epoch */
-    file_size   = htonll(param->file_size);    if (write(session->client_fd, &file_size,   8) < 0) return warn("Could not submit file size");
-    block_size  = htonl (param->block_size);   if (write(session->client_fd, &block_size,  4) < 0) return warn("Could not submit block size");
-    block_count = htonl (param->block_count);  if (write(session->client_fd, &block_count, 4) < 0) return warn("Could not submit block count");
-    epoch       = htonl (param->epoch);        if (write(session->client_fd, &epoch,       4) < 0) return warn("Could not submit run epoch");
+    file_size   = htonll(param->file_size);    if (full_write(session->client_fd, &file_size,   8) < 0) return warn("Could not submit file size");
+    block_size  = htonl (param->block_size);   if (full_write(session->client_fd, &block_size,  4) < 0) return warn("Could not submit block size");
+    block_count = htonl (param->block_count);  if (full_write(session->client_fd, &block_count, 4) < 0) return warn("Could not submit block count");
+    epoch       = htonl (param->epoch);        if (full_write(session->client_fd, &epoch,       4) < 0) return warn("Could not submit run epoch");
 
     /*calculate and convert RTT to u_sec*/
     session->parameter->wait_u_sec=(ping_e.tv_sec - ping_s.tv_sec)*1000000+(ping_e.tv_usec-ping_s.tv_usec);
@@ -577,6 +577,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.31  2009/12/21 15:03:35  jwagnerhki
+ * use full_read full_write
+ *
  * Revision 1.30  2009/12/21 14:44:17  jwagnerhki
  * fix Ubuntu Karmic compile warning, clear str message before read
  *
