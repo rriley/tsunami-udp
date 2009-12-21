@@ -3,8 +3,20 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 39
+  - changes to client code:
+   - client statistics output now shows state-flags
+   - smoother access to ring buffer
+   - fix sending of feedback even during pending transfer restart,
+     this gets rid of the "no hearbeat" server messages
+  - changes to server code:
+   - TCP uses read() and write() wrappers that insure full-size operations
+   - fix missing clears of some string buffers before receiving client strings
+   - fix Ubuntu Karmic compile warnings
+
 v1.1 CvsBuild 38
-  ... 
+  - unfortunately the include/tsunami-cvs-buildnr.h in the 38dev was already 38
+    so we skip this build and name the new one 39!
 
 v1.1 CvsBuild 38dev (testing version!)
  - changes to client code:
