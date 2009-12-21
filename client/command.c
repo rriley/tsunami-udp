@@ -454,8 +454,8 @@ int command_get(command_t *command, ttp_session_t *session)
       }
 
       /* main transfer control logic */
-      if (xfer->ring_buffer->space_ready == 1 /* don't let disk-I/O freeze stop feedback of stats to server */
-          && (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending))
+      if (!ring_full(xfer->ring_buffer)) /* don't let disk-I/O freeze stop feedback of stats to server */
+      if (!got_block(session, this_block) || this_type == TS_BLOCK_TERMINATE || xfer->restart_pending)
       {
 
           /* insert new blocks into disk write ringbuffer */
@@ -1006,6 +1006,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.40  2009/12/21 17:48:06  jwagnerhki
+ * use mutexed ring_full
+ *
  * Revision 1.39  2009/12/21 17:14:10  jwagnerhki
  * dont increment gapless_to_block infinitely
  *
