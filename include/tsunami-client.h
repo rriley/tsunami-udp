@@ -267,6 +267,7 @@ int            ring_destroy          (ring_buffer_t *ring);
 int            ring_dump             (ring_buffer_t *ring, FILE *out);
 u_char        *ring_peek             (ring_buffer_t *ring);
 int            ring_pop              (ring_buffer_t *ring);
+int            ring_full             (ring_buffer_t *ring);
 u_char        *ring_reserve          (ring_buffer_t *ring);
 
 #ifdef VSIB_REALTIME
@@ -288,6 +289,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.11  2009/12/21 17:46:33  jwagnerhki
+ * added mutexed ring_full
+ *
  * Revision 1.10  2008/07/19 20:01:25  jwagnerhki
  * gapless_to_block, ttp_repeat_retransmit changed to purge duplicates first then decide on request-restart, more DEBUG_RETX output
  *

@@ -77,6 +77,31 @@ const int EMPTY = -1;
 
 
 /*------------------------------------------------------------------------
+ * int ring_full(ring_buffer *ring);
+ *
+ * Returns non-zero if ring is full.
+ *------------------------------------------------------------------------*/
+int ring_full(ring_buffer_t *ring)
+{
+    int status, full;
+
+    /* get a lock on the ring buffer */
+    status = pthread_mutex_lock(&ring->mutex);
+    if (status != 0)
+        error("Could not get access to ring buffer mutex");
+
+    full = !ring->space_ready;
+
+    /* release the mutex */
+    status = pthread_mutex_unlock(&ring->mutex);
+    if (status != 0)
+        error("Could not relinquish access to ring buffer mutex");
+
+    /* we succeeded */
+    return full;
+}
+
+/*------------------------------------------------------------------------
  * int ring_cancel(ring_buffer *ring);
  *
  * Cancels the reservation for the slot that was most recently reserved.
@@ -415,6 +440,9 @@ u_char *ring_reserve(ring_buffer_t *ring)
 
 /*========================================================================
  * $Log: ring.c,v $
+ * Revision 1.3  2009/12/21 17:46:33  jwagnerhki
+ * added mutexed ring_full
+ *
  * Revision 1.2  2007/12/07 18:10:28  jwagnerhki
  * cleaned away 64-bit compile warnings, used tsunami-client.h
  *
