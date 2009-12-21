@@ -146,8 +146,8 @@ int        read_line               (int fd, char *buffer, size_t buffer_length);
 int        fread_line              (FILE *f, char *buffer, size_t buffer_length);
 void       usleep_that_works       (u_int64_t usec);
 u_int64_t  get_udp_in_errors       ();
-ssize_t full_write(int, const void*, size_t);
-ssize_t full_read(int, const void*, size_t);
+ssize_t    full_write              (int, const void*, size_t);
+ssize_t    full_read               (int, void*, size_t);
 
 /* error.c */
 int        error_handler           (const char *file, int line, const char *message, int fatal_yn);

@@ -370,7 +370,7 @@ ssize_t full_write(int fd, const void *buf, size_t count)
  *
  * Reads into buffer, no partial reads.
  *------------------------------------------------------------------------*/
-ssize_t full_read(int fd, const void *buf, size_t count)
+ssize_t full_read(int fd, void *buf, size_t count)
 {
    ssize_t nread = 0;
    while (nread < count) {
@@ -386,6 +386,9 @@ ssize_t full_read(int fd, const void *buf, size_t count)
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.12  2009/12/21 15:10:38  jwagnerhki
+ * removed const from full_read
+ *
  * Revision 1.11  2009/12/21 15:08:39  jwagnerhki
  * full_read should read not write ;)
  *
