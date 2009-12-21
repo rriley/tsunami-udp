@@ -67,6 +67,7 @@
 #include <time.h>        /* for time-handling functions           */
 #include <unistd.h>      /* for standard Unix system calls        */
 #include <stdlib.h>      /* for standard library definitions      */
+#include <errno.h>
 
 #include "md5.h"         /* for MD5 message digest support        */
 #include "tsunami.h"     /* for Tsunami function prototypes, etc. */
@@ -322,9 +323,9 @@ u_int64_t get_udp_in_errors()
 
     /* seek for header line currently with poor programming using poor /proc interface...  */
     while (!feof(f)) {
-        fgets(buf, sizeof(buf)-1, f);
+        if (!fgets(buf, sizeof(buf)-1, f)) break;
         if (strstr(buf, "Udp:") && strstr(buf, "InErrors") && !feof(f)) {
-            fgets(buf, sizeof(buf)-1, f);      
+            if(!fgets(buf, sizeof(buf)-1, f)) break;
             len = strlen(buf);
             /* Udp: InDatagrams NoPorts InErrors OutDatagrams
                Udp: 62771599 31995 4244 63083342              */
@@ -345,8 +346,49 @@ u_int64_t get_udp_in_errors()
     return errs;
 }
 
+/*------------------------------------------------------------------------
+ * ssize_t full_write(int fd, const void *buf, size_t count);
+ *
+ * Writes the buffer in its entirety, no partial writes.
+ *------------------------------------------------------------------------*/
+ssize_t full_write(int fd, const void *buf, size_t count)
+{
+   ssize_t written = 0;
+   while (written < count) {
+       ssize_t nwr = write(fd, buf+written, count-written);
+       if (nwr < 0) {
+           fprintf(stderr, "full_write(): %s\n", strerror(errno));
+           return written;
+       }
+       written += nwr;
+   }
+   return written;
+}
+
+/*------------------------------------------------------------------------
+ * ssize_t full_read(int fd, const void *buf, size_t count);
+ *
+ * Reads into buffer, no partial reads.
+ *------------------------------------------------------------------------*/
+ssize_t full_read(int fd, const void *buf, size_t count)
+{
+   ssize_t nread = 0;
+   while (nread < count) {
+       ssize_t nrd = write(fd, buf+nread, count-nread);
+       if (nrd < 0) {
+           fprintf(stderr, "full_read(): %s\n", strerror(errno));
+           return nread;
+       }
+       nread += nrd;
+   }
+   return nread;
+}
+
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.10  2009/12/21 15:02:22  jwagnerhki
+ * check fgets return val, added full_read full_write
+ *
  * Revision 1.9  2009/05/18 07:59:06  jwagnerhki
  * skip warning about /proc/net/snmp that does not exist on non-Linux platforms
  *
