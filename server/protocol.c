@@ -134,7 +134,7 @@ int ttp_accept_retransmit(ttp_session_t *session, retransmission_t *retransmissi
 	/* print a status report */
 	if (!(iteration++ % 23))
 	    printf(" erate     ipd  target   block   %%done srvNr\n");
-	printf(stats_line);
+	printf("%s", stats_line);
 
 	/* print to the transcript if the user wants */
 	if (param->transcript_yn)
@@ -391,12 +391,14 @@ int ttp_open_transfer(ttp_session_t *session)
        write(session->client_fd, file_no, 10);
 
        printf("\nSent multi-GET filename count and array size to client\n");
+       memset(message, 0, sizeof(message));
        read(session->client_fd, message, 8);
        printf("Client response: %s\n", message);
 
        for(i=0; i<param->total_files; i++)
           write(session->client_fd, param->file_names[i], strlen(param->file_names[i])+1);
 
+       memset(message, 0, sizeof(message));
        read(session->client_fd, message, 8);
        printf("Sent file list, client response: %s\n", message);
 
@@ -575,6 +577,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.30  2009/12/21 14:44:17  jwagnerhki
+ * fix Ubuntu Karmic compile warning, clear str message before read
+ *
  * Revision 1.29  2009/05/18 09:46:13  jwagnerhki
  * removed %% from stats line
  *

@@ -370,7 +370,7 @@ void client_handler(ttp_session_t *session)
                                 1e-6*delta);
             if (param->transcript_yn)
                xscript_data_log(session, stats_line);
-            fprintf(stderr, stats_line);
+            fprintf(stderr, "%s", stats_line);
 
             /* handle timeout for normal file transfers */
             #ifndef VSIB_REALTIME
@@ -597,6 +597,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.42  2009/12/21 14:44:17  jwagnerhki
+ * fix Ubuntu Karmic compile warning, clear str message before read
+ *
  * Revision 1.41  2009/05/18 09:46:13  jwagnerhki
  * removed %% from stats line
  *
