@@ -526,7 +526,7 @@ int command_get(command_t *command, ttp_session_t *session)
           }//if(missing blocks)
 
           /* advance the index of the gapless section going from start block to highest block  */
-          while (got_block(session, xfer->gapless_to_block + 1)) {
+          while (got_block(session, xfer->gapless_to_block + 1) && (xfer->gapless_to_block < xfer->block_count)) {
               xfer->gapless_to_block++;
           }
 
@@ -1006,6 +1006,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.39  2009/12/21 17:14:10  jwagnerhki
+ * dont increment gapless_to_block infinitely
+ *
  * Revision 1.38  2009/12/21 17:05:16  jwagnerhki
  * sends stats even during restart pending
  *
