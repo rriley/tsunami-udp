@@ -374,7 +374,7 @@ ssize_t full_read(int fd, const void *buf, size_t count)
 {
    ssize_t nread = 0;
    while (nread < count) {
-       ssize_t nrd = write(fd, buf+nread, count-nread);
+       ssize_t nrd = read(fd, buf+nread, count-nread);
        if (nrd < 0) {
            fprintf(stderr, "full_read(): %s\n", strerror(errno));
            return nread;
@@ -386,6 +386,9 @@ ssize_t full_read(int fd, const void *buf, size_t count)
 
 /*========================================================================
  * $Log: common.c,v $
+ * Revision 1.11  2009/12/21 15:08:39  jwagnerhki
+ * full_read should read not write ;)
+ *
  * Revision 1.10  2009/12/21 15:02:22  jwagnerhki
  * check fgets return val, added full_read full_write
  *
