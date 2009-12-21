@@ -481,7 +481,7 @@ int command_get(command_t *command, ttp_session_t *session)
           /* transmit restart: avoid re-triggering on blocks still down the wire before server reacts */
           if ((xfer->restart_pending) && (this_type != TS_BLOCK_TERMINATE)) {
               if ((this_block > xfer->restart_lastidx) && (this_block <= xfer->restart_wireclearidx)) {
-                  continue;
+                  goto send_stats;
               }
           }
 
@@ -571,6 +571,8 @@ int command_get(command_t *command, ttp_session_t *session)
           }
 
       }//if(not a duplicate block)
+
+    send_stats:
 
       /* repeat our server feedback and requests if it's time */
       if (!(xfer->stats.total_blocks % 50)) {
@@ -1004,6 +1006,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.38  2009/12/21 17:05:16  jwagnerhki
+ * sends stats even during restart pending
+ *
  * Revision 1.37  2009/05/18 08:40:31  jwagnerhki
  * Lu formatting to llu
  *
