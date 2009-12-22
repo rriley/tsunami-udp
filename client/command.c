@@ -607,6 +607,7 @@ int command_get(command_t *command, ttp_session_t *session)
      *---------------------------*/
 
     /* tell the server to quit transmitting */
+    close(xfer->udp_fd);
     if (ttp_request_stop(session) < 0) {
 	warn("Could not request end of transfer");
 	goto abort;
@@ -685,7 +686,6 @@ int command_get(command_t *command, ttp_session_t *session)
     }
 
     /* close our open files */
-    close(xfer->udp_fd);
     if (xfer->file     != NULL) { fclose(xfer->file);    xfer->file     = NULL; }
 
     /* deallocate memory */
@@ -1016,6 +1016,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.45  2009/12/22 23:42:51  jwagnerhki
+ * close UDP already before signaling server to stop
+ *
  * Revision 1.44  2009/12/22 23:22:42  jwagnerhki
  * at end of xfer first stop server then flush
  *
