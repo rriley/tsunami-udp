@@ -980,6 +980,8 @@ int parse_fraction(const char *fraction, u_int16_t *num, u_int16_t *den)
  *------------------------------------------------------------------------*/
 inline int got_block(ttp_session_t* session, u_int32_t blocknr)
 {
+    if (blocknr > session->transfer.block_count)
+        return 1;
     return (session->transfer.received[blocknr / 8] & (1 << (blocknr % 8)));
 }
 
@@ -1014,6 +1016,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.43  2009/12/22 23:14:29  jwagnerhki
+ * got_block catch out of range
+ *
  * Revision 1.42  2009/12/22 18:29:59  jwagnerhki
  * fix 'set rateadjust no'
  *
