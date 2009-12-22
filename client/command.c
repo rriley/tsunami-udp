@@ -606,6 +606,12 @@ int command_get(command_t *command, ttp_session_t *session)
      * STOP TIMING
      *---------------------------*/
 
+    /* tell the server to quit transmitting */
+    if (ttp_request_stop(session) < 0) {
+	warn("Could not request end of transfer");
+	goto abort;
+    }
+
     /* add a stop block to the ring buffer */
     datagram = ring_reserve(xfer->ring_buffer);
     *((u_int32_t *) datagram) = 0;
@@ -615,12 +621,6 @@ int command_get(command_t *command, ttp_session_t *session)
     /* wait for the disk thread to die */
     if (pthread_join(disk_thread_id, NULL) < 0)
 	warn("Disk thread terminated with error");
-
-    /* tell the server to quit transmitting */
-    if (ttp_request_stop(session) < 0) {
-	warn("Could not request end of transfer");
-	goto abort;
-    }
 
     /*------------------------------------
      * MORE TRUE POINT TO STOP TIMING ;-)
@@ -1016,6 +1016,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.44  2009/12/22 23:22:42  jwagnerhki
+ * at end of xfer first stop server then flush
+ *
  * Revision 1.43  2009/12/22 23:14:29  jwagnerhki
  * got_block catch out of range
  *
