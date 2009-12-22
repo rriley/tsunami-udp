@@ -694,6 +694,12 @@ int command_get(command_t *command, ttp_session_t *session)
     if (xfer->received != NULL) { free(xfer->received);  xfer->received = NULL; }
     if (local_datagram != NULL) { free(local_datagram);  local_datagram = NULL; }
 
+    /* update the target rate */
+    if (session->parameter->rate_adjust) {
+        session->parameter->target_rate = 1.15 * 1e6 * (mbit_file / time_secs);
+        printf("Adjusting target rate to %d Mbps for next transfer.\n", (int)(session->parameter->target_rate/1e6));
+    }
+
     /* more files in "GET *" ? */
     } while(++f_counter<f_total);
 
@@ -844,6 +850,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
       else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
       else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
       else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
+      else if (!strcasecmp(command->text[1], "rateadjust")) parameter->rate_adjust   = (strcmp(command->text[2], "yes") ? 1 : 0);
       else if (!strcasecmp(command->text[1], "rate"))       { 
         long multiplier = 1;
         char *cmd = (char*)command->text[2];
@@ -882,6 +889,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
     if (do_all || !strcasecmp(command->text[1], "ip"))         printf("ip = %s\n",          parameter->ipv6_yn       ? "v6"  : "v4");
     if (do_all || !strcasecmp(command->text[1], "output"))     printf("output = %s\n",      (parameter->output_mode == SCREEN_MODE) ? "screen" : "line");
     if (do_all || !strcasecmp(command->text[1], "rate"))       printf("rate = %u\n",        parameter->target_rate);
+    if (do_all || !strcasecmp(command->text[1], "rateadjust")) printf("rateadjust = %s\n",  parameter->rate_adjust   ? "yes" : "no");
     if (do_all || !strcasecmp(command->text[1], "error"))      printf("error = %0.2f%%\n",  parameter->error_rate / 1000.0);
     if (do_all || !strcasecmp(command->text[1], "slowdown"))   printf("slowdown = %d/%d\n", parameter->slower_num, parameter->slower_den);
     if (do_all || !strcasecmp(command->text[1], "speedup"))    printf("speedup = %d/%d\n",  parameter->faster_num, parameter->faster_den);
@@ -1006,6 +1014,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.41  2009/12/22 18:08:11  jwagnerhki
+ * adjust future target rate after every transfer
+ *
  * Revision 1.40  2009/12/21 17:48:06  jwagnerhki
  * use mutexed ring_full
  *

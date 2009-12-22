@@ -80,6 +80,7 @@ const u_char     DEFAULT_VERBOSE_YN    = 1;            /* the default verbosity 
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;            /* the default transcript setting               */
 const u_char     DEFAULT_IPV6_YN       = 0;            /* the default IPv6 setting                     */
 const u_char     DEFAULT_OUTPUT_MODE   = LINE_MODE;    /* the default output mode (SCREEN or LINE)     */
+const u_char     DEFAULT_RATE_ADJUST   = 1;            /* the default for remembering achieved rate    */
 const u_int32_t  DEFAULT_TARGET_RATE   = 650000000;    /* the default target rate (in bps)             */
 const u_int32_t  DEFAULT_ERROR_RATE    = 7500;         /* the default threshhold error rate (% x 1000) */
 const u_int16_t  DEFAULT_SLOWER_NUM    = 25;           /* default numerator in the slowdown factor     */
@@ -121,6 +122,7 @@ void reset_client(ttp_parameter_t *parameter)
     parameter->ipv6_yn       = DEFAULT_IPV6_YN;
     parameter->output_mode   = DEFAULT_OUTPUT_MODE;
     parameter->target_rate   = DEFAULT_TARGET_RATE;
+    parameter->rate_adjust   = DEFAULT_RATE_ADJUST;
     parameter->error_rate    = DEFAULT_ERROR_RATE;
     parameter->slower_num    = DEFAULT_SLOWER_NUM;
     parameter->slower_den    = DEFAULT_SLOWER_DEN;
@@ -139,6 +141,9 @@ void reset_client(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.7  2009/12/22 18:08:11  jwagnerhki
+ * adjust future target rate after every transfer
+ *
  * Revision 1.6  2008/11/28 15:21:59  jwagnerhki
  * default blocksize reduced to 1kB
  *

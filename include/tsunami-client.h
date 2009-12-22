@@ -86,6 +86,7 @@ extern const u_char     DEFAULT_VERBOSE_YN;     /* the default verbosity setting
 extern const u_char     DEFAULT_TRANSCRIPT_YN;  /* the default transcript setting               */
 extern const u_char     DEFAULT_IPV6_YN;        /* the default IPv6 setting                     */
 extern const u_char     DEFAULT_OUTPUT_MODE;    /* the default output progress mode             */
+extern const u_char     DEFAULT_RATE_ADJUST;    /* the default for remembering achieved rate    */
 extern const u_int32_t  DEFAULT_TARGET_RATE;    /* the default target rate (in bps)             */
 extern const u_int32_t  DEFAULT_ERROR_RATE;     /* the default threshhold error rate (% x 1000) */
 extern const u_int16_t  DEFAULT_SLOWER_NUM;     /* default numerator in the slowdown factor     */
@@ -177,6 +178,7 @@ typedef struct {
     u_char              output_mode;              /* either SCREEN_MODE or LINE_MODE             */
     u_int32_t           block_size;               /* the size of each block (in bytes)           */
     u_int32_t           target_rate;              /* the transfer rate that we're targetting     */
+    u_char              rate_adjust;              /* 1 for adjusting target to achieved rate     */
     u_int32_t           error_rate;               /* the threshhold error rate (in % x 1000)     */
     u_int16_t           slower_num;               /* the numerator of the increase-IPD factor    */
     u_int16_t           slower_den;               /* the denominator of the increase-IPD factor  */
@@ -289,6 +291,9 @@ void           xscript_open          (ttp_session_t *session);
 
 /*========================================================================
  * $Log: tsunami-client.h,v $
+ * Revision 1.12  2009/12/22 18:08:10  jwagnerhki
+ * adjust future target rate after every transfer
+ *
  * Revision 1.11  2009/12/21 17:46:33  jwagnerhki
  * added mutexed ring_full
  *
