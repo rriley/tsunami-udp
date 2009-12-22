@@ -194,7 +194,7 @@ void client_handler(ttp_session_t *session)
     struct timeval    lastfeedback;                  /* the time since last client feedback            */
     struct timeval    lasthblostreport;              /* the time since last 'heartbeat lost' report    */
     u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
-    int               retransmitlen = 0;             /* number of bytes read from retransmission queue */
+    int               retransmitlen;                 /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
     int64_t           ipd_time;                      /* the time to delay/sleep after packet, signed   */
     int64_t           ipd_usleep_diff;               /* the time correction to ipd_time, signed        */
@@ -314,7 +314,7 @@ void client_handler(ttp_session_t *session)
             retransmitlen = 0;
 
         /* if we have no retransmission */
-        } else if (retransmitlen <= 0) {
+        } else if (retransmitlen < sizeof(retransmission_t)) {
 
             /* build the block */
             xfer->block = min(xfer->block + 1, param->block_count);
@@ -598,6 +598,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.45  2009/12/22 23:13:48  jwagnerhki
+ * fix retransmitlen
+ *
  * Revision 1.44  2009/12/22 23:04:36  jwagnerhki
  * throttle the blast speed of terminate-block
  *
