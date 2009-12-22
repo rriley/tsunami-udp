@@ -198,6 +198,7 @@ void client_handler(ttp_session_t *session)
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
     int64_t           ipd_time;                      /* the time to delay/sleep after packet, signed   */
     int64_t           ipd_usleep_diff;               /* the time correction to ipd_time, signed        */
+    int64_t           ipd_time_max;
     int               status;
     ttp_transfer_t   *xfer  = &session->transfer;
     ttp_parameter_t  *param =  session->parameter;
@@ -260,6 +261,7 @@ void client_handler(ttp_session_t *session)
     prevpacketT            = start;
     deadconnection_counter = 0;
     ipd_time               = 0;
+    ipd_time_max           = 0;
     ipd_usleep_diff        = 0;
     retransmitlen          = 0;
 
@@ -277,6 +279,7 @@ void client_handler(ttp_session_t *session)
         if (ipd_usleep_diff > 0 || ipd_time > 0) {
             ipd_time += ipd_usleep_diff;
         }
+        ipd_time_max = (ipd_time > ipd_time_max) ? ipd_time : ipd_time_max;
 
         /* see if transmit requests are available */
         status = read(session->client_fd, ((char*)&retransmission)+retransmitlen, sizeof(retransmission)-retransmitlen);
@@ -390,6 +393,9 @@ void client_handler(ttp_session_t *session)
         }
 
          /* wait before handling the next packet */
+         if (block_type == TS_BLOCK_TERMINATE) {
+             usleep_that_works(10*ipd_time_max);
+         }
          if (ipd_time > 0) {
              usleep_that_works(ipd_time);
          }
@@ -592,6 +598,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.44  2009/12/22 23:04:36  jwagnerhki
+ * throttle the blast speed of terminate-block
+ *
  * Revision 1.43  2009/12/22 19:57:53  jwagnerhki
  * attempt to handle partial feedback reads differently
  *
