@@ -436,6 +436,10 @@ int ttp_request_retransmit(ttp_session_t *session, u_int32_t block)
    /* if we don't have space for the request */
    if (rexmit->index_max >= rexmit->table_size) {
 
+      /* don't overgrow the table */
+      if (rexmit->index_max >= 32*MAX_RETRANSMISSION_BUFFER)
+         return 0;
+
       /* try to reallocate the table twice the size*/
       ptr = (u_int32_t *) realloc(rexmit->table, 2 * sizeof(u_int32_t)*rexmit->table_size);
       if (ptr == NULL)
@@ -697,6 +701,9 @@ int ttp_update_stats(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.30  2009/12/22 23:01:21  jwagnerhki
+ * don't allow the retransmit list size to grow without bounds
+ *
  * Revision 1.29  2009/12/21 17:09:08  jwagnerhki
  * print flags
  *
