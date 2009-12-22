@@ -850,7 +850,7 @@ int command_set(command_t *command, ttp_parameter_t *parameter)
       else if (!strcasecmp(command->text[1], "transcript")) parameter->transcript_yn = (strcmp(command->text[2], "yes") == 0);
       else if (!strcasecmp(command->text[1], "ip"))         parameter->ipv6_yn       = (strcmp(command->text[2], "v6")  == 0);
       else if (!strcasecmp(command->text[1], "output"))     parameter->output_mode   = (strcmp(command->text[2], "screen") ? LINE_MODE : SCREEN_MODE);
-      else if (!strcasecmp(command->text[1], "rateadjust")) parameter->rate_adjust   = (strcmp(command->text[2], "yes") ? 1 : 0);
+      else if (!strcasecmp(command->text[1], "rateadjust")) parameter->rate_adjust   = (strcmp(command->text[2], "yes") == 0);
       else if (!strcasecmp(command->text[1], "rate"))       { 
         long multiplier = 1;
         char *cmd = (char*)command->text[2];
@@ -1014,6 +1014,9 @@ void dump_blockmap(const char *postfix, const ttp_transfer_t *xfer)
 
 /*========================================================================
  * $Log: command.c,v $
+ * Revision 1.42  2009/12/22 18:29:59  jwagnerhki
+ * fix 'set rateadjust no'
+ *
  * Revision 1.41  2009/12/22 18:08:11  jwagnerhki
  * adjust future target rate after every transfer
  *
