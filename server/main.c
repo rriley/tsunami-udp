@@ -194,7 +194,7 @@ void client_handler(ttp_session_t *session)
     struct timeval    lastfeedback;                  /* the time since last client feedback            */
     struct timeval    lasthblostreport;              /* the time since last 'heartbeat lost' report    */
     u_int32_t         deadconnection_counter;        /* the counter for checking dead conn timeout     */
-    int               result;                        /* number of bytes read from retransmission queue */
+    int               retransmitlen = 0;             /* number of bytes read from retransmission queue */
     u_char            datagram[MAX_BLOCK_SIZE + 6];  /* the datagram containing the file block         */
     int64_t           ipd_time;                      /* the time to delay/sleep after packet, signed   */
     int64_t           ipd_usleep_diff;               /* the time correction to ipd_time, signed        */
@@ -261,6 +261,7 @@ void client_handler(ttp_session_t *session)
     deadconnection_counter = 0;
     ipd_time               = 0;
     ipd_usleep_diff        = 0;
+    retransmitlen          = 0;
 
     /* start by blasting out every block */
     xfer->block = 0;
@@ -278,17 +279,19 @@ void client_handler(ttp_session_t *session)
         }
 
         /* see if transmit requests are available */
-        result = read(session->client_fd, &retransmission, sizeof(retransmission));
+        status = read(session->client_fd, ((char*)&retransmission)+retransmitlen, sizeof(retransmission)-retransmitlen);
         #ifndef VSIB_REALTIME
-        if ((result <= 0) && (errno != EAGAIN))
+        if ((status <= 0) && (errno != EAGAIN))
             error("Retransmission read failed");
         #else
-        if ((result <= 0) && (errno != EAGAIN) && (!session->parameter->fileout))
+        if ((status <= 0) && (errno != EAGAIN) && (!session->parameter->fileout))
             error("Retransmission read failed and not writing local backup file");
         #endif
+        if (status > 0)
+            retransmitlen += status;
 
         /* if we have a retransmission */
-        if (result == sizeof(retransmission_t)) {
+        if (retransmitlen == sizeof(retransmission_t)) {
 
             /* store current time */
             lastfeedback           = currpacketT;
@@ -305,42 +308,34 @@ void client_handler(ttp_session_t *session)
             status = ttp_accept_retransmit(session, &retransmission, datagram);
             if (status < 0)
                 warn("Retransmission error");
-            // usleep_that_works(75);
+            retransmitlen = 0;
 
         /* if we have no retransmission */
-        } else if (result <= 0) {
+        } else if (retransmitlen <= 0) {
 
             /* build the block */
             xfer->block = min(xfer->block + 1, param->block_count);
             block_type = (xfer->block == param->block_count) ? TS_BLOCK_TERMINATE : TS_BLOCK_ORIGINAL;
-            result = build_datagram(session, xfer->block, block_type, datagram);
-            if (result < 0) {
+            status = build_datagram(session, xfer->block, block_type, datagram);
+            if (status < 0) {
                 sprintf(g_error, "Could not read block #%u", xfer->block);
                 error(g_error);
             }
 
             /* transmit the block */
-            result = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
-            if (result < 0) {
+            status = sendto(xfer->udp_fd, datagram, 6 + param->block_size, 0, xfer->udp_address, xfer->udp_length);
+            if (status < 0) {
                 sprintf(g_error, "Could not transmit block #%u", xfer->block);
                 warn(g_error);
                 continue;
             }
 
-        /* if we have a partial retransmission message */
-        } else if (result > 0) {
+        /* if we have too long retransmission message */
+        } else if (retransmitlen > sizeof(retransmission_t)) {
 
-            /* loop until we clear out the broken message */
-            int sofar = result;
-            while (sofar < sizeof(retransmission)) {
-                result = read(session->client_fd, &retransmission + sofar, sizeof(retransmission) - sofar);
-                if ((result < 0) && (errno != EAGAIN))
-                    error("Split message recovery failed");
-                else if (result > 0)
-                    sofar += result;
-            }
-            fprintf(stderr, "Recovered and discarded broken message (type %d).\n", retransmission.request_type);
-            continue;
+            fprintf(stderr, "warn: retransmitlen > %d\n", (int)sizeof(retransmission_t));
+            retransmitlen = 0;
+
         }
 
         /* monitor client heartbeat and disconnect dead client */
@@ -597,6 +592,9 @@ void reap(int signum)
 
 /*========================================================================
  * $Log: main.c,v $
+ * Revision 1.43  2009/12/22 19:57:53  jwagnerhki
+ * attempt to handle partial feedback reads differently
+ *
  * Revision 1.42  2009/12/21 14:44:17  jwagnerhki
  * fix Ubuntu Karmic compile warning, clear str message before read
  *
