@@ -3,6 +3,9 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 41
+  - changed default 'rateadjust' to No
+
 v1.1 CvsBuild 40
   - changes to client code:
    - added 'rateadjust' setting: rate for next file transfer is set to 

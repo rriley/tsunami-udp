@@ -80,7 +80,7 @@ const u_char     DEFAULT_VERBOSE_YN    = 1;            /* the default verbosity 
 const u_char     DEFAULT_TRANSCRIPT_YN = 0;            /* the default transcript setting               */
 const u_char     DEFAULT_IPV6_YN       = 0;            /* the default IPv6 setting                     */
 const u_char     DEFAULT_OUTPUT_MODE   = LINE_MODE;    /* the default output mode (SCREEN or LINE)     */
-const u_char     DEFAULT_RATE_ADJUST   = 1;            /* the default for remembering achieved rate    */
+const u_char     DEFAULT_RATE_ADJUST   = 0;            /* the default for remembering achieved rate    */
 const u_int32_t  DEFAULT_TARGET_RATE   = 650000000;    /* the default target rate (in bps)             */
 const u_int32_t  DEFAULT_ERROR_RATE    = 7500;         /* the default threshhold error rate (% x 1000) */
 const u_int16_t  DEFAULT_SLOWER_NUM    = 25;           /* default numerator in the slowdown factor     */
@@ -141,6 +141,9 @@ void reset_client(ttp_parameter_t *parameter)
 
 /*========================================================================
  * $Log: config.c,v $
+ * Revision 1.8  2010/04/14 12:35:07  jwagnerhki
+ * rateadjust is off by default
+ *
  * Revision 1.7  2009/12/22 18:08:11  jwagnerhki
  * adjust future target rate after every transfer
  *
