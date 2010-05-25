@@ -23,7 +23,7 @@ do
   if (($? > 0)); then
      # -- a past scan, decide what to do
      if ((SKIPOLDSCANS>0)); then
-        echo "Skipping old scan - start time was in the past, now it is `date --utc +%Y-%m-%dT%H:%M:%S`)"
+        echo "Skipping old scan - start time was in the past, now it is `date --utc +%Y-%m-%dT%H:%M:%S`"
         continue
      else 
         echo "Not skipping old scan - start time was in the past, now it is `date --utc +%Y-%m-%dT%H:%M:%S`"
