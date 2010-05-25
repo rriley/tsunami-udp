@@ -443,12 +443,13 @@ int ttp_open_transfer(ttp_session_t *session)
 
     #else
 
-    /* get starting time (UTC) and detect whether local disk copy is wanted */
+    /* detect whether local disk copy is wanted */
+    /* note: the same parse_evn_filename() extracts the UTC/VEX/undelimited start time timestamp from the filename */
     if (strrchr(filename,'/') == NULL) {
-        ef = parse_evn_filename(filename);          /* attempt to parse */
+        ef = parse_evn_filename(filename);
         param->fileout = 0;
     } else {
-        ef = parse_evn_filename(strrchr(filename, '/')+1);       /* attempt to parse */
+        ef = parse_evn_filename(strrchr(filename, '/')+1);
         param->fileout = 1;
     }
     if (!ef->valid) {
@@ -456,20 +457,21 @@ int ttp_open_transfer(ttp_session_t *session)
     }
 
     /* get time multiplexing info from EVN filename (currently these are all unused) */
-    if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->totalslots= 1;          /* default to 1 */
-    else 
-      sscanf(get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo), "%d", &(param->totalslots));
-
-    if (get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->slotnumber= 1;          /* default to 1 */
-    else 
-      sscanf(get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo), "%d", &param->slotnumber);
-
-    if (get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo) == 0)
-      param->samplerate= 512;          /* default to 512 Msamples/s */
-    else 
-      sscanf(get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo), "%d", &param->samplerate);
+    if (get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo) == 0) {
+        param->totalslots= 1;          /* default to 1 */
+    } else {
+        sscanf(get_aux_entry("sl",ef->auxinfo, ef->nr_auxinfo), "%d", &(param->totalslots));
+    }
+    if (get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo) == 0) {
+        param->slotnumber= 1;          /* default to 1 */
+    } else {
+        sscanf(get_aux_entry("sn",ef->auxinfo, ef->nr_auxinfo), "%d", &param->slotnumber);
+    }
+    if (get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo) == 0) {
+        param->samplerate= 512;          /* default to 512 Msamples/s */
+    } else { 
+        sscanf(get_aux_entry("sr",ef->auxinfo, ef->nr_auxinfo), "%d", &param->samplerate);
+    }
 
     /* try to open the vsib for reading */
     xfer->vsib = fopen("/dev/vsib", "r");
@@ -553,7 +555,19 @@ int ttp_open_transfer(ttp_session_t *session)
     } else if (get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo) != 0) {
         sscanf(get_aux_entry("dl", ef->auxinfo, ef->nr_auxinfo), "%" SCNu64, (u_int64_t*) &(param->file_size));
     } else {
-        param->file_size = 60LL * 512000000LL * 4LL / 8; /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+       int found = 0;
+       for (i=0; i<ef->nr_auxinfo && !found; i++) {
+          if (strncmp(ef->auxinfo[i], "sl", 2) == 0 || strncmp(ef->auxinfo[i], "dl", 2)) {
+              sscanf(ef->auxinfo[i]+2, "%" SCNu64, (u_int64_t*) &(param->file_size));
+              found = 1;
+          } else if(strncmp(ef->auxinfo[i], "flen", 4) == 0) {
+              sscanf(ef->auxinfo[i]+4, "%" SCNu64, (u_int64_t*) &(param->file_size));
+              found = 1;              
+          }
+       }
+       /* default to amount of bytes equivalent to 4 minutes at 512Mbps */
+       if (!found)
+           param->file_size = 60LL * 512000000LL * 4LL / 8; 
     }
     fprintf(stderr, "Realtime file length in bytes: %Lu\n", (ull_t)param->file_size);
     #endif
@@ -587,6 +601,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.36  2010/05/25 14:36:58  jwagnerhki
+ * add support for 2009 evn aux field convention
+ *
  * Revision 1.35  2009/12/21 15:03:35  jwagnerhki
  * use full_read full_write
  *
