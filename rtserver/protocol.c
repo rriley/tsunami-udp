@@ -557,10 +557,10 @@ int ttp_open_transfer(ttp_session_t *session)
     } else {
        int found = 0;
        for (i=0; i<ef->nr_auxinfo && !found; i++) {
-          if (strncmp(ef->auxinfo[i], "sl", 2) == 0 || strncmp(ef->auxinfo[i], "dl", 2)) {
+          if (!strncmp(ef->auxinfo[i], "sl", 2) || !strncmp(ef->auxinfo[i], "dl", 2)) {
               sscanf(ef->auxinfo[i]+2, "%" SCNu64, (u_int64_t*) &(param->file_size));
               found = 1;
-          } else if(strncmp(ef->auxinfo[i], "flen", 4) == 0) {
+          } else if(!strncmp(ef->auxinfo[i], "flen", 4)) {
               sscanf(ef->auxinfo[i]+4, "%" SCNu64, (u_int64_t*) &(param->file_size));
               found = 1;              
           }
@@ -601,6 +601,9 @@ int ttp_open_transfer(ttp_session_t *session)
 
 /*========================================================================
  * $Log: protocol.c,v $
+ * Revision 1.37  2010/05/25 14:43:21  jwagnerhki
+ * changes to auxinfo parse
+ *
  * Revision 1.36  2010/05/25 14:36:58  jwagnerhki
  * add support for 2009 evn aux field convention
  *
