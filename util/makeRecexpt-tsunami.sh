@@ -54,15 +54,17 @@ cat merged | while read scan expt dur1 dur2 year day clock; do
    # remove leading 0's from day, convert from day-of-year into date
    day=`echo ${day} | sed 's/^[0\t]*//'`;
    day=$(($day - 1))
+
+   # Format: [expt_station_]No0001_yyyy-mm-ddThh:mm:ss
    datestr=`date -d "01/01/${year} + ${day} days" +"%Y-%m-%d"`
-   
-   # debug:
-   #   echo "scan:${scan} expt:${expt} duration:${dur1}s/${dur2}s year:${year} day:${day} time:${clock}   -- ${datestr}T${clock}"
-   
-   # scan03_2006-12-19T11:15:00  300
-   # debug
-   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"
-   echo -e "\t${scan}_${datestr}T${clock}\t$year\t$((day + 1))\t${clock}\t${dur1}"  >> $FOUT
+   # Format: [expt_station_]No0001_yyyydddhhmmss
+   datestr2=`date -u -d "01/01/$year + $day days $clock" +"%04Y%03j%02H%02M%02S"`
+   # Format: [expt_station_]No0001_dddd'd'hh'h'mm'm'ss's'
+   datestr3=`date -u -d "01/01/$year + $day days $clock" +"%03jd%02Hh%02Mm%02Ss"`
+
+   result=`echo -e "\t${scan}_${datestr3}\t$year\t$((day + 1))\t${clock}\t${dur1}"`
+   echo -e "$result"
+   echo -e "$result" >> $FOUT
 done
 echo ")"                 >> $FOUT
 echo "SID=${STATION}"    >> $FOUT
