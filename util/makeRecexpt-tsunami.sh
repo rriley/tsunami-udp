@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Usage:   ./makeRecexpt-tsunami snapfile.snp experiment stationID
-#          ./makeRecexpt-tsunami demo.snp EURO85 On
+#          ./makeRecexpt-tsunami demo.snp eur85 on
 #
 # Input:  SNAP file created with DRUDG from the schedule for your station
 #
@@ -15,7 +15,7 @@
 
 if [ "$1" == "" ] || [ "$2" == "" ] || [ "$3" == "" ]; then
    echo "Syntax: ./makeRecexpt-tsunami.sh snapfile.snp experiment stationID"
-   echo "        ./makeRecexpt-tsunami.sh euro85on.snp EURO85 On"
+   echo "        ./makeRecexpt-tsunami.sh euro85on.snp EURO85 on"
    exit
 fi
 

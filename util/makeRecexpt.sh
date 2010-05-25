@@ -1,21 +1,20 @@
 #!/bin/bash
 #
 # Usage:   ./makeRecexpt.sh snapfile.snp experiment stationID
-#          ./makeRecexpt.sh demo.snp EURO85 On
+#          ./makeRecexpt.sh eur88mh.snp eur88 mh
 #
 # Input:  SNAP file created with DRUDG from the schedule for your station
 #
-# Output: The 'recexpt_[stationID]' file for recording the experiment 
-#         via real-time Tsunami client
-#         You may need to edit 'recpass' for correct server name and 
-#         data rate settings.
+# Output: The 'recexpt_[expt]_[stationID]' file for recording the experiment
+#         using the disk recording tool 'wr'.
+#         You may need to edit 'recpass' for correct RAID path settings.
 #
 # ---code could probably be improved a LOT.....----
 
 
 if [ "$1" == "" ] || [ "$2" == "" ] || [ "$3" == "" ]; then
    echo "Syntax: ./makeRecexpt.sh snapfile.snp experiment stationID"
-   echo "        ./makeRecexpt.sh euro88mh.snp EURO88 Mh"
+   echo "        ./makeRecexpt.sh eur88mh.snp eur88 mh"
    exit
 fi
 
