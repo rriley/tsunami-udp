@@ -63,8 +63,8 @@ cat merged | while read scan expt station dur1 dur2 year day clock; do
    datestr=`date -d "01/01/${year} + ${day} days" +"%Y-%m-%d"`
    # Format: [expt_station_]No0001_yyyydddhhmmss
    datestr2=`date -u -d "01/01/$year + $day days $clock" +"%04Y%03j%02H%02M%02S"`
-   # Format: [expt_station_]No0001_dddd'd'hh'h'mm'm'ss's'
-   datestr3=`date -u -d "01/01/$year + $day days $clock" +"%03jd%02Hh%02Mm%02Ss"`
+   # Format: [expt_station_]No0001_yyyy'y'ddd'd'hh'h'mm'm'ss's'
+   datestr3=`date -u -d "01/01/$year + $day days $clock" +"%04Yy%03jd%02Hh%02Mm%02Ss"`
 
    result=`echo -e "\t${scan}_${datestr3}\t$year\t$((day + 1))\t${clock}\t${dur1}"`
    echo -e "$result"
