@@ -23,16 +23,19 @@ SNP=$1
 EXPT=$2
 STATION=$3
 
+echo "Snap file: $SNP"
+
 # get scan names, convert "," to space
-sed -n -e '/scan_name=/s/scan_name=//p' $SNP | sed -n -e 's/,/ /gp' > scans
+sed -n -e '/scan_name=/s/scan_name=//p' $SNP | sed -n -e 's/,/ /gp' > ./scans
 
 # get start times
-sed -n -e '/preob/,/!/p' $SNP | grep ! | sed -n -e 's/[!.]/ /gp' > starttimes
+# sed -n -e '/preob/,/!/p' $SNP | grep ! | sed -n -e 's/[!.]/ /gp' > ./starttimes
+cat $SNP | grep disk_pos -1 | grep ! | sed -n -e 's/[!.]/ /gp' > ./starttimes
 
 # merge the two files
 I=1
 LC=`wc -l scans | awk '{print $1}'`
-rm -f merged
+rm -f ./merged
 while [ $I -le $LC ]
 do
    SCAN_CURR=`tail -n +$I scans | head -1`
@@ -45,11 +48,11 @@ done
 # create recexpt
 FOUT="recexptsunami_${EXPT}_${STATION}.sh"
 cat recexpt-tsunami.head > $FOUT
-cat merged | while read scan expt dur1 dur2 year day clock; do 
+cat merged | while read scan expt station dur1 dur2 year day clock; do
 
-   if [ "${dur1}" -ne "${dur2}" ]; then
-      clock=$day; day=$year; year=$dur2; dur2=$dur1;
-   fi
+#   if [ "${dur1}" -ne "${dur2}" ]; then
+#      clock=$day; day=$year; year=$dur2; dur2=$dur1;
+#   fi
 
    # remove leading 0's from day, convert from day-of-year into date
    day=`echo ${day} | sed 's/^[0\t]*//'`;
