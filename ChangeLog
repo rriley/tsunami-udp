@@ -3,6 +3,12 @@ The current Tsunami protocol version is: v1.1
 Improvements and protocol version compliant new features
 are added in the cvs builds.
 
+v1.1 CvsBuild 42
+  - changes to realtime server code:
+   - added EVN 2009 filename aux info parsing so that the
+     format with 'ccvvvvv' 2-char code plus value (versus old
+     format 'cc=vvvvv') is supported for the data length field
+
 v1.1 CvsBuild 41
   - changed default 'rateadjust' to No
 
