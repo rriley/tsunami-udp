@@ -1,9 +1,10 @@
 #!/bin/sh
 
-rm -rf Makefile
-rm -rf Makefile.in
-rm -rf */Makefile
-rm -rf */Makefile.in
+rm -f configure
+rm -f Makefile
+rm -f Makefile.in
+rm -f */Makefile
+rm -f */Makefile.in
 rm -rf */.deps
 rm -rf autom4te.cache
 
