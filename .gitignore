@@ -1,0 +1,13 @@
+*.o
+client/tsunami
+common/libtsunami_common.a
+config.log
+config.status
+rtclient/rttsunami
+rtserver/rttsunamid
+server/tsunamid
+util/fusereadtest
+util/readtest
+util/writetest
+aclocal.m4
+autom4te.cache/
