@@ -1,0 +1,35 @@
+Tsunami-UDP
+===========
+From http://tsunami-udp.sourceforge.net/
+
+Tsunami UDP Protocol: A fast user-space file transfer protocol that uses TCP
+control and UDP data for transfer over very high speed long distance networks
+(≥ 1 Gbps and even 10 GE), designed to provide more throughput than possible
+with TCP over the same networks. The project is based on original Indiana
+University 2002 Tsunami source code, but has been significantly improved and
+extended. As such, large portions of the program today are courtesy by Aalto
+University Metsähovi Radio Observatory.
+
+Includes FTP-like client and server command line applications for normal file
+transfers. It has additionally been extended for high rate real-time data
+streaming in eVLBI radio astronomy and geodesy (VSIB, PCEVN DAQ). Licensed
+under the original IU open source license. 
+
+This repository on GitHub is not affiliated with the original project at all.
+I just use tsunami for doing some file transfers across a high bandwidth
+high latency link, and thought that my minor modifications to organize and
+compile the code could be useful to someone somewhere.
+
+More Documentation
+==================
+See the docs/ directory for all of the original documentation that came with
+the code.
+
+Compiling
+=========
+You need automake and autoconf installed.  This can usually be accomplished
+with your favorite package manager.  I type:
+
+apt-get install automake autoconf
+
+From there, just run ./recompile.sh to get a compile started.
